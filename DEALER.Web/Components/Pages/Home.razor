@@ -1,0 +1,36 @@
+﻿@page "/"
+
+@attribute [Authorize]
+
+
+<style>
+    h1 {
+        color: #333;
+    }
+
+    p {
+        color: #555;
+        font-size: 18px;
+    }
+
+    .welcome-container {
+        text-align: center; /* Centers only the text */
+    }
+</style>
+
+<div class="welcome-container">
+    <h1>Welcome to @CompanyInfo.Name!</h1>
+    <p>@CompanyInfo.CompanyMessage</p>
+</div>
+
+@code {
+    [Inject]
+    private ICompany m_Company { get; set; }
+
+    private CompanyInfo CompanyInfo { get; set; }
+
+    protected override void OnInitialized()
+    {
+        CompanyInfo = m_Company.GetCompanyInfo();
+    }
+}

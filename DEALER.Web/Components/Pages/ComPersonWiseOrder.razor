@@ -1,0 +1,219 @@
+﻿@page "/PersonWiseOrder/{Id:int}"
+@using DEALER.DataAccess
+@using DEALER.Domain
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<ComPersonHeaderInfo Id="@Id"></ComPersonHeaderInfo>
+<Message @ref="notificationComponent" />
+<h3 class="pt-3">Orders List By Person</h3>
+
+@if (Orders == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+        <RadzenButton Text="Back" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+
+        <!-- Search Box -->
+        <div class="d-flex align-items-center border rounded me-3 mx-3" style="width: fit-content;">
+            <!-- Search Icon -->
+            <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+            </span>
+
+            <!-- Search Text Box -->
+            <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                           Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+        </div>
+
+        <!-- Export Button -->
+        <div class="d-flex align-items-center border rounded" style="width: fit-content;">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+            </RadzenStack>
+        </div>
+    </div>
+
+        <RadzenDataGrid Data="@Orders" TItem="OrdersByPersonDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="OrdersByPersonDTO" Property="@nameof(OrdersByPersonDTO.OrderId)" Title="Order ID" Width="100px" />
+                <RadzenDataGridColumn TItem="OrdersByPersonDTO" Property="@nameof(OrdersByPersonDTO.ProductsName)" Title="Name" Width="350px" />
+                <RadzenDataGridColumn TItem="OrdersByPersonDTO" Property="@nameof(OrdersByPersonDTO.Area)" Title="Area" Width="150px" />
+                <RadzenDataGridColumn TItem="OrdersByPersonDTO" Property="@nameof(OrdersByPersonDTO.DateFormatted)" Title="Date" Width="150px" />
+                <RadzenDataGridColumn TItem="OrdersByPersonDTO" Title="Actions" Width="80px">
+                    <Template Context="context">
+                        <RadzenButton Icon="description" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
+                                      Click="() => OrderDetails(context.OrderId)" style="margin-right: 5px;" title="Details" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [Inject]
+    private IOrder m_Order { get; set; }
+
+    [Inject]
+    private ICustomer m_Customer { get; set; }
+
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+
+    private IEnumerable<OrdersByPersonDTO> Orders { get; set; }
+
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    private IEnumerable<OrdersByPersonDTO> FilteredOrders { get; set; } = new List<OrdersByPersonDTO>();
+    private string search = string.Empty;
+    private string ClientName = string.Empty;
+    private Message notificationComponent;
+
+    protected override void OnInitialized()
+    {
+
+        Orders = m_Order.GetAllOrdersByPerson(Id); 
+        ClientName = m_Customer.GetCustomer(Id).Name;
+        FilteredOrders = Orders;
+    }
+
+    private void OrderDetails(int id)
+    {
+        _navigationManager.NavigateTo($"/PrintOrder/{id}/{Id}");
+    }
+
+    private void Cancel()
+    {
+        _navigationManager.NavigateTo($"/CustomerDuesHistory");
+    }
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilteredOrders = Orders;
+        }
+        else
+        {
+            FilteredOrders = Orders.Where(c =>
+                (!string.IsNullOrEmpty(c.OrderId.ToString()) && c.OrderId.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.ProductsName.ToString()) && c.ProductsName.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Area.ToString()) && c.Area.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(Orders, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(5);
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Order ID").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Products Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Area").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilteredOrders)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.OrderId.ToString());
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.ProductsName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Area);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.DateFormatted);
+                        }
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"{ClientName} Sales History_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"{ClientName} Sales History Report").Bold().FontSize(10);
+            });
+        });
+    }
+
+}

@@ -1,0 +1,31 @@
+﻿
+@inject IServiceScopeFactory ScopeFactory;
+
+<!-- Client Header -->
+<div class="card shadow-sm readOnlySection">
+    <div class="row p-2">
+        <div class="col-md-8">
+            <h3>@ProductInfo.Name</h3>
+        </div>
+        <div class="col-md-12">
+            <strong>Re Order Level : </strong><span>@ProductInfo.ReOrderLevel</span>
+            <strong>Company Name : </strong><span>@ProductInfo.Supplier.Name</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Product ProductInfo { get; set; } = new Product();
+
+    protected override void OnParametersSet()
+    {
+        using (var scope = ScopeFactory.CreateScope())
+        {
+            var product = scope.ServiceProvider.GetRequiredService<IProduct>();
+            ProductInfo = product.GetProduct(Id);
+        }      
+    }
+}

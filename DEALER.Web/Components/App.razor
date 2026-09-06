@@ -1,0 +1,49 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="DEALER.Web.styles.css" />
+    <link rel="stylesheet" href="/BoniyadiStyle.css" />
+
+    <link rel="icon" type="image/png" href="InvoiceLogo.jpg" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <RadzenTheme Theme="material" @rendermode="InteractiveServer" />
+    <HeadOutlet />
+</head>
+
+<body>
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+    @* <script src="_framework/blazor.server.js"></script> *@
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js?v=@(typeof(Radzen.Colors).Assembly.GetName().Version)"></script>
+    <script src="js/download.js"></script>
+
+    <script>
+        window.downloadFile = function (fileName, contentType, data) {
+            const blob = new Blob([data], { type: contentType });
+            const url = window.URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = fileName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            window.URL.revokeObjectURL(url);
+        };
+
+        
+        document.addEventListener("wheel", function () {
+        if (document.activeElement.type === "number") {
+        document.activeElement.blur();
+        }
+        });
+
+    </script>
+</body>
+
+</html>

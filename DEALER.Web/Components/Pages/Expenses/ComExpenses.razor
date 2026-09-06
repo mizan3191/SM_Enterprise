@@ -1,0 +1,574 @@
+﻿@page "/Expenses"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+
+<h3>Monthly Expenses</h3>
+
+@if (Expenses == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <!-- Add New Button -->
+            <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success" class="me-3" />
+
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <!-- Search Icon -->
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i>
+                </span>
+
+                <!-- Search Text Box -->
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+
+            <!-- Spacer to push dates to the right -->
+            <div class="flex-grow-1"></div>
+
+            <!-- Date Filter - Now aligned to the right with consistent widths -->
+            <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center me-3">
+                    <RadzenDatePicker @bind-Value="fromDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date"
+                                      Style="width: 180px;" />
+                </div>
+                <div class="d-flex align-items-center">
+                    <RadzenDatePicker @bind-Value="toDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date"
+                                      Style="width: 180px;" />
+                </div>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@FilterExpenses" TItem="Expense" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="Expense" Property="@nameof(Expense.DateFormatted)" Title="Date" Width="150px" />
+                <RadzenDataGridColumn TItem="Expense" Title="Expense Type" Width="150px">
+                    <Template Context="context">
+                        @context.ExpenseType?.Name
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="Expense" Title="Amount" Width="150px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.Amount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterExpenses.Sum(o => o.Amount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="Expense" Title="Payment Method" Width="150px">
+                    <Template Context="context">
+                        @context.PaymentMethod?.Name
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="Expense" Title="Staff" Width="150px">
+                    <Template Context="context">
+                        @context.CustomerName
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="Expense" Title="Description" Width="120px">
+                    <Template Context="context">
+                        @context.Description
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="Expense" Title="Actions" Width="80px">
+                    <Template Context="context">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                      Click="() => Edit(context.Id)" title="Edit" style="margin-right: 5px;" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="() => ConfirmDelete(context.Id)" title="Delete" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@if (showModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>@(Expense.Id > 0 ? "Edit Monthly Expense" : "Add Monthly Expense")</h3>
+                </div>
+
+                <EditForm Model="@Expense" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="card dataForm ">
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Date</label>
+                                <RadzenDatePicker @bind-Value="Expense.ExpenseDate" DateFormat="yyyy-MM-dd" Class="w-100" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label" for="ExpenseTypes">Expense Types</label>
+                                <RadzenDropDown @bind-Value="Expense.ExpenseTypeId"
+                                                Data="@ExpenseTypes"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Select Expense Type"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                                <ValidationMessage For="@(() => Expense.ExpenseTypeId)" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Amount</label>
+                                <InputNumber @bind-Value="Expense.Amount" class="form-control" />
+                                <ValidationMessage For="@(() => Expense.Amount)" />
+                            </div>
+                        </div>
+
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk" for="PaymentMethod">Payment Method</label>
+                                <RadzenDropDown @bind-Value="Expense.PaymentMethodId"
+                                                Data="@PaymentMethods"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Select Payment Method"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                                <ValidationMessage For="@(() => Expense.PaymentMethodId)" />
+                            </div>
+
+                            @* <div class="col-md-4 mb-3">
+                                <label>Reference Number</label>
+                                <InputText @bind-Value="Expense.ReferenceNumber" class="form-control" />
+                                <ValidationMessage For="@(() => Expense.ReferenceNumber)" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label>Paid To</label>
+                                <InputText @bind-Value="Expense.PaidTo" class="form-control" />
+                                <ValidationMessage For="@(() => Expense.PaidTo)" />
+                            </div> *@
+                            @* </div>
+
+                        <div class="row m-3"> *@
+                            @* <div class="col-md-4 mb-3">
+                                <label class="Asterisk">Issued By</label>
+                                <RadzenDropDown @bind-Value="Expense.CustomerId"
+                                                Data="@CustomerList"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Select Customer"
+                                                Class="w-100"
+                                                AllowFiltering="false"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                                <ValidationMessage For="@(() => Expense.CustomerId)" />
+                            </div> *@
+
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk">Given By</label>
+                                <RadzenDropDown @bind-Value="Expense.CustomerId"
+                                                Data="@CustomerList"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Select Customer"
+                                                Class="w-100"
+                                                AllowFiltering="false"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                                <ValidationMessage For="@(() => Expense.CustomerId)" />
+                            </div>
+                        </div>
+                        <div class="row m-3">
+                            <div class="col-md-8 mb-3">
+                                <label>Description</label>
+                                <RadzenTextArea @bind-Value="Expense.Description" class="form-control" />
+                                <ValidationMessage For="@(() => Expense.Description)" />
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+                            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" />
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    [Inject]
+    private IExpense m_Expense { get; set; }
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    public IEnumerable<Expense> Expenses { get; set; } = new List<Expense>();
+    public IEnumerable<Lov> PaymentMethods { get; set; } = new List<Lov>();
+    public IEnumerable<Lov> ExpenseTypes { get; set; } = new List<Lov>();
+    public IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
+
+    private bool showModal = false;
+
+    public Expense Expense { get; set; }
+    private Message notificationComponent;
+
+
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    private IEnumerable<Expense> FilterExpenses { get; set; } = new List<Expense>();
+
+    private string search = string.Empty;
+
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        PaymentMethods = await m_Lookup.GetAllPaymentMethodList();
+        ExpenseTypes = await m_Lookup.GetAllExpenseTypeList();
+        CustomerList = await m_Lookup.GetAllCustomerList();
+
+        //CustomerList = CustomerList.Where(c => !c.IsDeleted);
+        //PaymentMethods = PaymentMethods.Where(c => !c.IsDeleted);
+        //ExpenseTypes = ExpenseTypes.Where(c => !c.IsDeleted);
+
+        await LoadData();
+    }
+
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (Expense.Amount <= 0)
+            {
+                notificationComponent.Show(
+                    "পরিমাণ সঠিক নয়",
+                    "পরিমাণ ০ হতে পারবে না।",
+                    NotificationSeverity.Warning);
+                return;
+            }
+
+            if (Expense.PaymentMethodId == 0)
+            {
+                notificationComponent.Show(
+                    "পেমেন্ট পদ্ধতি নির্বাচন করুন",
+                    "অনুগ্রহ করে একটি পেমেন্ট পদ্ধতি নির্বাচন করুন।",
+                    NotificationSeverity.Warning);
+                return;
+            }
+
+            // if (Expense.CustomerId == 0)
+            // {
+            //     notificationComponent.Show("Missing Summary", "Issued By Need to select", NotificationSeverity.Warning);
+            //     return;
+            // }
+
+            if (Expense.ExpenseTypeId == 0)
+            {
+                notificationComponent.Show(
+    "খরচের ধরন নির্বাচন করুন",
+    "অনুগ্রহ করে একটি খরচের ধরন নির্বাচন করুন।",
+    NotificationSeverity.Warning);
+                return;
+            }
+
+            if (Expense.Id > 0)
+            {
+                m_Expense.UpdateExpense(Expense);
+                notificationComponent.Show(
+                    "খরচ আপডেট হয়েছে",
+                    "খরচের তথ্য সফলভাবে আপডেট করা হয়েছে।",
+                    NotificationSeverity.Success);
+            }
+            else
+            {
+                m_Expense.CreateExpense(Expense);
+                notificationComponent.Show(
+                    "খরচ যোগ করা হয়েছে",
+                    "খরচের তথ্য সফলভাবে যোগ করা হয়েছে।",
+                    NotificationSeverity.Success);
+            }
+
+            await LoadData();
+            CloseModal();
+            // _navigationManager.NavigateTo($"/Expenses", true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Submit Error: " + ex.Message);
+        }
+    }
+
+    private void Edit(int id)
+    {
+        showModal = true;
+
+        if (id > 0)
+        {
+            Expense = m_Expense.GetExpense(id);
+        }
+        else
+        {
+            Expense = new Expense()
+            {
+                Amount = 0,
+                ExpenseDate = DateTime.Now,
+                ExpenseTypeId = ExpenseTypes.FirstOrDefault()?.Id ?? 0,
+                PaymentMethodId = PaymentMethods.FirstOrDefault()?.Id ?? 0,
+                CustomerId = CustomerList.FirstOrDefault()?.Id ?? 0,
+            };
+        }
+    }
+
+    async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+        {
+            OkButtonText = "Yes, Delete",
+            CancelButtonText = "No, Keep",
+            ShowClose = true,
+        };
+
+        bool? confirmed = await DialogService.Confirm("Are you absolutely sure you want to delete this item?", "Delete Confirmation", options);
+
+        if (confirmed == true)
+        {
+            await Delete(id);
+        }
+    }
+
+    async Task Delete(int id)
+    {
+        m_Expense.DeleteExpense(id);
+        notificationComponent.Show(
+            "খরচ মুছে ফেলা হয়েছে",
+            "খরচের তথ্য সফলভাবে মুছে ফেলা হয়েছে।",
+            NotificationSeverity.Success);
+
+        await LoadData();
+        StateHasChanged(); // If you are managing the data source manually
+    }
+
+
+    private void AddNew()
+    {
+        Expense = new Expense()
+        {
+            Amount = 0,
+            ExpenseDate = DateTime.Now,
+        };
+        showModal = true;
+    }
+
+    private async Task LoadData()
+    {
+        Expenses = await m_Expense.GetAllExpenses(null, null);
+        FilterExpenses = Expenses;
+    }
+
+
+    private async void LoadSalesHistory()
+    {
+        Expenses = await m_Expense.GetAllExpenses(fromDate, toDate);
+        FilterExpenses = Expenses;
+
+        FilterData();
+
+        StateHasChanged();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+
+    public DateTime? fromDate
+    {
+        get => _fromDate;
+        set
+        {
+            if (_fromDate != value)
+            {
+                _fromDate = value;
+                LoadSalesHistory();
+            }
+        }
+    }
+
+    public DateTime? toDate
+    {
+        get => _toDate;
+        set
+        {
+            if (_toDate != value)
+            {
+                _toDate = value;
+                LoadSalesHistory();
+            }
+        }
+    }
+
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterExpenses = Expenses;
+        }
+        else
+        {
+            FilterExpenses = Expenses.Where(c =>
+                (!string.IsNullOrEmpty(c.ExpenseType.Name) && c.ExpenseType.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Amount.ToString()) && c.Amount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Customer.Name) && c.Customer.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.PaymentMethod.Name) && c.PaymentMethod.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+
+        // Apply date filtering with proper date-only comparison
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            // Convert to DateOnly for comparison (or use DateTime.Date)
+            var filterFrom = fromDate?.Date ?? DateTime.MinValue;
+            var filterTo = toDate?.Date.AddDays(1) ?? DateTime.MaxValue; // Add 1 day to include entire end date
+
+            FilterExpenses = FilterExpenses.Where(x =>
+                x.ExpenseDate.Date >= filterFrom &&
+                x.ExpenseDate.Date < filterTo
+            ).ToList();
+        }
+
+
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterExpenses, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Expense Type").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Description").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Payment Method").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilterExpenses)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.ExpenseType.Name);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Amount);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Description);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.PaymentMethod.Name);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.DateFormatted);
+                        }
+
+                        // Total Row
+                        table.Cell().ColumnSpan(1).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterExpenses.Sum(x => x.Amount):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold();
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Expenses_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Expenses Report").Bold().FontSize(10);
+            });
+        });
+    }
+
+}

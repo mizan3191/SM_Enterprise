@@ -1,0 +1,190 @@
+﻿@page "/ManageUser"
+
+@using Microsoft.AspNetCore.Authorization
+@using System.ComponentModel.DataAnnotations
+
+@attribute [Authorize(Roles = "Administrator")]
+
+<Message @ref="notificationComponent" />
+
+@rendermode @(new InteractiveServerRenderMode(prerender:false))
+
+@if (Popup)
+{
+    <div class="modal" rold="dialog" style="display:block" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manager User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="HidePopup"></button>
+                </div>
+
+                <EditForm Model="@User" OnSubmit="Save">
+                    <div class="modal-body">
+                        <div class="row m-3 ">
+                            <div class="col-md-4 mb-3">
+                                <label>Name</label>
+                                <InputText @bind-Value="User.Name" class="form-control"></InputText>
+                            </div>
+
+                            @if (User.Id == 0)
+                            {
+                                <div class="col-md-4 mb-3">
+                                    <label>Login Id</label>
+                                    <InputText @bind-Value="User.UserName" class="form-control"></InputText>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="col-md-4 mb-3">
+                                    <label>Login Id</label>
+                                    <InputText @bind-Value="User.UserName" disabled class="form-control"></InputText>
+                                </div>
+                            }
+
+                            @if (User.Id == 0)
+                            {
+                                <div class="col-md-4 mb-3">
+                                    <label>Password</label>
+                                    <InputText @bind-Value="User.Password" class="form-control"></InputText>
+                                </div>
+                            }
+
+                            <div class="col-md-4 mb-3">
+                                <label>User Roles</label>
+                                <InputSelect @bind-Value="User.UserRole" class="form-select">
+                                    @foreach (Roles status in Enum.GetValues(typeof(Roles)))
+                                    {
+                                        <option value="@status">@GetDisplayName(status)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label>Email</label>
+                                <InputText @bind-Value="User.Email" class="form-control"></InputText>
+                            </div>
+
+                            @if (User.Id > 0)
+                            {
+                                <div class="col-md-4 mb-3">
+                                    <label>Current Status</label>
+                                    <InputSelect @bind-Value="User.IsDisable" class="form-control">
+                                        <option value="true">Disable</option>
+                                        <option value="false">Active</option>
+                                    </InputSelect>
+                                </div>
+                            }
+
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        @if (User.Id == 0)
+                        {
+                            <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+                        }
+                        else
+                        {
+                            <RadzenButton Text="Update" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+                        }
+
+                        <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="HidePopup" Class="m-2" />
+
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+
+@if (Users == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <RadzenButton Click="@Create" Text="Add New" ButtonStyle="ButtonStyle.Success"></RadzenButton>
+
+        <RadzenDataGrid Data="@Users" TItem="AppUsersDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="AppUsersDTO" Property="@nameof(AppUsersDTO.Name)" Title="Name" Width="250px" />
+                <RadzenDataGridColumn TItem="AppUsersDTO" Property="@nameof(AppUsersDTO.UserName)" Title="User Name" Width="200px" />
+                <RadzenDataGridColumn TItem="AppUsersDTO" Property="@nameof(AppUsersDTO.Role)" Title="Role" Width="150px" />
+                <RadzenDataGridColumn TItem="AppUsersDTO" Property="@nameof(AppUsersDTO.Email)" Title="Email" Width="200px" />
+
+                <RadzenDataGridColumn TItem="AppUsersDTO" Title="Actions" Width="100px">
+                    <Template Context="AppUsersDTO">
+                        <RadzenButton Text="Edit" ButtonStyle="ButtonStyle.Primary" Click="() => Edit(AppUsersDTO.Id)" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Inject]
+    private IAccount m_Account { get; set; }
+
+    bool Popup = false;
+
+    public User User { get; set; } = new();
+
+    private IEnumerable<AppUsersDTO> Users { get; set; }
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        LoadData();
+    }
+
+    private void Edit(int userId)
+    {
+        User = m_Account.GetUser(userId);
+        Popup = true;
+    }
+
+    private void LoadData()
+    {
+        Users = m_Account.GetUsers();
+    }
+
+    private void Create()
+    {
+        User = new User();
+        Popup = true;
+    }
+
+    private void HidePopup()
+    {
+        Popup = false;
+    }
+
+    private void Save()
+    {
+        Popup = false;
+        if (User.Id > 0)
+        {
+            m_Account.UpdateUser(User);
+            notificationComponent.Show("Updated Summary", "User has been Updated successfully", NotificationSeverity.Warning);
+        }
+        else
+        {
+            m_Account.CreateUser(User);
+            notificationComponent.Show("Updated Summary", "User has been Added successfully", NotificationSeverity.Success);
+        }
+
+        LoadData();
+    }
+
+    private string GetDisplayName(Roles roles)
+    {
+        var fieldInfo = roles.GetType().GetField(roles.ToString());
+        var displayAttribute = fieldInfo.GetCustomAttributes(false).OfType<DisplayAttribute>().FirstOrDefault();
+        return displayAttribute?.Name ?? roles.ToString();
+    }
+}

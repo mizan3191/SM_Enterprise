@@ -1,0 +1,442 @@
+﻿@page "/ShopPaymentHistory"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+
+<h3>Shops Due Summary</h3>
+
+@if (DSRDueSummaryList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success" />
+
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3 mx-3" style="width: fit-content;">
+                <!-- Search Icon -->
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+                </span>
+
+                <!-- Search Text Box -->
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@FilterDSRDueSummaryList" TItem="DSRDueSummary" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="DSRDueSummary" Property="@nameof(DSRDueSummary.ShopName)" Title="Shop Name" Width="100px" />
+                <RadzenDataGridColumn TItem="DSRDueSummary" Property="@nameof(DSRDueSummary.OwnerName)" Title="Owner Name" Width="100px" />
+                <RadzenDataGridColumn TItem="DSRDueSummary" Property="@nameof(DSRDueSummary.Area)" Title="Area" Width="200px" />
+                <RadzenDataGridColumn TItem="DSRDueSummary" Property="@nameof(DSRDueSummary.Number)" Title="Number" Width="100px" />
+                <RadzenDataGridColumn TItem="DSRDueSummary" Title="Due Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.TotalShopDueAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterDSRDueSummaryList.Sum(o => o.TotalShopDueAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DSRDueSummary" Title="Actions" Width="100px">
+                    <Template Context="context">
+
+                        <RadzenButton Icon="description" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small"
+                                      Click="() => ShopPaymentHistory(context.ShopId)" style="margin-right: 5px;" title="Shop Payment History" />
+
+                        <RadzenButton Icon="account_balance_wallet" ButtonStyle="ButtonStyle.Warning" Size="ButtonSize.Small"
+                                      Click="() => Details(context.ShopId)" style="margin-right: 5px;" title="Shop Due Payment Summary" />
+
+                        <RadzenButton Icon="receipt_long" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                                      Click="() => ShopdueList(context.ShopId)" style="margin-right: 5px;" title="Shop Due History" />
+
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@if (showModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>@(DSRShopPaymentHistory.Id > 0 ? "Edit Shop Payment" : "Add Shop Payment")</h3>
+                </div>
+
+                <EditForm Model="@DSRShopPaymentHistory" OnValidSubmit="HandleSubmit">
+                    <div class="card dataForm ">
+                        <div class="row m-3">
+                           
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Shop Name</label>
+                                <RadzenDropDown @bind-Value="DSRShopPaymentHistory.ShopId"
+                                                Data="@ShopList"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Search Shop Name"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                                Change="@OnShopChanged" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Issued By</label>
+                                <RadzenDropDown @bind-Value="DSRShopPaymentHistory.CustomerId"
+                                                Data="@CustomerList"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Search"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                                Change="@LoadShopDueCustomer" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Payment Method</label>
+                                <RadzenDropDown @bind-Value="DSRShopPaymentHistory.PaymentMethodId"
+                                                Data="@PaymentMethodList"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Search Payment Method"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                                />
+                            </div>
+                           
+                        </div>
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label>Due Amount</label>
+                                <InputNumber @bind-Value="DueAmount" class="form-control " disabled></InputNumber>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk">Amount Paid</label>
+                                <InputNumber @bind-Value="DSRShopPaymentHistory.AmountPaid" class="form-control"></InputNumber>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Date</label>
+                                <RadzenDatePicker @bind-Value="DSRShopPaymentHistory.PaymentDate" DateFormat="yyyy-MM-dd" Class="w-100" />
+                            </div>
+                        </div>
+                        <br />
+                        <div class="col-md-12">
+                            <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+                            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" />
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IDSRShopPaymentHistory m_DSRShopPaymentHistory { get; set; }
+
+    [Inject]
+    private IDSRShopDue m_DSRShopDue { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    public IEnumerable<DSRDueSummary> DSRDueSummaryList { get; set; } = new List<DSRDueSummary>();
+    public IEnumerable<DSRShopPaymentHistory> DSRShopPaymentHistoryList { get; set; } = new List<DSRShopPaymentHistory>();
+
+    private IEnumerable<Lov> CustomerList { get; set; } = new List<Lovd>();
+    private IEnumerable<Lov> ShopList { get; set; } = new List<Lov>();
+    private IEnumerable<Lov> PaymentMethodList { get; set; } = new List<Lov>();
+
+    private bool showModal = false;
+    private double DueAmount { get; set; } = 0;
+    private int ShopId { get; set; }
+    private int CustomerId { get; set; }
+
+    public DSRShopPaymentHistory DSRShopPaymentHistory { get; set; }
+
+    private Message notificationComponent;
+
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    private IEnumerable<DSRDueSummary> FilterDSRDueSummaryList { get; set; } = new List<DSRDueSummary>();
+
+    private string search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        ShopList = await m_Lookup.GetAllShopList();
+
+        PaymentMethodList = await m_Lookup.GetAllPaymentMethodList();
+        await LoadData();
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (DSRShopPaymentHistory.CustomerId <= 0)
+        {
+            notificationComponent.Show("Validation Error", "Please select an Issued By before proceeding.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (DSRShopPaymentHistory.ShopId <= 0)
+        {
+            notificationComponent.Show("Validation Error", "Please select an shop before proceeding.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (DSRShopPaymentHistory.PaymentMethodId <= 0 || DSRShopPaymentHistory.PaymentMethodId is null)
+        {
+            notificationComponent.Show("Validation Error", "Please select an Payment Method before proceeding.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (DSRShopPaymentHistory.AmountPaid <= 0)
+        {
+            notificationComponent.Show("Validation Error", "Paid amount must be greater than zero.", NotificationSeverity.Warning);
+            return;
+        }
+
+
+        showModal = false;
+
+        if (DSRShopPaymentHistory.Id > 0)
+        {
+            m_DSRShopPaymentHistory.UpdateDSRShopPaymentHistory(DSRShopPaymentHistory);
+            notificationComponent.Show("Updated Summary", "Shop Payment History has been Updated successfully", NotificationSeverity.Warning);
+        }
+        else
+        {
+            m_DSRShopPaymentHistory.CreateDSRShopPaymentHistory(DSRShopPaymentHistory);
+            notificationComponent.Show("Added Summary", "Shop Payment History has been Added successfully", NotificationSeverity.Success);
+        }
+
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private void AddNew()
+    {
+        DSRShopPaymentHistory = new DSRShopPaymentHistory()
+            {
+                PaymentDate = DateTime.Now,
+            };
+
+        showModal = true;
+    }
+
+    private async Task LoadCustomer(int shopId)
+    {
+        CustomerList = await m_DSRShopDue.GetAllShopDueCustomerList(shopId);
+    }
+
+    private async Task LoadShopDueCustomer(object value)
+    {
+        if (value is int customerId)
+        {
+            CustomerId = customerId;        
+            if (CustomerId > 0 && ShopId > 0)
+            {
+                DueAmount = await m_DSRShopDue.LoadShopDueCustomerWise(ShopId, CustomerId);
+            }
+        }
+        
+    }
+
+    private async Task LoadData()
+    {
+        DueAmount = 0;
+        DSRDueSummaryList = await m_DSRShopPaymentHistory.GetTotalDuePerShop();
+        DSRShopPaymentHistoryList = await m_DSRShopPaymentHistory.GetAllShopPaymentHistories();
+        FilterDSRDueSummaryList = DSRDueSummaryList;
+    }
+
+    private async Task OnShopChanged(object value)
+    {
+        if (value is int shopId)
+        {
+            ShopId = shopId;
+            DueAmount = DSRDueSummaryList
+                .Where(x => x.ShopId == shopId)
+                .Sum(x => x.TotalShopDueAmount);
+
+            await LoadCustomer(shopId);
+
+            if (CustomerId > 0 && ShopId > 0)
+            {
+                DueAmount = await m_DSRShopDue.LoadShopDueCustomerWise(ShopId, CustomerId);
+            }
+        }
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+
+    private void Details(int shopId)
+    {
+        _navigationManager.NavigateTo($"/ShopPaymentDetails/{shopId}");
+    }
+
+    private void ShopdueList(int shopId)
+    {
+        _navigationManager.NavigateTo($"/ShopDueHistory/{shopId}");
+    }
+
+    private void ShopPaymentHistory(int shopId)
+    {
+        _navigationManager.NavigateTo($"/ShopPaymentList/{shopId}");
+    }
+
+
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterDSRDueSummaryList = DSRDueSummaryList;
+        }
+        else
+        {
+            FilterDSRDueSummaryList = DSRDueSummaryList.Where(c =>
+                (!string.IsNullOrEmpty(c.ShopName) && c.ShopName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.OwnerName) && c.OwnerName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Area) && c.Area.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Number) && c.Number.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.TotalShopDueAmount.ToString()) && c.TotalShopDueAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterDSRDueSummaryList, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Shop Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Owner Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Area").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Number").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Total Due Amount").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilterDSRDueSummaryList)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.ShopName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.OwnerName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Area);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Number);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.TotalShopDueAmount:N2}");
+                        }
+
+                        // Total Row
+                        table.Cell().ColumnSpan(4).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterDSRDueSummaryList.Sum(x => x.TotalShopDueAmount):N2}").Bold();
+
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Shops Due Histories_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Shops Due Histories Report").Bold().FontSize(10);
+            });
+        });
+    }
+
+}

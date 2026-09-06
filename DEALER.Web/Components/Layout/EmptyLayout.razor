@@ -1,0 +1,103 @@
+﻿@inherits LayoutComponentBase
+
+@inject ILicense m_License
+
+<style>
+    .license-block-overlay {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(0, 0, 0, 0.55);
+        z-index: 99999;
+    }
+
+    .license-block-box {
+        background: white;
+        padding: 35px 45px;
+        border-radius: 12px;
+        text-align: center;
+        min-width: 400px;
+        max-width: 90%;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+        .license-block-box h2 {
+            margin-bottom: 15px;
+        }
+
+        .license-block-box p {
+            margin-bottom: 0;
+            font-size: 16px;
+        }
+</style>
+
+<div class="page">
+    <main>
+        <article class="content px-4">
+            @if (isExpired)
+            {
+                <div class="license-block-overlay">
+                    <div class="license-block-box">
+                        <h2>⚠️ System Locked</h2>
+                        <p>@licenseMessage</p>
+                        <button class="btn btn-primary mt-3" @onclick="RecheckLicense" disabled="@isChecking">
+                            @if (isChecking)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                                <span>Checking...</span>
+                            }
+                            else
+                            {
+                                <span>🔄 Refresh</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @Body
+            }
+        </article>
+    </main>
+
+</div>
+
+@code {
+    private bool isExpired = false;
+    private string licenseMessage = string.Empty;
+
+    private bool isChecking = false;
+
+    protected override void OnInitialized()
+    {
+        CheckLicense();
+    }
+
+    private void CheckLicense()
+    {
+        isExpired = m_License.IsLicenseExpired();
+        if (isExpired)
+        {
+            var license = m_License.GetLicenseInfo();
+            licenseMessage = license?.Message ?? "সিস্টেম বন্ধ আছে। যোগাযোগ করুন।";
+        }
+    }
+
+    private async Task RecheckLicense()
+    {
+        isChecking = true;
+        StateHasChanged();
+
+        // ektu delay diyechi jate user bujhte pare check hocche (optional)
+        await Task.Delay(500);
+
+        CheckLicense();
+        isChecking = false;
+        StateHasChanged();
+    }
+}

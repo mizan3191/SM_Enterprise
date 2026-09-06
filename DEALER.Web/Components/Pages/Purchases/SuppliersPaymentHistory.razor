@@ -1,0 +1,559 @@
+﻿@page "/SupplierPaymentHistory"
+@page "/SupplierPaymentHistory/{SupplierId:int}"
+
+ @rendermode @(new InteractiveServerRenderMode(prerender: false))
+ @inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+
+<h3>Company Payment History</h3>
+
+<div class="row align-items-start">
+    <div class="col-md-2">
+        <RadzenButton Click="@AddPayment" Text="Add Payment" ButtonStyle="ButtonStyle.Success" class="mt-2"></RadzenButton>
+    </div>
+
+    @if (SupplierList != null && SupplierList.Count() != 0)
+    {
+        <div class="col-md-10 pb-3">
+            <div class="row my-2 align-items-end">
+                <div class="col-md-5">
+                    <h4>Total Due : @TotalDue.ToString("0.00")</h4>
+                </div>
+                <div class="col-md-7">
+                    <label class="form-label">Select Company</label>
+                    <RadzenDropDown TValue="int"
+                                    Data="@SupplierList"
+                                    TextProperty="Name"
+                                    ValueProperty="Id"
+                                    Placeholder="Search Company"
+                                    AllowClear="true"
+                                    AllowFiltering="true"
+                                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                    Change="OnSupplierChanged"
+                                    Style="width: 100%;" />
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+
+@if (SupplierId > 0)
+{
+    @if (PaymentHistoryList == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <div class="card-body p-0">
+            <div class="d-flex align-items-center mb-3" style="width: 100%;">
+                <!-- Search Box -->
+                <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                    <!-- Search Icon -->
+                    <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                        <i class="fas fa-search"></i>
+                    </span>
+
+                    <!-- Search Text Box -->
+                    <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                                   Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+                </div>
+
+                <!-- Export Button -->
+                <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                        <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                    </RadzenStack>
+                </div>
+
+                <!-- Spacer to push dates to the right -->
+                <div class="flex-grow-1"></div>
+
+                <!-- Date Filter - Now aligned to the right with consistent widths -->
+                <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center me-3">
+                        <RadzenDatePicker @bind-Value="fromDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date"
+                                          Style="width: 180px;" />
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <RadzenDatePicker @bind-Value="toDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date"
+                                          Style="width: 180px;" />
+                    </div>
+                </div>
+            </div>
+
+            <RadzenDataGrid Data="@FilteredPaymentHistoryList" TItem="SupplierPaymentHistoryDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+                <Columns>
+                    <RadzenDataGridColumn TItem="SupplierPaymentHistoryDTO" Title="Total Amount" Width="100px" TextAlign="TextAlign.Right">
+                        <Template Context="item">
+                            <div class="text-end">@(item.TotalAmountThisPurchase.HasValue ? item.TotalAmountThisPurchase.Value.ToString("N2") : "0")</div>
+                        </Template>
+                        <FooterTemplate>
+                            <div class="text-end fw-bold">
+                                @(FilteredPaymentHistoryList?.Sum(o => o.TotalAmountThisPurchase ?? 0).ToString("N2") ?? "0.00")
+                            </div>
+                        </FooterTemplate>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SupplierPaymentHistoryDTO" Title="Paid Amount" Width="100px" TextAlign="TextAlign.Right">
+                        <Template Context="item">
+                            <div class="text-end">@item.AmountPaid.ToString("N2")</div>
+                        </Template>
+                        <FooterTemplate>
+                            <div class="text-end fw-bold">@FilteredPaymentHistoryList.Sum(o => o.AmountPaid).ToString("N2")</div>
+                        </FooterTemplate>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SupplierPaymentHistoryDTO" Title="Due Before" Width="100px" TextAlign="TextAlign.Right">
+                        <Template Context="item">
+                            <div class="text-end">@item.TotalDueBeforePayment.ToString("N2")</div>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SupplierPaymentHistoryDTO" Title="Due After" Width="100px" TextAlign="TextAlign.Right">
+                        <Template Context="item">
+                            <div class="text-end">@item.TotalDueAfterPayment.ToString("N2")</div>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SupplierPaymentHistoryDTO" Property="PaymentMethod" Title="Pay Method" Width="100px" />
+                    @* <RadzenDataGridColumn TItem="SupplierPaymentHistoryDTO" Property="Number" Title="Number" Width="100px" /> *@
+                    <RadzenDataGridColumn TItem="SupplierPaymentHistoryDTO" Property="Comments" Title="Comments" Width="100px" />
+                    @* <RadzenDataGridColumn TItem="SupplierPaymentHistoryDTO" Property="TransactionID" Title="Transaction ID" Width="100px" /> *@
+                    <RadzenDataGridColumn TItem="SupplierPaymentHistoryDTO" Property="DateFormatted" Title="Date" Width="100px">
+                        <Template Context="context">
+                            @context.DateFormatted
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SupplierPaymentHistoryDTO" Title="Actions" Width="80px">
+                        <Template Context="context">
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                          Click="() => Edit(context.Id)"
+                                          Disabled="context.Id != LastPaymentId || context.IsDisabled || PaymentHistoryList?.Count() == 1"
+                                          title="@(context.IsDisabled ? "Cannot edit - Payment is linked to another entity" : "Edit")"
+                                          style="margin-right: 5px;" />
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                          Click="() => ConfirmDelete(context.Id)"
+                                          Disabled="context.Id != LastPaymentId || context.IsDisabled || PaymentHistoryList?.Count() == 1"
+                                          title="@(context.IsDisabled ? "Cannot delete - Payment is linked to another entity" : "Delete")" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </div>
+    }
+}
+
+
+@if (showpPopup)
+{
+    <div class="modal fade show" style="display:block;" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="false">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabel">Enter Payment Details</h5>
+                    <RadzenButton Icon="cancel" ButtonStyle="ButtonStyle.Danger" Click="ClosePopup" AriaLabel="Close" Class="circle-button" />
+
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="SupplierPaymentHistory" OnValidSubmit="HandlePaymentSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="form-group pt-3">
+                            <label class="form-label">Date</label>
+                            <RadzenDatePicker @bind-Value="SupplierPaymentHistory.PaymentDate" DateFormat="yyyy-MM-dd" Class="w-100" />
+                        </div>
+                        <div class="form-group pt-3">
+                            <label>Due Amount:</label>
+                            <InputNumber class="form-control" disabled @bind-Value="@TotalDue" />
+                        </div>
+                        <div class="form-group pt-3">
+                            <label class="Asterisk" for="AmountPaid">Amount Paid:</label>
+                            <InputNumber id="AmountPaid" class="form-control" @bind-Value="SupplierPaymentHistory.AmountPaid" />
+                        </div>
+
+                        <div class="form-group pt-3 pb-3">
+                            <label class="Asterisk" for="PaymentMethod">Payment Method:</label>
+                            <RadzenDropDown @bind-Value="SupplierPaymentHistory.PaymentMethodId"
+                                            Data="@PaymentMethodList"
+                                            TextProperty="Name"
+                                            ValueProperty="Id"
+                                            Placeholder="Select Payment Method"
+                                            Class="w-100"
+                                            AllowFiltering="false"
+                                            Change="OnPaymentMethodChanged"
+                                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                        </div>
+
+                       @*  <div class="form-group pt-3 pb-3">
+                            <label>Number</label>
+                            <InputText @bind-Value="SupplierPaymentHistory.Number" class="form-control"></InputText>
+                        </div>
+                        <div class="form-group pt-3 pb-3">
+                            <label>Transaction ID</label>
+                            <InputText @bind-Value="SupplierPaymentHistory.TransactionID" class="form-control"></InputText>
+                        </div> *@
+
+                        <div class="form-group pt-3 pb-3">
+                            <label>Comments</label>
+                            <InputTextArea @bind-Value="SupplierPaymentHistory.Comments" class="form-control"></InputTextArea>
+                        </div>
+
+                        <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+                        <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="ClosePopup" Class="m-2" />
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int SupplierId { get; set; }
+
+    [Inject]
+    private ISupplier m_Supplier { get; set; }
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    private IEnumerable<SupplierPaymentHistoryDTO> PaymentHistoryList { get; set; } = new List<SupplierPaymentHistoryDTO>();
+
+    private IEnumerable<Lov> SupplierList { get; set; } = new List<Lov>();
+    private IEnumerable<Lov> PaymentMethodList { get; set; } = new List<Lov>();
+
+    private SupplierPaymentHistory SupplierPaymentHistory { get; set; } = new();
+    private Message notificationComponent;
+
+    private int? SelectedClientId;
+    private double TotalDue = 0;
+    private bool showpPopup = false;
+
+
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+
+    private int? LastPaymentId => PaymentHistoryList?.FirstOrDefault()?.Id;
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    private IEnumerable<SupplierPaymentHistoryDTO> FilteredPaymentHistoryList { get; set; } = new List<SupplierPaymentHistoryDTO>();
+    private string search = string.Empty;
+    private string ClientName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SupplierList = await m_Lookup.GetAllSupplierList();
+        PaymentMethodList = await m_Lookup.GetAllPaymentMethodList();
+
+        //SupplierList = SupplierList.Where(c => !c.IsDeleted);
+        //PaymentMethodList = PaymentMethodList.Where(c => !c.IsDeleted);
+       
+        if (SupplierId > 0)
+        {
+            await OnClientChange(SupplierId);
+        }
+    }
+
+    private void AddPayment()
+    {
+        showpPopup = true;
+
+        if (SupplierId > 0)
+        {
+            SupplierPaymentHistory = new()
+                {
+                    SupplierId = SupplierId,
+                };
+        }
+        else
+        {
+            showpPopup = false;
+            notificationComponent.Show("Selected Summary", "Selected a Company Please", NotificationSeverity.Error);
+        }
+
+    }
+
+    private async Task OnClientChange(int clientId)
+    {
+        if (clientId > 0)
+        {
+
+            ClientName = m_Supplier.GetSupplier(clientId).Name;
+
+            PaymentHistoryList = await m_Supplier.GetSupplierPaymentHistoryById(SupplierId);
+            TotalDue = 0;
+            if (PaymentHistoryList.Count() > 0)
+            {
+                TotalDue = PaymentHistoryList.First().TotalDueAfterPayment;
+            }
+
+            FilteredPaymentHistoryList = PaymentHistoryList;
+            //notificationComponent.Show("Changed Summary", "Company has been Changed successfully", NotificationSeverity.Success);
+        }
+        else
+        {
+            PaymentHistoryList = new List<SupplierPaymentHistoryDTO>();
+            TotalDue = 0;
+            ClientName = string.Empty;
+            notificationComponent.Show("Changed Summary", "Company has been Removed successfully", NotificationSeverity.Warning);
+        }
+    }
+
+    private async Task OnSupplierChanged(object value)
+    {
+        if (int.TryParse(value?.ToString(), out var id))
+        {
+            SelectedClientId = id;
+            SupplierId = id;
+            await OnClientChange(SupplierId);
+            StateHasChanged();
+        }
+    }
+
+
+    private void OnPaymentMethodChanged(object value)
+    {
+        if (int.TryParse(value.ToString(), out var newId))
+        {
+            SupplierPaymentHistory.PaymentMethodId = newId > 0 ? newId : 0;
+        }
+    }
+
+
+    private void Edit(int id)
+    {
+        if (id > 0)
+        {
+            SupplierPaymentHistory = m_Supplier.GetSupplierPaymentHistory(id);
+        }
+        else
+        {
+            SupplierPaymentHistory = new SupplierPaymentHistory();
+        }
+
+        showpPopup = true;
+    }
+
+    async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+            {
+                OkButtonText = "Yes, Delete",
+                CancelButtonText = "No, Keep",
+                ShowClose = true,
+            };
+
+        bool? confirmed = await DialogService.Confirm("Are you absolutely sure you want to delete this item?", "Delete Confirmation", options);
+
+        if (confirmed == true)
+        {
+            await Delete(id);
+        }
+    }
+
+    async Task Delete(int id)
+    {
+        m_Supplier.DeleteSupplierPayment(id);
+        notificationComponent.Show("Deleted Summary", "Company Payment has been Deleted successfully", NotificationSeverity.Error);
+        await OnClientChange(SupplierId);
+        StateHasChanged();
+    }
+
+    private void ClosePopup()
+    {
+        showpPopup = false;
+    }
+
+    private async void HandlePaymentSubmit()
+    {
+        showpPopup = false;
+
+        if (SupplierPaymentHistory.Id > 0)
+        {
+            m_Supplier.UpdateSupplierPayment(SupplierPaymentHistory); ;
+            notificationComponent.Show("Updated Summary", "Company Payment has been Updated successfully", NotificationSeverity.Warning);
+        }
+        else
+        {
+            if (SupplierPaymentHistory.AmountPaid > 0)
+            {
+                m_Supplier.AddSupplierPayment(SupplierPaymentHistory);
+                notificationComponent.Show("Added Summary", "Company Payment has been Added successfully", NotificationSeverity.Success);
+            }
+        }
+
+        await OnClientChange(SupplierId);
+        StateHasChanged();
+    }
+
+
+    public DateTime? fromDate
+    {
+        get => _fromDate;
+        set
+        {
+            if (_fromDate != value)
+            {
+                _fromDate = value;
+                FilterData();
+            }
+        }
+    }
+
+    public DateTime? toDate
+    {
+        get => _toDate;
+        set
+        {
+            if (_toDate != value)
+            {
+                _toDate = value;
+                FilterData();
+            }
+        }
+    }
+
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilteredPaymentHistoryList = PaymentHistoryList;
+        }
+        else
+        {
+            FilteredPaymentHistoryList = PaymentHistoryList.Where(c =>
+                (!string.IsNullOrEmpty(c.TotalAmountThisPurchase.ToString()) && c.TotalAmountThisPurchase.Value.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.AmountPaid.ToString()) && c.AmountPaid.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.TotalDueBeforePayment.ToString()) && c.TotalDueBeforePayment.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.TotalDueAfterPayment.ToString()) && c.TotalDueAfterPayment.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.PaymentMethod) && c.PaymentMethod.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Number) && c.Number.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.TransactionID) && c.TransactionID.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+
+        // Apply date filtering with proper date-only comparison
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            // Convert to DateOnly for comparison (or use DateTime.Date)
+            var filterFrom = fromDate?.Date ?? DateTime.MinValue;
+            var filterTo = toDate?.Date.AddDays(1) ?? DateTime.MaxValue; // Add 1 day to include entire end date
+
+            FilteredPaymentHistoryList = FilteredPaymentHistoryList.Where(x =>
+                x.PaymentDate.Date >= filterFrom &&
+                x.PaymentDate.Date < filterTo
+            ).ToList();
+        }
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilteredPaymentHistoryList, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Total Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Paid Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Due Before").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Due After").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Pay Method").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilteredPaymentHistoryList)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{customer.TotalAmountThisPurchase:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{customer.AmountPaid:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{customer.TotalDueBeforePayment:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{customer.TotalDueAfterPayment:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.PaymentMethod);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.DateFormatted);
+                        }
+
+                        // Total Row
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{FilteredPaymentHistoryList?.Sum(x => x.TotalAmountThisPurchase ?? 0).ToString("N2") ?? "0.00"}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{FilteredPaymentHistoryList.Sum(x => x.AmountPaid).ToString("0.00"):N2}").Bold();
+                        table.Cell().ColumnSpan(2).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{FilteredPaymentHistoryList.FirstOrDefault()?.TotalDueAfterPayment.ToString("0.00"):N2}").Bold();
+                    });
+
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"{ClientName} Transaction History_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"{ClientName} Transaction History Report").Bold().FontSize(10);
+            });
+        });
+    }
+
+}

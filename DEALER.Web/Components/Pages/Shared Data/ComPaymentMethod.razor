@@ -1,0 +1,192 @@
+﻿@page "/PaymentMethod"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+
+<h3>Payment Method</h3>
+
+@if (PaymentMethodList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success"></RadzenButton>
+
+        <RadzenDataGrid Data="@PaymentMethodList" TItem="PaymentMethod" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="PaymentMethod" Property="@nameof(PaymentMethod.Name)" Title="Payment Method" Width="200px" />
+                <RadzenDataGridColumn TItem="PaymentMethod" Property="@nameof(PaymentMethod.Description)" Title="Description" Width="350px" />
+                <RadzenDataGridColumn TItem="PaymentMethod" Title="Deleted" Width="80px">
+                    <Template Context="item">
+                        @{
+                            bool isDisabled = item.IsDeleted == true;
+                            string text = isDisabled ? "Yes" : "No";
+                            string badgeColor = isDisabled ? "badge bg-danger" : "badge bg-primary"; // Blue for Yes, Red for No
+                        }
+                        <span class="@badgeColor">@text</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="PaymentMethod" Title="Actions" Width="60px">
+                    <Template Context="product">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                      Click="() => Edit(product.Id)" style="margin-right: 5px;" title="Edit" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="() => ConfirmDelete(product.Id)" title="Delete" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@if (showModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>@(PaymentMethod.Id > 0 ? "Edit Payment Method" : "Add Payment Method")</h3>
+                </div>
+
+                <EditForm Model="@PaymentMethod" OnValidSubmit="HandleSubmit">
+                    <div class="card dataForm ">
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk">Name</label>
+                                <InputText @bind-Value="PaymentMethod.Name" class="form-control"></InputText>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label>Comments</label>
+                                <InputText @bind-Value="PaymentMethod.Description" class="form-control"></InputText>
+                            </div>
+                            @if (PaymentMethod.Id > 0)
+                            {
+                                <div class="col-md-4 mb-3">
+                                    <div class="form-check mb-3 pt-4">
+                                        <InputCheckbox @bind-Value="PaymentMethod.IsDeleted" class="form-check-input custom-checkbox-lg" id="disableCheck" />
+                                        <label class="form-check-label" for="disableCheck">Deleted</label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <br />
+                        <div class="col-md-12">
+                            <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+                            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" />
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    public IEnumerable<PaymentMethod> PaymentMethodList { get; set; } = new List<PaymentMethod>();
+
+    private bool showModal = false;
+
+    public PaymentMethod PaymentMethod { get; set; }
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(PaymentMethod.Name))
+        {
+            notificationComponent.Show("Validation Summary", "Payment Method name is required.", NotificationSeverity.Warning);
+            return;
+        }
+
+        showModal = false;
+
+        if (PaymentMethod.Id > 0)
+        {
+            m_Lookup.UpdatePaymentMethod(PaymentMethod);
+            notificationComponent.Show("Updated Summary", "Payment Method has been Updated successfully", NotificationSeverity.Warning);
+        }
+        else
+        {
+            m_Lookup.CreatePaymentMethod(PaymentMethod);
+            notificationComponent.Show("Added Summary", "Payment Method has been Added successfully", NotificationSeverity.Success);
+        }
+
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private void Edit(int id)
+    {
+        showModal = true;
+
+        if (id > 0)
+        {
+            PaymentMethod = m_Lookup.GetPaymentMethod(id);
+        }
+        else
+        {
+            PaymentMethod = new PaymentMethod()
+                {
+                };
+        }
+    }
+
+    async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+            {
+                OkButtonText = "Yes, Delete",
+                CancelButtonText = "No, Keep",
+                ShowClose = true,
+            };
+
+        bool? confirmed = await DialogService.Confirm("Are you absolutely sure you want to delete this item?", "Delete Confirmation", options);
+
+        if (confirmed == true)
+        {
+            await Delete(id);
+        }
+    }
+
+    async Task Delete(int id)
+    {
+        m_Lookup.DeletePaymentMethod(id);
+        notificationComponent.Show("Delete Summary", "Payment Method has been Deleted successfully", NotificationSeverity.Error);
+
+        await LoadData();
+        StateHasChanged(); // If you are managing the data source manually
+    }
+
+
+    private void AddNew()
+    {
+        PaymentMethod = new PaymentMethod()
+            {
+            };
+        showModal = true;
+    }
+
+    private async Task LoadData()
+    {
+        PaymentMethodList = await m_Lookup.GetAllPaymentMethod();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+}

@@ -1,0 +1,843 @@
+﻿@page "/Sale"
+@page "/Sale/{Id:int}"
+@page "/Sale/{Id:int}/{CustomerId:int}"
+@page "/Sale/{Id:int}/{CustomerId:int}/{OrderId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject NotificationService NotificationService
+
+<Message @ref="notificationComponent" />
+
+<style>
+    .dataForm .table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+        .dataForm .table th,
+        .dataForm .table td {
+            padding: 6px;
+        }
+
+            .dataForm .table th:nth-child(1), /* Product */
+            .dataForm .table td:nth-child(1) {
+                width: 30%;
+            }
+
+            .dataForm .table th:nth-child(2), /* Return Qty (Empty) */
+            .dataForm .table td:nth-child(2) {
+                width: 10%;
+            }
+
+            .dataForm .table th:nth-child(3), /* Qty (Loaded) */
+            .dataForm .table td:nth-child(3) {
+                width: 10%;
+            }
+
+            .dataForm .table th:nth-child(4), /* Cylinder U/P (Read-only) */
+            .dataForm .table td:nth-child(4) {
+                width: 10%;
+            }
+
+            .dataForm .table th:nth-child(5), /* Gas U/P (Read-only) */
+            .dataForm .table td:nth-child(5) {
+                width: 12%;
+            }
+
+            .dataForm .table th:nth-child(6), /* Dis% */
+            .dataForm .table td:nth-child(6) {
+                width: 8%;
+            }
+
+            .dataForm .table th:nth-child(7), /* Price */
+            .dataForm .table td:nth-child(7) {
+                width: 15%;
+            }
+
+            .dataForm .table th:nth-child(8), /* Action */
+            .dataForm .table td:nth-child(8) {
+                width: 5%;
+            }
+
+            .dataForm .table td:nth-child(7) {
+                text-align: right;
+            }
+
+        .dataForm .table tfoot td:nth-child(7) {
+            text-align: right;
+        }
+
+        .dataForm .table input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .dataForm .table .readonly-input {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+
+    .change-amount {
+        background-color: #e8f5e9;
+        font-weight: bold;
+        padding: 10px;
+        border-radius: 4px;
+    }
+</style>
+
+<h3>Order Entry</h3>
+
+<div class="row mt-4">
+    <div class="col-md-3 mb-3">
+        <RadzenDropDown TValue="int?"
+                        Data="@SupplierList"
+                        TextProperty="Name"
+                        ValueProperty="Id"
+                        Placeholder="Search Company"
+                        AllowClear="true"
+                        AllowFiltering="true"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Change="@OnCompanyChanged"
+                        Style="width:100%">
+        </RadzenDropDown>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <RadzenDropDown @bind-Value="SelectedProductIds"
+                        Data="@FilteredProduct"
+                        TextProperty="@nameof(Product.DisplayNameSize)"
+                        ValueProperty="@nameof(Product.Id)"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Name="DropDownMultipleChips"
+                        AllowFiltering="true"
+                        Multiple="true"
+                        AllowClear="true"
+                        Placeholder="Select products"
+                        SelectAllText="Select All Products"
+                        Chips="true"
+                        Style="width: 100%;" />
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <RadzenButton Disabled="@(SelectedProductIds == null || !SelectedProductIds.Any())"
+                      Text="Add"
+                      Style="width:25%"
+                      ButtonStyle="ButtonStyle.Secondary"
+                      Click="AddProducts" />
+    </div>
+</div>
+
+
+<div class="card dataForm mt-3">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Return Qty<br /><small>(Empty)</small></th>
+                <th>Qty<br /><small>(Loaded)</small></th>
+                <th>Cyl. U/P</th>
+                <th>Gas U/P</th>
+                <th>Dis%</th>
+                <th class="text-end">Price</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var orderDetail in OrderDetails)
+            {
+                <tr>
+                    <td>
+                        <RadzenDropDown TValue="int"
+                                        @bind-Value="orderDetail.ProductId"
+                                        Data="@AllProducts"
+                                        TextProperty="DisplayNameSize"
+                                        ValueProperty="Id"
+                                        Placeholder="Select a product"
+                                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        AllowFiltering="false"
+                                        Change="@(args => OnProductChanged(orderDetail, args))">
+                            <Template Context="product">@product.DisplayNameSize</Template>
+                        </RadzenDropDown>
+                    </td>
+
+                    <td>
+                        <input type="number"
+                               min="0"
+                               value="@orderDetail.ReturnQuantity"
+                               @oninput="(e) => OnReturnQuantityChanged(orderDetail, e)"
+                               class="form-control" />
+                    </td>
+
+                    <td>
+                        <input type="number"
+                               min="0"
+                               value="@orderDetail.Quantity"
+                               @oninput="(e) => OnQuantityInput(orderDetail, e)"
+                               class="form-control" />
+                    </td>
+
+                    <td>
+                        <input type="text"
+                               value="@(orderDetail.CylinderUnitPrice.ToString("N2"))"
+                               class="form-control readonly-input"
+                               readonly />
+                    </td>
+
+                    <td>
+                        <input type="text"
+                               value="@(orderDetail.GasUnitPrice.ToString("N2"))"
+                               class="form-control readonly-input"
+                               readonly />
+                    </td>
+
+                    <td>
+                        <input type="number"
+                               step="0.01"
+                               min="0"
+                               max="100"
+                               value="@orderDetail.Discount"
+                               @oninput="(e) => OnDiscountInput(orderDetail, e)"
+                               class="form-control" />
+                    </td>
+
+                    <td class="text-end">@orderDetail.Price.ToString("N2")</td>
+
+                    <td>
+                        <RadzenButton Icon="delete"
+                                      title="Delete"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Click="() => RemoveProduct(orderDetail)" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+        <tfoot>
+            <tr>
+                <td colspan="6" class="text-end"><strong>Subtotal:</strong></td>
+                <td class="text-end"><strong>@SubtotalAmount.ToString("N2")</strong></td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="card dataForm">
+
+    <div class="row m-3">
+        <div class="col-md-4 mb-3">
+            <div class="form-check">
+                <input class="form-check-input"
+                       type="checkbox"
+                       id="isNewCustomer"
+                       @bind="IsNewCustomer" />
+
+                <label class="form-check-label" for="isNewCustomer">
+                    Is New Customer?
+                </label>
+            </div>
+        </div>
+    </div>
+
+    @if (IsNewCustomer)
+    {
+        <!-- New Customer -->
+        <div class="row m-3">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Name</label>
+                <input type="text"
+                       class="form-control"
+                       @bind="NewCustomerName"
+                       placeholder="Customer Name" />
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Phone</label>
+                <input type="text"
+                       class="form-control"
+                       @bind="NewCustomerPhone"
+                       placeholder="Phone Number" />
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Address</label>
+                <input type="text"
+                       class="form-control"
+                       @bind="NewCustomerAddress"
+                       placeholder="Customer Address" />
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Existing Customer -->
+        <div class="row m-3">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Customer</label>
+
+                <RadzenDropDown @bind-Value="Order.CustomerId"
+                                Data="@FilteredCustomerList"
+                                TextProperty="Name"
+                                ValueProperty="Id"
+                                Placeholder="Search Customer (Name / Phone)"
+                                Class="w-100"
+                                AllowFiltering="true"
+                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                FilterOperator="StringFilterOperator.Contains"
+                                FilterDelay="0"
+                                LoadData="@OnLoadData">
+
+                    <Template Context="item">
+                        <div style="padding: 4px 0;">
+                            <div style="font-weight: 600; font-size: 0.95em;">
+                                @((item as Lovd)?.Name)
+                            </div>
+
+                            <div style="color: #888; font-size: 0.82em;">
+                                📞 @((item as Lovd)?.Desc)
+                            </div>
+                        </div>
+                    </Template>
+
+                </RadzenDropDown>
+            </div>
+        </div>
+    }
+
+
+    <div class="row m-3">
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Staff</label>
+            <RadzenDropDown @bind-Value="Order.EmployeeId"
+                            Data="@EmployeeList"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Placeholder="Search Staff"
+                            Class="w-100"
+                            AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+        </div>
+
+
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Date</label>
+            <RadzenDatePicker @bind-Value="Order.Date" DateFormat="yyyy-MM-dd" Class="w-100" />
+        </div>
+    </div>
+
+    <div class="row m-3">
+        <hr />
+        <div class="col-md-4 mb-3">
+            <label for="paymentMethod" class="form-label">Payment Method</label>
+
+            <RadzenDropDown @bind-Value="Order.PaymentMethodId"
+                            Data="@PaymentMethodList"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Placeholder="Select Payment Method"
+                            Class="w-100"
+                            AllowFiltering="true"
+                            AllowClear="true"
+                            Change="OnPaymentMethodChanged"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+
+        </div>
+        <div class="col-md-4 mb-3">
+            <label for="billDiscount" class="form-label">Discount</label>
+            <input id="billDiscount"
+                   type="number"
+                   class="form-control"
+                   @bind="Order.Discount"
+                   @onblur="CalculateTotals"
+                   min="0"
+                   step="0.01" />
+
+        </div>
+        <div class="col-md-4 mb-3">
+            <label for="totalAmount" class="form-label">Total Amount</label>
+            <input id="totalAmount"
+                   type="number"
+                   class="form-control"
+                   value="@Order.TotalAmount.ToString("F2")" readonly />
+        </div>
+    </div>
+
+    <div class="row m-3">
+        <div class="col-md-4 mb-3">
+            <label for="totalPay" class="form-label">Total Paid</label>
+            <input id="totalPay"
+                   type="number"
+                   class="form-control"
+                   @bind="Order.TotalPay"
+                   @onblur="TotalPay"
+                   min="0"
+                   step="0.01" />
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label for="totalDue" class="form-label">Total Due</label>
+            <input id="totalDue"
+                   type="number"
+                   class="form-control"
+                   value="@Order.TotalDue.ToString("F2")" readonly />
+        </div>
+    </div>
+
+    <div class="row m-3">
+        <hr />
+        <div class="col-md-4 mb-3">
+            <label for="paidAmount" class="form-label">Given Amount</label>
+            <input id="paidAmount"
+                   type="number"
+                   class="form-control"
+                   @bind="PaidAmount"
+                   @onblur="CalculateChange"
+                   min="0"
+                   step="0.01" />
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label for="changeAmount" class="form-label">Return Amount</label>
+            <input id="changeAmount"
+                   type="text"
+                   class="form-control"
+                   value="@ChangeAmount.ToString("F2")" readonly />
+        </div>
+    </div>
+</div>
+<RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Click="SaveOrder" class="mt-2 mb-2" />
+<RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    
+    [Parameter]
+    public int CustomerId { get; set; }
+
+    [Parameter]
+    public int? OrderId { get; set; }
+
+    private IEnumerable<int> SelectedProductIds { get; set; } = new List<int>();
+
+    public List<OrderDetailViewModel> OrderDetails { get; set; } = new List<OrderDetailViewModel>();
+    public IEnumerable<Product> Products { get; set; } = new List<Product>();
+    public IEnumerable<Product> AllProducts { get; set; } = new List<Product>();
+    public IEnumerable<Product> FilteredProduct { get; set; } = new List<Product>();
+
+    private IEnumerable<Lov> SupplierList { get; set; } = new List<Lov>();
+    private int? SelectedSupplierId { get; set; }
+
+    private IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
+    private IEnumerable<Lov> PaymentMethodList { get; set; } = new List<Lov>();
+    private IEnumerable<ExistingOrderDTO> ExistingOrderStockList { get; set; } = new List<ExistingOrderDTO>();
+
+    private IList<Lovd> CustomerList = new List<Lovd>();
+    private IList<Lovd> FilteredCustomerList = new List<Lovd>();
+
+    public Order Order { get; set; } = new();
+
+    // Payment calculation
+    private double SubtotalAmount { get; set; } = 0;
+    private double PaidAmount { get; set; } = 0;
+    private double ChangeAmount { get; set; } = 0;
+
+    [Inject]
+    private IProduct m_Product { get; set; }
+
+    [Inject]
+    private IOrder m_Order { get; set; }
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private ICustomer m_Customer { get; set; }
+
+   // [Inject]
+    //private ISMSService SMSService { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    private Message notificationComponent;
+
+    private bool IsNewCustomer = false;
+
+    private string NewCustomerName { get; set; } = string.Empty;
+    private string NewCustomerPhone { get; set; } = string.Empty;
+    private string NewCustomerAddress { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CustomerList = await m_Lookup.GetAllCustomerList();
+        PaymentMethodList = await m_Lookup.GetAllPaymentMethodList();
+        SupplierList = await m_Lookup.GetAllSupplierList();
+
+        EmployeeList = await m_Lookup.GetAllEmployeeList();
+        //EmployeeList = personList.Where(x => x.Desc == "Staff").ToList();
+
+        FilteredCustomerList = CustomerList; // Initially show all
+
+        AllProducts = await m_Product.GetAllProduct();
+        Products = AllProducts.Where(x => !x.Supplier.IsDisable).ToList();
+        FilteredProduct = Products;
+
+        if (Id.HasValue && Id.Value > 0)
+        {
+            await LoadExistingOrder(Id.Value);
+        }
+        else
+        {
+            Order = new Order
+            {
+                EmployeeId = EmployeeList.FirstOrDefault()?.Id ?? 0,
+                Date = DateTime.UtcNow
+            };
+        }
+    }
+
+    private void OnCompanyChanged(object value)
+    {
+        if (value == null || !int.TryParse(value.ToString(), out var newId) || newId <= 0)
+        {
+            SelectedSupplierId = null;
+            FilteredProduct = Products;
+        }
+        else
+        {
+            SelectedSupplierId = newId;
+            FilteredProduct = Products.Where(p => p.SupplierId == newId).ToList();
+        }
+
+        SelectedProductIds = new List<int>();
+    }
+
+    // Customer search filters as you type, matching either Name or Phone (Desc)
+    private async Task OnLoadData(LoadDataArgs args)
+    {
+        await Task.Run(() =>
+        {
+            var filter = args.Filter?.ToLower() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(filter))
+            {
+                FilteredCustomerList = CustomerList;
+            }
+            else
+            {
+                FilteredCustomerList = CustomerList
+                    .Where(x =>
+                        (x.Name != null && x.Name.ToLower().Contains(filter)) ||
+                        (x.Desc != null && x.Desc.ToLower().Contains(filter))
+                    )
+                    .ToList();
+            }
+        });
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void AddProducts()
+    {
+        if (SelectedProductIds == null || !SelectedProductIds.Any())
+            return;
+
+        foreach (var productId in SelectedProductIds)
+        {
+            if (productId <= 0) continue;
+
+            if (OrderDetails.Any(od => od.ProductId == productId))
+                continue;
+
+            var selectedProduct = AllProducts.FirstOrDefault(p => p.Id == productId);
+            if (selectedProduct == null || selectedProduct.CurrentPrice == null) continue;
+
+            var newOrderDetail = new OrderDetailViewModel()
+            {
+                ProductId = productId,
+                CylinderUnitPrice = selectedProduct.CurrentPrice.CylinderSellingPrice,
+                GasUnitPrice = selectedProduct.CurrentPrice.GasSellingPrice,
+                Quantity = 1,
+                ReturnQuantity = 0,
+                Discount = 0,
+            };
+
+            CalculateLinePrice(newOrderDetail);
+            OrderDetails.Add(newOrderDetail);
+        }
+
+        SelectedProductIds = new List<int>();
+        CalculateTotals();
+    }
+
+    private void OnProductChanged(OrderDetailViewModel orderDetail, object value)
+    {
+        if (value is int selectedProductId)
+        {
+            orderDetail.ProductId = selectedProductId;
+
+            var selectedProduct = AllProducts.FirstOrDefault(p => p.Id == selectedProductId);
+            if (selectedProduct != null && selectedProduct.CurrentPrice != null)
+            {
+                orderDetail.CylinderUnitPrice = selectedProduct.CurrentPrice.CylinderSellingPrice;
+                orderDetail.GasUnitPrice = selectedProduct.CurrentPrice.GasSellingPrice;
+
+                CalculateLinePrice(orderDetail);
+            }
+        }
+    }
+
+    private void OnQuantityInput(OrderDetailViewModel orderDetail, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int qty))
+        {
+            orderDetail.Quantity = qty;
+
+            if (orderDetail.ReturnQuantity > orderDetail.Quantity)
+            {
+                orderDetail.ReturnQuantity = orderDetail.Quantity;
+            }
+
+            CalculateLinePrice(orderDetail);
+        }
+    }
+
+    private void OnReturnQuantityChanged(OrderDetailViewModel orderDetail, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int returnQty))
+        {
+            if (returnQty > orderDetail.Quantity)
+            {
+                returnQty = orderDetail.Quantity;
+            }
+
+            orderDetail.ReturnQuantity = returnQty;
+            CalculateLinePrice(orderDetail);
+        }
+    }
+
+    private void OnDiscountInput(OrderDetailViewModel orderDetail, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double discount))
+        {
+            orderDetail.Discount = discount;
+            CalculateLinePrice(orderDetail);
+        }
+    }
+
+    /// <summary>
+    /// Price Calculation Logic (Sale):
+    /// - Gas cost is always charged for every cylinder taken: GasUnitPrice x Quantity
+    /// - Cylinder cost is charged only for cylinders NOT returned as empty:
+    ///   CylinderUnitPrice x (Quantity - ReturnQuantity)
+    ///   => If customer returns the empty cylinder, that unit's cylinder price is not charged.
+    ///   => If customer does not return it, both gas price and cylinder price are charged.
+    /// - Discount% is applied on the resulting subtotal.
+    /// </summary>
+    private void CalculateLinePrice(OrderDetailViewModel orderDetail)
+    {
+        if (orderDetail.ProductId <= 0) return;
+
+        var selectedProduct = AllProducts.FirstOrDefault(p => p.Id == orderDetail.ProductId);
+        if (selectedProduct == null) return;
+
+        // Stock check — against Loaded cylinders (what is actually sold)
+        var existingStock = ExistingOrderStockList.FirstOrDefault(e => e.ProductId == orderDetail.ProductId);
+        var loadedQty = (existingStock?.StockQty ?? 0) + (selectedProduct.Stock?.LoadedQty ?? 0);
+
+        if (loadedQty < orderDetail.Quantity)
+        {
+            notificationComponent.Show("Stock Warning",
+                $"{selectedProduct.Name} has only {loadedQty} loaded cylinder(s) in stock.",
+                NotificationSeverity.Warning);
+        }
+
+        var chargeableCylinderQty = orderDetail.Quantity - orderDetail.ReturnQuantity;
+        if (chargeableCylinderQty < 0) chargeableCylinderQty = 0;
+
+        var gasCost = orderDetail.GasUnitPrice * orderDetail.Quantity;
+        var cylinderCost = orderDetail.CylinderUnitPrice * chargeableCylinderQty;
+
+        var subtotal = gasCost + cylinderCost;
+        var discountAmount = subtotal * (orderDetail.Discount / 100);
+
+        orderDetail.Price = (double)(subtotal - discountAmount);
+
+        CalculateTotals();
+    }
+
+    private void TotalPay()
+    {
+        SubtotalAmount = OrderDetails.Sum(od => od.Price);
+        Order.TotalAmount = SubtotalAmount - Order.Discount;
+        Order.TotalDue = Order.TotalAmount - Order.TotalPay;
+
+        CalculateChange();
+        StateHasChanged();
+    }
+
+    private void CalculateTotals()
+    {
+        SubtotalAmount = OrderDetails.Sum(od => od.Price);
+
+        Order.TotalAmount = SubtotalAmount - Order.Discount;
+        Order.TotalDue = Order.TotalAmount - Order.TotalPay;
+
+        CalculateChange();
+        StateHasChanged();
+    }
+
+    private void CalculateChange()
+    {
+        ChangeAmount = PaidAmount - Order.TotalAmount;
+        if (ChangeAmount < 0) ChangeAmount = 0;
+        StateHasChanged();
+    }
+
+    private void OnPaymentMethodChanged(object value)
+    {
+        if (value == null)
+        {
+            Order.PaymentMethodId = null;
+        }
+        else if (int.TryParse(value.ToString(), out var newId))
+        {
+            Order.PaymentMethodId = newId > 0 ? newId : 0;
+        }
+        else
+        {
+            Order.PaymentMethodId = 0;
+        }
+    }
+
+    private void SaveOrder()
+    {
+        if (Order.EmployeeId <= 0)
+        {
+            notificationComponent.Show("Validation Error", "Staff is required.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (!OrderDetails.Any())
+        {
+            notificationComponent.Show("Validation Error", "Add at least one product.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (OrderDetails.Any(od => od.ProductId <= 0))
+        {
+            notificationComponent.Show("Validation Error", "Select a product for all rows.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (OrderDetails.Any(od => od.Quantity <= 0))
+        {
+            notificationComponent.Show("Validation Error", "Quantity must be greater than zero.", NotificationSeverity.Warning);
+            return;
+        }
+
+        // Customer handling
+        if (Order.CustomerId.HasValue && Order.CustomerId.Value > 0)
+        {
+            // Existing customer selected — no action needed
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(NewCustomerName))
+            {
+                var newCustomer = new Customer
+                {
+                    CustomerTypeId = 1,
+                    Name = NewCustomerName.Trim(),
+                    Phone = string.IsNullOrWhiteSpace(NewCustomerPhone) ? null : NewCustomerPhone.Trim(),
+                    Address = string.IsNullOrWhiteSpace(NewCustomerAddress) ? null : NewCustomerAddress.Trim()
+                };
+
+                var customerId = m_Customer.CreateCustomer(newCustomer);
+                Order.CustomerId = customerId;
+            }
+        }
+
+        // Final stock check — against Loaded cylinders
+        foreach (var detail in OrderDetails)
+        {
+            var product = AllProducts.FirstOrDefault(p => p.Id == detail.ProductId);
+            var existingStock = ExistingOrderStockList.FirstOrDefault(e => e.ProductId == detail.ProductId);
+            var loadedQty = (existingStock?.StockQty ?? 0) + (product?.Stock?.LoadedQty ?? 0);
+
+            if (loadedQty < detail.Quantity)
+            {
+                notificationComponent.Show("Stock Error",
+                    $"{product?.Name} has insufficient loaded cylinder stock ({loadedQty} available).",
+                    NotificationSeverity.Error);
+                return;
+            }
+        }
+
+        Order.OrderDetails = OrderDetails.Select(od => new OrderDetail
+        {
+            ProductId = od.ProductId,
+            Quantity = od.Quantity,
+            Discount = od.Discount,
+            ReturnQuantity = od.ReturnQuantity,
+            Price = od.Price,
+            CylinderUnitPrice = od.CylinderUnitPrice,
+            GasUnitPrice = od.GasUnitPrice,
+        }).ToList();
+
+        if (Order.Id > 0)
+        {
+            m_Order.UpdateOrder(Order);
+            notificationComponent.Show("Success", "Order updated successfully.", NotificationSeverity.Success);
+        }
+        else
+        {
+            m_Order.CreateOrder(Order);
+            notificationComponent.Show("Success", "Order created successfully.", NotificationSeverity.Success);
+        }
+
+        _navigationManager.NavigateTo($"/Sales");
+    }
+
+    private async Task LoadExistingOrder(int orderId)
+    {
+        var existingOrder = await m_Order.GetOrderById(orderId);
+        ExistingOrderStockList = await m_Order.GetExistingOrderById(orderId);
+
+        if (existingOrder != null)
+        {
+            Order = existingOrder;
+
+            OrderDetails = existingOrder.OrderDetails.Select(od =>
+            {
+                var product = m_Product.GetProduct(od.ProductId);
+
+                return new OrderDetailViewModel
+                { 
+                    ProductId = od.ProductId,
+                    Quantity = od.Quantity,
+                    ReturnQuantity = od.ReturnQuantity,
+                    Price = od.Price,
+                    CylinderUnitPrice = od.CylinderUnitPrice,
+                    GasUnitPrice = od.GasUnitPrice,
+                    Discount = od.Discount
+                };
+            }).ToList();
+
+            CalculateTotals();
+        }
+    }
+
+    private void RemoveProduct(OrderDetailViewModel orderDetail)
+    {
+        OrderDetails.Remove(orderDetail);
+        CalculateTotals();
+    }
+
+    private void Cancel()
+    {
+        _navigationManager.NavigateTo($"/Sales");
+    }
+}

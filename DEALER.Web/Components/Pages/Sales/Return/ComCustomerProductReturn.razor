@@ -1,0 +1,390 @@
+﻿@page "/CustomerProductReturn"
+@page "/CustomerProductReturn/{Id:int}"
+@page "/CustomerProductReturn/{Id:int}/{OrderId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<Message @ref="notificationComponent" />
+
+<style>
+    .dataForm .table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .dataForm .table th, .dataForm .table td {
+        padding: 6px;
+    }
+
+    /* Column Widths - Simplified for Gas Cylinder */
+    .dataForm .table th:nth-child(1), .dataForm .table td:nth-child(1) { width: 25%; } /* Product */
+    .dataForm .table th:nth-child(2), .dataForm .table td:nth-child(2) { width: 10%; } /* Sold Qty */
+    .dataForm .table th:nth-child(3), .dataForm .table td:nth-child(3) { width: 10%; } /* Cyl. U/P */
+    .dataForm .table th:nth-child(4), .dataForm .table td:nth-child(4) { width: 10%; } /* Gas U/P */
+    .dataForm .table th:nth-child(5), .dataForm .table td:nth-child(5) { width: 10%; } /* Return Qty */
+    .dataForm .table th:nth-child(6), .dataForm .table td:nth-child(6) { width: 10%; } /* Cyl. Return */
+    .dataForm .table th:nth-child(7), .dataForm .table td:nth-child(7) { width: 10%; } /* Gas Return */
+    .dataForm .table th:nth-child(8), .dataForm .table td:nth-child(8) { width: 8%; }  /* Discount % */
+    .dataForm .table th:nth-child(9), .dataForm .table td:nth-child(9) { width: 12%; } /* Return Price */
+
+    .dataForm .table input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .dataForm .table td.text-end { text-align: right; }
+    .dataForm .table td.text-center { text-align: center; }
+    
+    .return-summary {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+</style>
+
+<h3>Sales Return Entry</h3>
+
+<div class="card dataForm mt-3">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th class="text-center">Sold Qty</th>
+                <th class="text-center">Cyl. U/P</th>
+                <th class="text-center">Gas U/P</th>
+                <th class="text-center">Return Qty</th>
+                <th class="text-center">Cyl. Return</th>
+                <th class="text-center">Gas Return</th>
+                <th class="text-center">Discount %</th>
+                <th class="text-end">Return Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var detail in ReturnOrderDetails)
+            {
+                <tr>
+                    <td>@detail.Product</td>
+                    <td class="text-center">@detail.Quantity</td>
+                    <td class="text-center">@detail.CylinderUnitPrice.ToString("N2")</td>
+                    <td class="text-center">@detail.GasUnitPrice.ToString("N2")</td>
+                    <td>
+                        <input type="number"
+                               min="0"
+                               max="@detail.Quantity"
+                               value="@detail.ReturnQuantity"
+                               @oninput="(e) => OnReturnQuantityChanged(detail, e)"
+                               class="form-control text-center" />
+                    </td>
+                    <td class="text-center">@detail.CylinderReturnPrice.ToString("N2")</td>
+                    <td class="text-center">@detail.GasReturnPrice.ToString("N2")</td>
+                    <td>
+                        <input type="number"
+                               step="0.01"
+                               min="0"
+                               max="100"
+                               value="@detail.Discount"
+                               @oninput="(e) => OnDiscountChanged(detail, e)"
+                               class="form-control text-center" />
+                    </td>
+                    <td class="text-end"><strong>@detail.ReturnPrice.ToString("N2")</strong></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr style="background-color: #f8f9fa; font-weight: bold;">
+                <td colspan="7" class="text-end">Total Return:</td>
+                <td></td>
+                <td class="text-end">@ReturnOrderDetails.Sum(d => d.ReturnPrice).ToString("N2")</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="card mt-3">
+    <div class="row m-3">
+        <div class="col-md-4">
+            <label class="form-label">Return Date</label>
+            <RadzenDatePicker @bind-Value="CustomerProductReturn.Date" 
+                              DateFormat="yyyy-MM-dd" 
+                              Class="w-100" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Overall Discount</label>
+            <input type="number"
+                   step="0.01"
+                   min="0"
+                   max="100"
+                   class="form-control"
+                   @bind="CustomerProductReturn.Discount"
+                   @oninput="CalculateTotals" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Remarks</label>
+            <input type="text"
+                   class="form-control"
+                   @bind="CustomerProductReturn.Remarks"
+                   placeholder="Optional remarks" />
+        </div>
+    </div>
+    
+    <div class="row m-3">
+        <div class="col-md-4">
+            <label class="form-label">Total Return Amount</label>
+            <input type="text"
+                   class="form-control"
+                   value="@ReturnOrderDetails.Sum(d => d.ReturnPrice).ToString("N2")"
+                   readonly />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Overall Discount</label>
+            <input type="text"
+                   class="form-control"
+                   value="@CustomerProductReturn.Discount.ToString("N2")%"
+                   readonly />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Net Return Amount</label>
+            @{
+                var totalReturn = ReturnOrderDetails.Sum(d => d.ReturnPrice);
+                var overallDiscount = totalReturn * (CustomerProductReturn.Discount / 100);
+                var netReturn = totalReturn - overallDiscount;
+            }
+            <input type="text"
+                   class="form-control"
+                   value="@netReturn.ToString("N2")"
+                   readonly />
+        </div>
+    </div>
+</div>
+
+<RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Click="SaveOrder" class="mt-2 mb-2" />
+<RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" />
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    [Parameter]
+    public int OrderId { get; set; }
+
+    public List<ReturnOrderDetailViewModel> ReturnOrderDetails { get; set; } = new();
+    public CustomerProductReturn CustomerProductReturn { get; set; } = new();
+    public IEnumerable<Product> Products { get; set; } = new List<Product>();
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IProduct m_Product { get; set; }
+
+    [Inject]
+    private IProductReturn m_ProductReturn { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Products = await m_Product.GetAllProduct();
+
+        if (OrderId > 0)
+        {
+            await LoadExistingOrder(OrderId);
+        }
+        else
+        {
+            CustomerProductReturn = new CustomerProductReturn
+            {
+                Date = DateTime.UtcNow,
+                OrderId = OrderId,
+            };
+        }
+    }
+
+    private async Task LoadExistingOrder(int orderId)
+    {
+        CustomerProductReturn = await m_ProductReturn.GetCustomerProductReturnByOrderId(orderId);
+
+        if (CustomerProductReturn != null)
+        {
+            ReturnOrderDetails = CustomerProductReturn.CustomerProductReturnDetails.Select(od =>
+            {
+                var product = Products.FirstOrDefault(p => p.Id == od.ProductId);
+                
+                return new ReturnOrderDetailViewModel
+                {
+                    Id = od.Id,
+                    ProductId = od.ProductId,
+                    Product = product?.DisplayNameSize ?? "Unknown",
+                    Quantity = od.OrderQuantity,
+                    ReturnQuantity = od.ReturnQuantity,
+                    CylinderUnitPrice = od.CylinderUnitPrice,
+                    GasUnitPrice = od.GasUnitPrice,
+                    CylinderReturnPrice = od.CylinderReturnPrice,
+                    GasReturnPrice = od.GasReturnPrice,
+                    Discount = od.Discount,
+                    ReturnPrice = od.ReturnPrice
+                };
+            }).ToList();
+
+            CalculateTotals();
+        }
+    }
+
+    private void OnReturnQuantityChanged(ReturnOrderDetailViewModel detail, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int qty))
+        {
+            if (qty > detail.Quantity)
+            {
+                qty = detail.Quantity;
+                notificationComponent.Show("Warning", 
+                    $"Return quantity cannot exceed sold quantity ({detail.Quantity})", 
+                    NotificationSeverity.Warning);
+            }
+            else if (qty < 0)
+            {
+                qty = 0;
+            }
+            
+            detail.ReturnQuantity = qty;
+            CalculateLinePrice(detail);
+        }
+    }
+
+    private void OnDiscountChanged(ReturnOrderDetailViewModel detail, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double discount))
+        {
+            if (discount > 100) discount = 100;
+            if (discount < 0) discount = 0;
+            
+            detail.Discount = discount;
+            CalculateLinePrice(detail);
+        }
+    }
+
+    private void CalculateLinePrice(ReturnOrderDetailViewModel detail)
+    {
+        detail.CylinderReturnPrice = Math.Round(detail.CylinderUnitPrice * detail.ReturnQuantity, 2);
+        detail.GasReturnPrice = Math.Round(detail.GasUnitPrice * detail.ReturnQuantity, 2);
+        
+        var subtotal = detail.CylinderReturnPrice + detail.GasReturnPrice;
+        detail.ReturnPrice = Math.Round(subtotal - (subtotal * (detail.Discount / 100)), 2);
+
+        CalculateTotals();
+    }
+
+    private void CalculateTotals()
+    {
+        StateHasChanged();
+    }
+
+    private void SaveOrder()
+    {
+        // Validation
+        if (!ReturnOrderDetails.Any())
+        {
+            notificationComponent.Show("Validation Error", 
+                "No products found to return.", 
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        if (!ReturnOrderDetails.Any(d => d.ReturnQuantity > 0))
+        {
+            notificationComponent.Show("Validation Error", 
+                "Please specify at least one product to return.", 
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        if (ReturnOrderDetails.Any(d => d.ReturnQuantity > d.Quantity))
+        {
+            notificationComponent.Show("Validation Error", 
+                "Return quantity cannot exceed sold quantity for any product.", 
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        if (ReturnOrderDetails.Any(d => d.ReturnQuantity < 0))
+        {
+            notificationComponent.Show("Validation Error", 
+                "Return quantity cannot be negative.", 
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Prepare return details (only products with return quantity > 0)
+            var detailsToSave = ReturnOrderDetails
+                .Where(d => d.ReturnQuantity > 0)
+                .Select(d => new CustomerProductReturnDetails
+                {
+                    Id = d.Id,
+                    ProductId = d.ProductId,
+                    OrderQuantity = d.Quantity,
+                    ReturnQuantity = d.ReturnQuantity,
+                    CylinderUnitPrice = d.CylinderUnitPrice,
+                    GasUnitPrice = d.GasUnitPrice,
+                    CylinderReturnPrice = d.CylinderReturnPrice,
+                    GasReturnPrice = d.GasReturnPrice,
+                    Discount = d.Discount,
+                    ReturnPrice = d.ReturnPrice
+                }).ToList();
+
+            if (!detailsToSave.Any())
+            {
+                notificationComponent.Show("Validation Error", 
+                    "No valid return items found.", 
+                    NotificationSeverity.Warning);
+                return;
+            }
+
+            CustomerProductReturn.CustomerProductReturnDetails = detailsToSave;
+            
+            // Calculate totals
+            CustomerProductReturn.TotalReturnPrice = detailsToSave.Sum(d => d.ReturnPrice);
+            CustomerProductReturn.TotalAmount = detailsToSave.Sum(d => d.CylinderReturnPrice + d.GasReturnPrice);
+
+            // Apply overall discount if any
+            if (CustomerProductReturn.Discount > 0)
+            {
+                CustomerProductReturn.TotalReturnPrice = CustomerProductReturn.TotalReturnPrice - 
+                    (CustomerProductReturn.TotalReturnPrice * (CustomerProductReturn.Discount / 100));
+            }
+
+            if (CustomerProductReturn.Id > 0)
+            {
+                m_ProductReturn.UpdateCustomerProductReturn(CustomerProductReturn);
+                notificationComponent.Show("Success", 
+                    "Return updated successfully.", 
+                    NotificationSeverity.Success);
+            }
+            else
+            {
+                m_ProductReturn.CreateCustomerProductReturn(CustomerProductReturn);
+                notificationComponent.Show("Success", 
+                    "Return created successfully.", 
+                    NotificationSeverity.Success);
+            }
+
+            _navigationManager.NavigateTo($"/Sales");
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", 
+                $"Failed to save return: {ex.Message}", 
+                NotificationSeverity.Error);
+        }
+    }
+
+    private void CloseModal()
+    {
+        _navigationManager.NavigateTo($"/Sales");
+    }
+}

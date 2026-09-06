@@ -1,0 +1,129 @@
+﻿@page "/ProductSalesChart/{ProductId:int}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+
+@if (ProductId > 0)
+{
+    <!-- Product Header -->
+    <div class="card shadow-sm readOnlySection">
+        <div class="row p-2">
+            <div class="col-md-8">
+                <h3>@ProductInfo.Name</h3>
+            </div>
+            <div class="col-md-6">
+                <strong>Company Name : </strong><span>@ProductInfo.Supplier.Name</span>
+                <br />
+                <strong>Re Order Level : </strong><span>@ProductInfo.ReOrderLevel</span>
+                <br />
+            </div>
+            <div class="col-md-6">
+                <br />
+                <strong>Size : </strong><span>@ProductInfo.DisplayNameSize</span>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card shadow-sm readOnlySection">
+    @* <h3>Product Sales @ProductInfo.Name History</h3> *@
+    <div class="row p-2">
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date" Change="OnStartDateChanged" />
+        </div>
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date" Change="OnEndDateChanged" />
+        </div>
+        <div class="col-md-4">
+            <RadzenButton Text="Filter" Click="FilterSalesData" Style="margin-top:5px;" />
+        </div>
+    </div>
+</div>
+
+<div class="rz-p-0 rz-p-md-12">
+    @if (ProductSales == null || !ProductSales.Any())
+    {
+        <p>No data available.</p>
+    }
+    else
+    {
+        <RadzenChart>
+            <RadzenColumnSeries Data="@ProductSales" Title="@ProductName" CategoryProperty="FormattedDate" ValueProperty="QuantitySold" />
+            <RadzenValueAxis Min="@minValue" Max="@maxValue" Step="@stepValue" />
+        </RadzenChart>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int ProductId { get; set; }
+
+    [Inject]
+    private IChart m_Chart { get; set; }
+
+    [Inject]
+    private IProduct m_Product { get; set; }
+
+    private DateTime? startDate { get; set; }
+    private DateTime? endDate { get; set; }
+
+    private int maxValue = 0;
+    private int minValue = 0;
+    private int stepValue = 0; // Set a fixed step
+    private string ProductName = "";
+
+    public IList<ProductSalesDTO> ProductSales = new List<ProductSalesDTO>();
+    private Product ProductInfo { get; set; } = new Product();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ProductInfo = m_Product.GetProduct(ProductId);
+        if (ProductInfo.Name is not null)
+        {
+            ProductName = ProductInfo.Name;
+        }
+
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private async Task FilterSalesData()
+    {
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private void OnStartDateChanged(DateTime? dateOnly)
+    {
+        if (dateOnly.HasValue)
+        {
+            if (dateOnly.HasValue)
+            {
+                // Start of the day: 00:00:00
+                startDate = new DateTime(dateOnly.Value.Year, dateOnly.Value.Month, dateOnly.Value.Day, 0, 0, 0);
+            }
+        }
+    }
+
+    private void OnEndDateChanged(DateTime? dateOnly)
+    {
+        if (dateOnly.HasValue)
+        {
+            // End of the day: 23:59:59
+            endDate = new DateTime(dateOnly.Value.Year, dateOnly.Value.Month, dateOnly.Value.Day, 23, 59, 59);
+        }
+    }
+
+    private async Task LoadData()
+    {
+        ProductSales = await m_Chart.LoadProductSales(ProductId, startDate, endDate);
+
+        if (ProductSales.Any())
+        {
+            maxValue = ProductSales.Max(x => x.QuantitySold) + 10;
+            minValue = Math.Max(ProductSales.Min(x => x.QuantitySold) - 10, 0);
+            int range = maxValue - minValue;
+            int desiredSteps = 5;
+            stepValue = (int)Math.Ceiling((double)range / desiredSteps);
+        }
+    }
+}

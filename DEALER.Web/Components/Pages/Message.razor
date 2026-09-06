@@ -1,0 +1,16 @@
+﻿@inject NotificationService NotificationService
+
+@code {
+    public void Show(string summary, string detail, NotificationSeverity severity)
+    {
+        var message = new NotificationMessage
+            {
+                Severity = severity,
+                Summary = summary,
+                Detail = detail,
+                Duration = 2000
+            };
+
+        NotificationService.Notify(message);
+    }
+}

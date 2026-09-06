@@ -1,0 +1,155 @@
+﻿@page "/MyCompany"
+@using DEALER.DataAccess
+@using DEALER.Domain
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<Message @ref="notificationComponent" />
+
+<h3>My Business Info</h3>
+<EditForm Model="@CompanyInfo" FormName="CompanyInfo" OnValidSubmit="HandleSubmit">
+    @* <h3 class="text-center">My Company Info </h3> *@
+    <div class="card dataForm ">
+        <div class="row m-3 ">
+            <div class="col-md-4 mb-3">
+                <label class="Asterisk">Name</label>
+                <InputText @bind-Value="CompanyInfo.Name" class="form-control"></InputText>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="Asterisk">Phone</label>
+                <InputText @bind-Value="CompanyInfo.Phone" class="form-control"></InputText>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Email</label>
+                <InputText @bind-Value="CompanyInfo.Email" class="form-control"></InputText>
+            </div>
+            @* <div class="col-md-4 mb-3">
+                <label>What's App</label>
+                <InputText @bind-Value="CompanyInfo.WhatsApp" class="form-control"></InputText>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Bkash</label>
+                <InputText @bind-Value="CompanyInfo.Bkash" class="form-control"></InputText>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Nagad</label>
+                <InputText @bind-Value="CompanyInfo.Nagad" class="form-control"></InputText>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Rocket</label>
+                <InputText @bind-Value="CompanyInfo.Rocket" class="form-control"></InputText>
+            </div> 
+            <div class="col-md-12 mb-3">
+                <label>Head Office Address</label>
+                <InputText @bind-Value="CompanyInfo.HeadOfficeAddress" class="form-control"></InputText>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Web Site Link</label>
+                <InputText @bind-Value="CompanyInfo.WebSiteLink" class="form-control"></InputText>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Facebook Page-1</label>
+                <InputText @bind-Value="CompanyInfo.FacebookPage" class="form-control"></InputText>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Facebook Page-2</label>
+                <InputText @bind-Value="CompanyInfo.FacebookPage2" class="form-control"></InputText>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Facebook Page-3</label>
+                <InputText @bind-Value="CompanyInfo.FacebookPage3" class="form-control"></InputText>
+            </div> 
+            <div class="col-md-4 mb-3">
+                <label>Company Email-2</label>
+                <InputText @bind-Value="CompanyInfo.Email2" class="form-control"></InputText>
+            </div> *@
+            <div class="col-md-12 mb-3">
+                <label> Office Address</label>
+                <InputText @bind-Value="CompanyInfo.DhakaOfficeAddress" class="form-control"></InputText>
+            </div>
+            <div class="col-md-12 mb-3">
+                <label>Special Notice</label>
+                <InputText @bind-Value="CompanyInfo.SpecialNotice" class="form-control"></InputText>
+            </div>
+
+            <div class="col-md-12 mb-3">
+                <InputFile OnChange="OnInputFileChange" />
+            </div>
+
+            @if (CompanyInfo.Image != null)
+            {
+                <div class="mb-3">
+                    <img src="@ImagePreviewUrl" style="max-height: 150px;" class="img-thumbnail" />
+                </div>
+            }
+
+            <br />
+            <div>
+                <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [Inject]
+    private ICompany m_Company { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    public CompanyInfo CompanyInfo { get; set; }
+    private Message notificationComponent;
+
+    private string? ImagePreviewUrl;
+
+    protected override void OnInitialized()
+    {
+        CompanyInfo = m_Company.GetCompanyInfo();
+        if (CompanyInfo is null)
+        {
+            CompanyInfo = new CompanyInfo();
+        }
+
+        if (CompanyInfo.Image != null)
+        {
+            // Generate preview URL from existing image
+            ImagePreviewUrl = $"data:image/png;base64,{Convert.ToBase64String(CompanyInfo.Image)}";
+        }
+
+    }
+
+    public void HandleSubmit()
+    {
+        try
+        {
+            if (CompanyInfo.Id > 0)
+            {
+                m_Company.UpdateCompanyInfo(CompanyInfo);
+                notificationComponent.Show("Updated Summary", "Company Information has been Updated successfully", NotificationSeverity.Success);
+            }
+            else
+            {
+                m_Company.CreateCompanyInfo(CompanyInfo);
+                notificationComponent.Show("Added Summary", "Company Information has been Added successfully", NotificationSeverity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception: {ex.Message}");
+        }
+    }
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            using var stream = new MemoryStream();
+            await file.OpenReadStream().CopyToAsync(stream);
+            CompanyInfo.Image = stream.ToArray();
+
+            // Set base64 preview URL
+            ImagePreviewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(CompanyInfo.Image)}";
+        }
+    }
+}

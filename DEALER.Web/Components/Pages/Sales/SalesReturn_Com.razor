@@ -1,0 +1,346 @@
+﻿@page "/SalesReturn"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<Message @ref="notificationComponent" />
+
+<h3>Sales Return History</h3>
+
+@if (SalesReturnList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+
+
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <!-- Search Icon -->
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i>
+                </span>
+
+                <!-- Search Text Box -->
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+
+            <!-- Spacer to push dates to the right -->
+            <div class="flex-grow-1"></div>
+
+            <!-- Date Filter - Now aligned to the right with consistent widths -->
+            <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center me-3">
+                    <RadzenDatePicker @bind-Value="fromDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date"
+                                      Style="width: 180px;" />
+                </div>
+                <div class="d-flex align-items-center">
+                    <RadzenDatePicker @bind-Value="toDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date"
+                                      Style="width: 180px;" />
+                </div>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@FilterSalesReturnList" TItem="SalesReturnDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowGrouping="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.OrderId)" Title="ID" Width="50px" />
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.SupplierName)" Title="Company Name" Width="150px" />
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.Area)" Title="Area" Width="150px" />
+                @* <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.Quentity)" Title="Quentity" Width="80px" />
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.SellQuentity)" Title="Selling Qty" Width="80px" />
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.ReturnQuentity)" Title="Return Qty" Width="80px" />
+ *@
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Title="Quentity" Width="80px">
+                    <Template Context="item">
+                        <div>@item.QuentityFormattd</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class=" fw-bold">@FilterSalesReturnList.Sum(o => o.Quentity)</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Title="Return Qty" Width="80px">
+                    <Template Context="item">
+                        <div>@item.ReturnQuentityFormattd</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class=" fw-bold">@FilterSalesReturnList.Sum(o => o.ReturnQuentity)</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Title="Selling Qty" Width="80px">
+                    <Template Context="item">
+                        <div>@item.SellQuentityFormattd</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class=" fw-bold">@FilterSalesReturnList.Sum(o => o.SellQuentity)</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Title="Total Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.TotalAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterSalesReturnList.Sum(o => o.TotalAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Title="Return Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.ReturnAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterSalesReturnList.Sum(o => o.ReturnAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Title="D-Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.SellingAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterSalesReturnList.Sum(o => o.SellingAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.DateFormatted)" Title="Date" Width="100px" />
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    public IEnumerable<SalesReturnDTO> SalesReturnList { get; set; } = new List<SalesReturnDTO>();
+    public IEnumerable<SalesReturnDTO> FilterSalesReturnList { get; set; } = new List<SalesReturnDTO>();
+
+
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private string search = string.Empty;
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SalesReturnList = await m_Lookup.GetAllSalesReturn(null, null);
+        FilterSalesReturnList = SalesReturnList;
+    }
+
+
+    public DateTime? fromDate
+    {
+        get => _fromDate;
+        set
+        {
+            if (_fromDate != value)
+            {
+                _fromDate = value;
+                LoadSalesHistory();
+            }
+        }
+    }
+
+    public DateTime? toDate
+    {
+        get => _toDate;
+        set
+        {
+            if (_toDate != value)
+            {
+                _toDate = value;
+                LoadSalesHistory();
+            }
+        }
+    }
+
+
+    private async void LoadSalesHistory()
+    {
+        SalesReturnList = await m_Lookup.GetAllSalesReturn(fromDate, toDate);
+        FilterSalesReturnList = SalesReturnList;
+        FilterData();
+
+        StateHasChanged();
+    }
+
+
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterSalesReturnList = SalesReturnList;
+        }
+        else
+        {
+            FilterSalesReturnList = SalesReturnList.Where(c =>               
+                (!string.IsNullOrEmpty(c.OrderId.ToString()) && c.OrderId.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.SupplierName) && c.SupplierName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Quentity.ToString()) && c.Quentity.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.SellQuentity.ToString()) && c.SellQuentity.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.ReturnQuentity.ToString()) && c.ReturnQuentity.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.ReturnAmount.ToString()) && c.ReturnAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.SellingAmount.ToString()) && c.SellingAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.TotalAmount.ToString()) && c.TotalAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Area) && c.Area.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+
+        // Apply date filtering with proper date-only comparison
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            // Convert to DateOnly for comparison (or use DateTime.Date)
+            var filterFrom = fromDate?.Date ?? DateTime.MinValue;
+            var filterTo = toDate?.Date.AddDays(1) ?? DateTime.MaxValue; // Add 1 day to include entire end date
+
+            FilterSalesReturnList = FilterSalesReturnList.Where(x =>
+                x.Date.Date >= filterFrom &&
+                x.Date.Date < filterTo
+            ).ToList();
+        }
+
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterSalesReturnList, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(.8f);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(1.5f);
+                            columns.RelativeColumn(1.5f);
+                            columns.RelativeColumn(1.5f);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("ID").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Company Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Area").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("T-Qty").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("R-Qty").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("S-Qty").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("T-Amt").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("D-Amt").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("T-Amt").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilterSalesReturnList)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.OrderId.ToString());
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.SupplierName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Area);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Quentity.ToString());
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.ReturnQuentity.ToString());
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.SellQuentity.ToString());
+                           
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.TotalAmount.ToString("0.00"));
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.ReturnAmount.ToString("0.00"));
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.SellingAmount.ToString("0.00"));
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.DateFormatted);
+
+                        }
+
+                        // Total Row
+                        table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total:").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSalesReturnList.Sum(x => x.Quentity)}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSalesReturnList.Sum(x => x.ReturnQuentity)}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSalesReturnList.Sum(x => x.SellQuentity)}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSalesReturnList.Sum(x => x.TotalAmount):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSalesReturnList.Sum(x => x.ReturnAmount):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSalesReturnList.Sum(x => x.SellingAmount):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold();
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Sales Return Histories_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Sales Return Histories Report").Bold().FontSize(10);
+            });
+        });
+    }
+}

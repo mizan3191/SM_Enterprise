@@ -1,0 +1,263 @@
+﻿@page "/ExpenseOrderTime/{DSRCustomerId:int}/{OrderId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+
+<h3>Daily Expense</h3>
+
+@if (DailyExpenseList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <RadzenButton Text="Back" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+        <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success" />
+
+        <RadzenDataGrid Data="@DailyExpenseList" TItem="DailyExpense" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+
+                <RadzenDataGridColumn TItem="DailyExpense" Title="Expense Type" Width="150px">
+                    <Template Context="item">
+                        <div>@item.DailyExpenseType.Name</div>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DailyExpense" Title="Issued By" Width="150px">
+                    <Template Context="item">
+                        <div>@item.Customer.Name</div>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DailyExpense" Title="Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.Amount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@DailyExpenseList.Sum(o => o.Amount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DailyExpense" Property="@nameof(DailyExpense.DateFormatted)" Title="Date" Width="150px" />
+                <RadzenDataGridColumn TItem="DailyExpense" Title="Actions" Width="100px">
+                    <Template Context="product">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                      Click="() => Edit(product.Id)" style="margin-right: 5px;" title="Edit" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="() => ConfirmDelete(product.Id)" title="Delete" />
+
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@if (showModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>@(DailyExpense.Id > 0 ? "Edit Daily Expense" : "Add Daily Expense")</h3>
+                </div>
+
+                <EditForm Model="@DailyExpense" OnValidSubmit="HandleSubmit">
+                    <div class="card dataForm ">
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Expense Type</label>
+                                <RadzenDropDown @bind-Value="DailyExpense.DailyExpenseTypeId"
+                                                Data="@ExpenseTypeList"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Search Name"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Amount</label>
+                                <InputNumber @bind-Value="DailyExpense.Amount" class="form-control"></InputNumber>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Date</label>
+                                <RadzenDatePicker @bind-Value="DailyExpense.Date" DateFormat="yyyy-MM-dd" Class="w-100" />
+                            </div>
+                        </div>
+
+                        <div class="row m-3">
+                            <div class="col-md-12 mb-3">
+                                <label>Description</label>
+                                <InputText @bind-Value="DailyExpense.Description" class="form-control"></InputText>
+                            </div>
+                        </div>
+                        <br />
+                        <div class="col-md-12">
+                            <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+                            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" />
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int DSRCustomerId { get; set; }
+
+    [Parameter]
+    public int OrderId { get; set; }
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IDailyExpense m_DailyExpense { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
+
+    private IEnumerable<Lov> ExpenseTypeList { get; set; } = new List<Lov>();
+
+    private bool showModal = false;
+
+    public DailyExpense DailyExpense { get; set; }
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ExpenseTypeList = await m_Lookup.GetAllDailyExpenseTypeList();
+
+        //ExpenseTypeList = ExpenseTypeList.Where(c => !c.IsDeleted);
+        
+        LoadData();
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (DailyExpense.DailyExpenseTypeId <= 0)
+        {
+            notificationComponent.Show(
+                "খরচের ধরন নির্বাচন করুন",
+                "আগে একটি খরচের ধরন নির্বাচন করুন।",
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        if (DailyExpense.Amount <= 0)
+        {
+            notificationComponent.Show(
+                "সঠিক পরিমাণ দিন",
+                "পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।",
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        showModal = false;
+
+        if (DailyExpense.Id > 0)
+        {
+            m_DailyExpense.UpdateDailyExpenseInOrder(DailyExpense);
+            notificationComponent.Show(
+                "দৈনিক খরচ আপডেট হয়েছে",
+                "দৈনিক খরচটি সফলভাবে আপডেট করা হয়েছে।",
+                NotificationSeverity.Success);
+        }
+        else
+        {
+
+            m_DailyExpense.CreateDailyExpenseInOrder(DailyExpense);
+            notificationComponent.Show(
+                "দৈনিক খরচ যোগ করা হয়েছে",
+                "দৈনিক খরচটি সফলভাবে যোগ করা হয়েছে।",
+                NotificationSeverity.Success);
+        }
+
+        LoadData();
+        StateHasChanged();
+    }
+
+    private void Edit(int id)
+    {
+        showModal = true;
+
+        if (id > 0)
+        {
+            DailyExpense = m_DailyExpense.GetDailyExpense(id);
+        }
+        else
+        {
+            DailyExpense = new DailyExpense()
+            {
+                CustomerId = DSRCustomerId,
+                OrderId = OrderId,
+                Date = m_Lookup.GetOrderDate(OrderId),
+            };
+        }
+    }
+
+    private void AddNew()
+    {
+        DailyExpense = new DailyExpense()
+        {
+
+            CustomerId = DSRCustomerId,
+            OrderId = OrderId,
+            Date = m_Lookup.GetOrderDate(OrderId),
+        };
+
+        showModal = true;
+    }
+
+
+    async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+        {
+            OkButtonText = "Yes, Delete",
+            CancelButtonText = "No, Keep",
+            ShowClose = true,
+        };
+
+        bool? confirmed = await DialogService.Confirm("Are you absolutely sure you want to delete this item?", "Delete Confirmation", options);
+
+        if (confirmed == true)
+        {
+            await Delete(id);
+        }
+    }
+
+    async Task Delete(int id)
+    {
+        m_DailyExpense.DeleteDailyExpense(id);
+        notificationComponent.Show(
+            "দৈনিক খরচ মুছে ফেলা হয়েছে",
+            "দৈনিক খরচটি সফলভাবে মুছে ফেলা হয়েছে।",
+            NotificationSeverity.Success);
+
+        LoadData();
+        StateHasChanged();
+    }
+
+    private void LoadData()
+    {
+        DailyExpenseList = m_DailyExpense.GetAllDailyExpense(OrderId);
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private void Cancel()
+    {
+        _navigationManager.NavigateTo($"/Sales");
+    }
+}

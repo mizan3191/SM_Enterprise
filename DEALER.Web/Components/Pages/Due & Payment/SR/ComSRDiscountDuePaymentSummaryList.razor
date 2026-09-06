@@ -1,0 +1,285 @@
+﻿@* @page "/SRDiscountDuePaymentSummary/{CustomerId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+<ComPersonHeaderInfo Id="@CustomerId"></ComPersonHeaderInfo>
+
+<div class="card-body pt-3">
+
+    <div class="d-flex align-items-center mb-3" style="width: 100%;">
+        <!-- Back Button -->
+        <RadzenButton Text="Back" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+
+        <!-- Search Box -->
+        <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+            <!-- Search Icon -->
+            <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                <i class="fas fa-search"></i>
+            </span>
+
+            <!-- Search Text Box -->
+            <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                           Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+        </div>
+
+        <!-- Export Button -->
+        <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+            </RadzenStack>
+        </div>
+
+        <!-- Spacer to push dates to the right -->
+        <div class="flex-grow-1"></div>
+
+        <!-- Date Filter - Now aligned to the right with consistent widths -->
+        <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center me-3">
+                <RadzenDatePicker @bind-Value="fromDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date"
+                                  Style="width: 180px;" />
+            </div>
+            <div class="d-flex align-items-center">
+                <RadzenDatePicker @bind-Value="toDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date"
+                                  Style="width: 180px;" />
+            </div>
+        </div>
+    </div>
+
+    <RadzenDataGrid Data="@FilterSRDiscountDuePaymentSummaryList" TItem="SRDiscountDuePaymentSummary" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+        <Columns>
+
+            <RadzenDataGridColumn TItem="SRDiscountDuePaymentSummary" Title="Name" Width="200px">
+                <Template Context="item">
+                    <div>@item.SRName</div>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="SRDiscountDuePaymentSummary" Title="Paid Amount" Width="150px" TextAlign="TextAlign.Right">
+                <Template Context="item">
+                    <div>@item.PaidAmount.ToString("N2")</div>
+                </Template>
+                <FooterTemplate>
+                    <div class="text-end fw-bold">@FilterSRDiscountDuePaymentSummaryList.Sum(o => o.PaidAmount).ToString("N2")</div>
+                </FooterTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="SRDiscountDuePaymentSummary" Title="Due Amount" Width="150px" TextAlign="TextAlign.Right">
+                <Template Context="item">
+                    <div>@item.DueAmount.ToString("N2")</div>
+                </Template>
+                <FooterTemplate>
+                    <div class="text-end fw-bold">@FilterSRDiscountDuePaymentSummaryList.Sum(o => o.DueAmount).ToString("N2")</div>
+                </FooterTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="SRDiscountDuePaymentSummary" Property="@nameof(ShopDuePaymentListSummary.Date)" Title="Date Time" Width="150px">
+                <FooterTemplate>
+                    <div class="fw-bold">
+                        @((FilterSRDiscountDuePaymentSummaryList.Sum(o => o.DueAmount) - FilterSRDiscountDuePaymentSummaryList.Sum(o => o.PaidAmount)).ToString("N2"))
+                    </div>
+                </FooterTemplate>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</div>
+
+@code {
+    [Parameter]
+    public int CustomerId { get; set; }
+
+    [Inject]
+    private ICustomer m_Customer { get; set; }
+
+    [Inject]
+    private ISRDiscount m_SRDiscount { get; set; }
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    public IEnumerable<SRDiscountDuePaymentSummary> SRDiscountDuePaymentSummaryList { get; set; } = new List<SRDiscountDuePaymentSummary>();
+    public IEnumerable<SRDiscountDuePaymentSummary> FilterSRDiscountDuePaymentSummaryList { get; set; } = new List<SRDiscountDuePaymentSummary>();
+
+    private string search = string.Empty;
+    private string SRName = string.Empty;
+
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {      
+        SRName = m_Customer.GetCustomer(CustomerId).Name;
+        SRDiscountDuePaymentSummaryList = await m_SRDiscount.GetSRDiscountDuePaymentSummary(CustomerId);
+        FilterSRDiscountDuePaymentSummaryList = SRDiscountDuePaymentSummaryList;
+    }
+
+
+    private void Cancel()
+    {
+        _navigationManager.NavigateTo($"/SRPaymentHistory");
+    }
+
+    public DateTime? fromDate
+    {
+        get => _fromDate;
+        set
+        {
+            if (_fromDate != value)
+            {
+                _fromDate = value;
+                FilterData();
+            }
+        }
+    }
+
+    public DateTime? toDate
+    {
+        get => _toDate;
+        set
+        {
+            if (_toDate != value)
+            {
+                _toDate = value;
+                FilterData();
+            }
+        }
+    }
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterSRDiscountDuePaymentSummaryList = SRDiscountDuePaymentSummaryList;
+        }
+        else
+        {
+            FilterSRDiscountDuePaymentSummaryList = SRDiscountDuePaymentSummaryList.Where(c =>
+                (!string.IsNullOrEmpty(c.SRName) && c.SRName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.PaidAmount.ToString()) && c.PaidAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DueAmount.ToString()) && c.DueAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Date.ToString()) && c.Date.ToString().Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+
+        // Apply date filtering with proper date-only comparison
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            // Convert to DateOnly for comparison (or use DateTime.Date)
+            var filterFrom = fromDate?.Date ?? DateTime.MinValue;
+            var filterTo = toDate?.Date.AddDays(1) ?? DateTime.MaxValue; // Add 1 day to include entire end date
+
+            FilterSRDiscountDuePaymentSummaryList = FilterSRDiscountDuePaymentSummaryList.Where(x =>
+                x.Date.Date >= filterFrom &&
+                x.Date.Date < filterTo
+            ).ToList();
+        }
+
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterSRDiscountDuePaymentSummaryList, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Paid Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Due Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date Time").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilterSRDiscountDuePaymentSummaryList)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.SRName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.PaidAmount:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.DueAmount:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Date);
+                        }
+
+                        // Total Row
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSRDiscountDuePaymentSummaryList.Sum(x => x.PaidAmount):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSRDiscountDuePaymentSummaryList.Sum(x => x.DueAmount):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold();
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"PaymentTransactionList_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"SR {SRName} Payment Transaction History List Report").Bold().FontSize(10);
+            });
+        });
+    }
+
+} *@

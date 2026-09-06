@@ -1,0 +1,410 @@
+﻿@page "/Sales"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+
+<h3>Sales Orders</h3>
+
+@if (Orders == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <!-- Add New Button -->
+            <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success" class="me-3" />
+
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <!-- Search Icon -->
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i>
+                </span>
+
+                <!-- Search Text Box -->
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+
+            <!-- Spacer to push dates to the right -->
+            <div class="flex-grow-1"></div>
+
+            <!-- Date Filter - Now with proper date-only handling -->
+            <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center me-3">
+                    <RadzenDatePicker @bind-Value="fromDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date"
+                                      Style="width: 180px;" />
+                </div>
+                <div class="d-flex align-items-center">
+                    <RadzenDatePicker @bind-Value="toDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date"
+                                      Style="width: 180px;" />
+                </div>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@FilterOrders" TItem="OrdersDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="OrdersDTO" Property="@nameof(OrdersDTO.Id)" Title="Order ID" Width="50px" />
+                <RadzenDataGridColumn TItem="OrdersDTO" Property="@nameof(OrdersDTO.Name)" Title="DSR Name" Width="80px" />
+                <RadzenDataGridColumn TItem="OrdersDTO" Property="@nameof(OrdersDTO.Address)" Title="Road Name" Width="80px" />
+
+                <RadzenDataGridColumn TItem="OrdersDTO" Title="Price" Width="80px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.TotalPrice.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterOrders.Sum(o => o.TotalPrice).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="OrdersDTO" Property="@nameof(OrdersDTO.DateFormatted)" Title="Date" Width="80px" />
+                <RadzenDataGridColumn TItem="OrdersDTO" Title="Actions" Width="210px">
+                    <Template Context="order">
+                        <RadzenButton Icon="edit" Disabled="order.IsLock" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                      Click="() => Edit(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Edit" />
+
+                        <RadzenButton Icon="delete" Disabled="order.IsLock" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="() => ConfirmDelete(order.Id)" title="Delete" />
+
+                        <RadzenButton Icon="description" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
+                                      Click="() => OrderDetails(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Details" />
+
+                        <RadzenButton Icon="playlist_add" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="() => ExtraReturnProduct(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Return Empty Cylinders" />
+
+                        <RadzenButton Icon="undo" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                                      Click="() => OrderReturn(order.Id, 0)" style="margin-right: 5px;" title="Return" />
+
+                        <RadzenButton Icon="account_balance" ButtonStyle="ButtonStyle.Dark" Size="ButtonSize.Small"
+                                      Click="() => ShopDue(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Shop Dues" />
+
+                        <RadzenButton Icon="calculate" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                                      Click="() => DailyExpanse(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Daily Expense" />
+
+                        <RadzenButton Icon="receipt_long" ButtonStyle="ButtonStyle.Warning" Size="ButtonSize.Small"
+                                      Click="() => OrderPaymentHistory(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Order Payment" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Inject]
+    private IOrder m_Order { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    private IEnumerable<OrdersDTO> Orders { get; set; } = new List<OrdersDTO>();
+    private IEnumerable<OrdersDTO> FilterOrders { get; set; } = new List<OrdersDTO>();
+
+    private string search = string.Empty;
+    private bool IsLock = false;
+
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+
+    public DateTime? fromDate
+    {
+        get => _fromDate;
+        set
+        {
+            if (_fromDate != value?.Date) // Ensure we store only the date part
+            {
+                _fromDate = value?.Date;
+                LoadSalesHistory();
+            }
+        }
+    }
+
+    public DateTime? toDate
+    {
+        get => _toDate;
+        set
+        {
+            if (_toDate != value?.Date) // Ensure we store only the date part
+            {
+                _toDate = value?.Date;
+                LoadSalesHistory();
+            }
+        }
+    }
+
+
+    async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+            {
+                OkButtonText = "Yes, Delete",
+                CancelButtonText = "No, Keep",
+                ShowClose = true,
+            };
+
+       // bool? confirmed = await DialogService.Confirm("Are you absolutely sure you want to delete this item?", "Delete Confirmation", options);
+            bool? confirmed = await DialogService.Confirm(
+        "আপনি কি নিশ্চিত যে এই আইটেমটি মুছে ফেলতে চান?",
+        "Delete Confirmation",
+        options);
+
+        if (confirmed == true)
+        {
+            await Delete(id);
+        }
+    }
+
+    async Task Delete(int id)
+    {
+        m_Order.DeleteOrder(id);
+        notificationComponent.Show(
+            "অর্ডার মুছে ফেলা হয়েছে",
+            "অর্ডারটি সফলভাবে মুছে ফেলা হয়েছে।",
+            NotificationSeverity.Success);
+
+        await LoadData();
+        StateHasChanged(); // If you are managing the data source manually
+    }
+
+
+    private async Task LoadData()
+    {
+        Orders = await m_Order.GetAllOrders(null, null);
+        FilterOrders = Orders;
+    }
+
+
+    private async void LoadSalesHistory()
+    {
+        Orders = await m_Order.GetAllOrders(fromDate, toDate);
+        FilterOrders = Orders;
+
+        FilterData();
+
+        StateHasChanged();
+    }
+
+
+    private void Edit(int id, int customerId)
+    {
+        _navigationManager.NavigateTo($"/Sale/{id}/{customerId}");
+    }
+
+    private void OrderDetails(int id, int customerId)
+    {
+        _navigationManager.NavigateTo($"/PrintOrder/{id}/{customerId}");
+    }
+
+    private void OrderReturn(int orderid, int id)
+    {
+        _navigationManager.NavigateTo($"/CustomerProductReturn/{id}/{orderid}");
+    }
+
+    private void DamageProduct(int orderid, int customerId)
+    {
+        _navigationManager.NavigateTo($"/DamageProductReturn/{customerId}/{orderid}");
+    }
+
+    private void ExtraReturnProduct(int orderid, int customerId)
+    {
+        _navigationManager.NavigateTo($"/ExtraReturnProductList/{customerId}/{orderid}");
+    }
+
+    private void SRDiscount(int orderid, int customerId)
+    {
+        _navigationManager.NavigateTo($"/SRDiscount/{customerId}/{orderid}");
+    }
+
+    private void ShopDue(int orderid, int customerId)
+    {
+        _navigationManager.NavigateTo($"/ShopDuesSellTime/{customerId}/{orderid}");
+    }
+
+    private void DailyExpanse(int orderid, int customerId)
+    {
+        _navigationManager.NavigateTo($"/ExpenseOrderTime/{customerId}/{orderid}");
+    }
+
+    private void OrderPaymentHistory(int orderid, int customerId)
+    {
+        _navigationManager.NavigateTo($"/OrderPaymentHistory/{customerId}/{orderid}");
+    }
+
+    private void PrintOrder(int id)
+    {
+        _navigationManager.NavigateTo($"/PrintOrder/{id}");
+    }
+
+    private void AddNew()
+    {
+        _navigationManager.NavigateTo($"/Sale/0/0/0");
+    }
+
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterOrders = Orders;
+        }
+        else
+        {
+            FilterOrders = Orders.Where(c =>
+                (!string.IsNullOrEmpty(c.Name) && c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Address) && c.Address.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.TotalPrice.ToString()) && c.TotalPrice.ToString().Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        // Apply date filtering with proper date-only comparison
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            // Convert to DateOnly for comparison (or use DateTime.Date)
+            var filterFrom = fromDate?.Date ?? DateTime.MinValue;
+            var filterTo = toDate?.Date.AddDays(1) ?? DateTime.MaxValue; // Add 1 day to include entire end date
+
+            FilterOrders = FilterOrders.Where(x =>
+                x.OrderDate.Date >= filterFrom &&
+                x.OrderDate.Date < filterTo
+            ).ToList();
+        }
+
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterOrders, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set margins (0.5 inch = 36 points)
+                page.MarginTop(20);    // ≈ 0.28 inch
+                page.MarginBottom(20);
+                page.MarginLeft(15);   // 0.5 inch
+                page.MarginRight(15);  // 0.5 inch
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            //columns.RelativeColumn(1); // SL
+                            columns.ConstantColumn(25);
+                            columns.RelativeColumn(2); // Name
+                            columns.RelativeColumn(3); // Address
+                            columns.RelativeColumn(3); // Order Date
+                            columns.RelativeColumn(2); // Total Price
+                        });
+
+                        // Header
+                        var headerBackground = "#b0b0b0"; // Darker gray
+                        table.Header(header =>
+                        {
+                            header.Cell().Background(headerBackground).Padding(5).Text("SL").Bold();
+                            header.Cell().Background(headerBackground).Padding(5).Text("Name").Bold();
+                            header.Cell().Background(headerBackground).Padding(5).Text("Address").Bold();
+                            header.Cell().Background(headerBackground).Padding(5).Text("Date").Bold();
+                            header.Cell().Background(headerBackground).Padding(5).Text("Total Price").Bold().AlignRight();
+                        });
+
+                        // Data rows
+                        int serial = 1;
+                        foreach (var customer in FilterOrders)
+                        {
+                            table.Cell().Padding(5).Text(serial++.ToString()); // SL
+                            table.Cell().Padding(5).Text(customer.Name);
+                            table.Cell().Padding(5).Text(customer.Address);
+                            table.Cell().Padding(5).Text(customer.DateFormatted);
+                            table.Cell().Padding(5).Text($"{customer.TotalPrice:N2}").AlignRight();
+                        }
+
+                        // Line separator before total
+                        table.Cell().ColumnSpan(5).PaddingTop(5).BorderTop(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Medium);
+
+
+                        // Total row
+                        table.Cell().Padding(5).Text(""); // SL
+                        table.Cell().Padding(5).Text(""); // Name
+                        table.Cell().Padding(5).Text(""); // Address
+                        table.Cell().AlignRight().Padding(5).Text("Total").Bold().AlignRight();
+                        table.Cell().Padding(5).Text($"{FilterOrders.Sum(x => x.TotalPrice):N2}").Bold().AlignRight();
+                    });
+
+                // Footer with date and page numbers
+                page.Footer().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignCenter().Text(text =>
+                    {
+                        text.CurrentPageNumber();
+                        text.Span(" / ");
+                        text.TotalPages();
+                    });
+                    row.RelativeItem(); // Optional: right side space
+                });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"CustomerDues_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Customer Sales Report").Bold().FontSize(10);
+            });
+        });
+    }
+
+}

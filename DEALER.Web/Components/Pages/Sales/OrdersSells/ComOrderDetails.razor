@@ -1,0 +1,684 @@
+﻿@* <style>
+    .rz-datatable-footer {
+        font-weight: bold;
+        text-align: right;
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+    }
+
+</style>
+<Message @ref="notificationComponent" />
+@if (OrderDetails == null)
+{
+    <p><em> No order details found for Order #@OrderId.</em></p>
+}
+else
+{
+    <div class="card-body m-0">
+        <h4>Order #@OrderId</h4>
+        <h4>Total Due: @TotalDue.ToString("0.00")</h4>
+
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <RadzenButton Text="Back" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+       
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="DOWNLOAD ORDER" Icon="picture_as_pdf" Click="@(args => OrderExportToPdf())" />
+                </RadzenStack>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@OrderDetails" TItem="OrderDetailsDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="OrderDetailsDTO" Property="@nameof(OrderDetailsDTO.ProductName)" Title="Name" Width="150px" />
+
+                <RadzenDataGridColumn TItem="OrderDetailsDTO" Title="Unit Price" Width="80px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div class="text-end">@item.ProductPrice.ToString("N2")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="OrderDetailsDTO" Title="Product Qty" Width="80px">
+                    <Template Context="item">
+                        <div>@item.Quantity</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="fw-bold">@OrderDetails.Sum(x => x.Quantity)</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="OrderDetailsDTO" Title="Return Qty" Width="80px">
+                    <Template Context="item">
+                        <div>@item.ReturnQuantity</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="fw-bold">@OrderDetails.Sum(x => x.ReturnQuantity)</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="OrderDetailsDTO" Title="Selling Qty" Width="80px">
+                    <Template Context="item">
+                        <div>@item.SellingQuantity</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="fw-bold">@OrderDetails.Sum(x => x.SellingQuantity)</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="OrderDetailsDTO" Title="Product Price" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div class="text-end">@item.TotalProductPrice.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="fw-bold text-end">@OrderDetails.Sum(x => x.TotalProductPrice).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="OrderDetailsDTO" Property="@nameof(OrderDetailsDTO.ReturnPrice)" Title="Return Price" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div class="text-end">@item.ReturnPrice.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="fw-bold text-end">@OrderDetails.Sum(x => x.ReturnPrice).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+
+                <RadzenDataGridColumn TItem="OrderDetailsDTO" Property="@nameof(OrderDetailsDTO.TotalPrice)" Title="DP" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div class="text-end">@item.TotalPrice.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="fw-bold text-end">@OrderDetails.Sum(x => x.TotalPrice).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+
+        @if (ExtraReturnProductLists.Any())
+        {
+        <div class="mt-5">
+            <h4>Extra Return Product List</h4>
+        </div>
+
+        <RadzenDataGrid Data="@ExtraReturnProductLists" TItem="ExtraReturnProductListDto" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="ExtraReturnProductListDto" Property="@nameof(ExtraReturnProductListDto.ProductName)" Title="Name" Width="150px" />
+
+                <RadzenDataGridColumn TItem="ExtraReturnProductListDto" Title="DP" Width="80px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div class="text-end">@item.UnitPrice.ToString("N2")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+                
+                <RadzenDataGridColumn TItem="ExtraReturnProductListDto" Title="Return Qty" Width="80px">
+                    <Template Context="item">
+                        <div>@item.Quantity</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="fw-bold">@ExtraReturnProductLists.Sum(x => x.Quantity)</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                
+                <RadzenDataGridColumn TItem="ExtraReturnProductListDto" Property="@nameof(ExtraReturnProductListDto.TotalAmount)" Title="Total Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div class="text-end">@item.TotalAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="fw-bold text-end">@ExtraReturnProductLists.Sum(x => x.TotalAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+        }
+        <div class="mt-5">
+        </div>
+
+        <RadzenDataGrid Data="@DamageProductDetails" TItem="DamageProductDetailsDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="DamageProductDetailsDTO" Property="@nameof(DamageProductDetailsDTO.ProductName)" Title="Damage Product Name" Width="300px" />
+
+                <RadzenDataGridColumn HeaderCssClass="text-end" TItem="DamageProductDetailsDTO" Title="Unit Price" Width="150px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div class="text-end">@item.ProductPrice.ToString("N2")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="DamageProductDetailsDTO" HeaderCssClass="text-end" Property="@nameof(DamageProductDetailsDTO.Quantity)" Title="Quantity" Width="150px">
+                    <FooterTemplate>
+
+
+                        <div class="fw-bold text-end">Total Damage Price:</div>
+                        <hr />
+                        <div class="fw-bold text-end">Total Cash Paid:</div>
+                        <hr />
+                        @foreach (var dis in SRDiscountList)
+                        {
+                            <div class=" text-end">@dis.Customer.Name Discount:</div>
+                        }
+
+                        <div class="fw-bold text-end">Total Discount Amount:</div>
+                        <hr />
+                        @foreach (var shop in DSRShopDueList)
+                        {
+                            <div class="text-end">@shop.DueHistory:</div>
+                        }
+                        <div class="fw-bold text-end">Total Shop Amount:</div>
+                        <hr />
+                        @foreach (var expense in DailyExpenseList)
+                        {
+                            <div class=" text-end">@expense.DailyExpenseType.Name Amount:</div>
+                        }
+                        <div class="fw-bold text-end">Total Expense Amount:</div>
+                        <hr />
+                        <div class="fw-bold text-end">Grand Total Amount:</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="DamageProductDetailsDTO" HeaderCssClass="text-end" Property="@nameof(DamageProductDetailsDTO.TotalPrice)" Title="Total Price" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div class="text-end">@item.TotalPrice.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+
+                        <div class="fw-bold text-end"> @DamageProductDetails.Sum(x => x.TotalPrice).ToString("N2")</div>
+                        <hr />
+                        <div class="fw-bold text-end"> @OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid).ToString("N2")</div>
+                        <hr />
+                        @foreach (var dis in SRDiscountList)
+                        {
+                            <div class=" text-end"> @dis.DiscountAmount.ToString("N2")</div>
+                        }
+                        <div class="fw-bold text-end"> @SRDiscountList.Sum(x => x.DiscountAmount).ToString("N2")</div>
+                        <hr />
+                        @foreach (var shop in DSRShopDueList)
+                        {
+                            <div class="text-end"> @shop.DueAmount.ToString("N2")</div>
+                        }
+                        <div class="fw-bold text-end"> @DSRShopDueList.Sum(x => x.DueAmount).ToString("N2")</div>
+                        <hr />
+                        @foreach (var expense in DailyExpenseList)
+                        {
+                            <div class=" text-end"> @expense.Amount.ToString("N2")</div>
+                        }
+                        <div class="fw-bold text-end"> @DailyExpenseList.Sum(x => x.Amount).ToString("N2")</div>
+                        <hr />
+                        <div class="fw-bold text-end"> @GrandTotal.ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int OrderId { get; set; }
+
+    [Inject]
+    private IOrder m_Order { get; set; }
+
+    [Inject]
+    private ISRDiscount m_SRDiscount { get; set; }
+
+    [Inject]
+    private IDSRShopDue m_DSRShopDue { get; set; }
+
+    [Inject]
+    private IDailyExpense m_DailyExpense { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IOrderPaymentHistory m_OrderPaymentHistory { get; set; }
+
+    [Inject]
+    private IExtraReturnProduct m_ExtraReturnProduct { get; set; }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    private double GrandTotal { get; set; }
+    private OrderInfo OrderInfo { get; set; }
+    private Message notificationComponent;
+
+    private IEnumerable<SRDiscount> SRDiscountList { get; set; } = new List<SRDiscount>();
+
+    public IEnumerable<DSRShopDue> DSRShopDueList { get; set; } = new List<DSRShopDue>();
+    public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
+    private IEnumerable<OrderPaymentHistory> OrderPaymentHistoryByOrderList { get; set; } = new List<OrderPaymentHistory>();
+
+    private double TotalDue { get; set; } = 0;
+
+    private IEnumerable<ExtraReturnProductListDto> ExtraReturnProductLists { get; set; } = new List<ExtraReturnProductListDto>();
+    private IEnumerable<OrderDetailsDTO> OrderDetails { get; set; } = new List<OrderDetailsDTO>();
+    private IEnumerable<DamageProductDetailsDTO> DamageProductDetails { get; set; } = new List<DamageProductDetailsDTO>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        OrderInfo = await m_Order.GetOrderInfoById(OrderId);
+        SRDiscountList = await m_SRDiscount.GetAllSRDiscountByOrderId(OrderId);
+        DSRShopDueList = await m_DSRShopDue.GetAllDSRShopDue(OrderId);
+        OrderDetails = await m_Order.GetOrderDetailsByOrderAsync(OrderId);
+        ExtraReturnProductLists = await m_ExtraReturnProduct.GetListByOrderIdAsync(OrderId);
+        DamageProductDetails = await m_Order.GetDamageProductDetailsByOrderAsync(OrderId) ?? new List<DamageProductDetailsDTO>();
+        DailyExpenseList = m_DailyExpense.GetAllDailyExpense(OrderId);
+        OrderPaymentHistoryByOrderList = await m_OrderPaymentHistory.GetAllOrderPaymentHistoryByOrderId(OrderId);
+
+
+        var totalPrice = OrderDetails.Sum(od => od.TotalPrice);
+        var totalDamagePrice = DamageProductDetails?.Sum(od => od.TotalPrice) ?? 0;
+        var srDiscountAmount = SRDiscountList.Sum(x => x.DiscountAmount);
+        var dsrShopDueList = DSRShopDueList.Sum(x => x.DueAmount);
+        var dailyExpenseList = DailyExpenseList.Sum(x => x.Amount);
+        var orderPayment = OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid);
+        var extraReturnProductPayment = ExtraReturnProductLists.Sum(x => x.TotalAmount);
+
+        GrandTotal = totalDamagePrice + srDiscountAmount + dsrShopDueList + dailyExpenseList + orderPayment + extraReturnProductPayment;
+        TotalDue = totalPrice - GrandTotal;
+
+        StateHasChanged();
+    }
+
+
+    private void Cancel()
+    {
+        _navigationManager.NavigateTo($"/Sales");
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(OrderDetails, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set margins
+                page.MarginTop(20);
+                page.MarginBottom(20);
+                page.MarginLeft(40);
+                page.MarginRight(40);
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Column(column =>
+                    {
+                        // First table - Order Details
+                        column.Item().Table(table =>
+                        {
+                            // Define columns for order details
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(2.1f);  // Name
+                                columns.RelativeColumn(1.1f);     // Unit Price
+                                columns.RelativeColumn(.8f);     // Quantity
+                                columns.RelativeColumn(.8f);     // Return Quantity
+                                columns.RelativeColumn(.8f);  // Selling Quantity
+                                columns.RelativeColumn(1.8f);  // Total Product Price
+                                columns.RelativeColumn(1.6f);  // Return Price
+                                // columns.RelativeColumn(.8f);     // Discount %
+                                columns.RelativeColumn(1.8f);  // Total Price
+                            });
+
+                            // Header row
+                            table.Header(header =>
+                            {
+                                header.Cell().Background("#f5f5f5").Padding(5).Text("Name").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("U-Price").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("P-Qty").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("R-Qty").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("S-Qty").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("P-Price").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("R-Price").Bold();
+                                // header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Dis%").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("S-Price").Bold();
+                            });
+
+                            // Data rows
+                            foreach (var item in OrderDetails)
+                            {
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).Text(item.ProductName);
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.ProductPrice:N2}");
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.Quantity.ToString());
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.ReturnQuantity.ToString());
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.SellingQuantity.ToString());
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.TotalProductPrice:N2}");
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.ReturnPrice:N2}");
+                                // table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.Discount.ToString());
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.TotalPrice:N2}");
+                            }
+
+                            // Footer
+                            table.Cell().ColumnSpan(2).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total:").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{OrderDetails.Sum(x => x.Quantity)}").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{OrderDetails.Sum(x => x.ReturnQuantity)}").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{OrderDetails.Sum(x => x.SellingQuantity)}").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{OrderDetails.Sum(x => x.TotalProductPrice):N2}").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{OrderDetails.Sum(x => x.ReturnPrice):N2}").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{OrderDetails.Sum(x => x.TotalPrice):N2}").Bold();
+                        });
+
+
+                        // Space between tables
+
+                        if (ExtraReturnProductLists.Any())
+                        {
+                            column.Item().PaddingTop(20);
+
+                            // Title
+                            column.Item().Text("Extra Return Product List");
+
+                            column.Item().Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.RelativeColumn(3);   // Name
+                                    columns.RelativeColumn(1.2f); // DP
+                                    columns.RelativeColumn(1.2f); // Return Qty
+                                    columns.RelativeColumn(1.5f); // Total Amount
+                                });
+
+                                // Header
+                                table.Header(header =>
+                                {
+                                    header.Cell().Background("#f5f5f5").Padding(5).Text("Name").Bold();
+                                    header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("DP").Bold();
+                                    header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Return Qty").Bold();
+                                    header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Total Amount").Bold();
+                                });
+
+                                // Rows
+                                foreach (var item in ExtraReturnProductLists)
+                                {
+                                    table.Cell().Padding(5).Text(item.ProductName);
+                                    table.Cell().Padding(5).AlignRight().Text($"{item.UnitPrice:N2}");
+                                    table.Cell().Padding(5).AlignRight().Text(item.Quantity.ToString());
+                                    table.Cell().Padding(5).AlignRight().Text($"{item.TotalAmount:N2}");
+                                }
+
+                                // Footer (Totals)
+                                table.Cell().ColumnSpan(2).Padding(5).AlignRight().Text("Total:").Bold();
+                                table.Cell().Padding(5).AlignRight()
+                                    .Text($"{ExtraReturnProductLists.Sum(x => x.Quantity)}").Bold();
+                                table.Cell().Padding(5).AlignRight()
+                                    .Text($"{ExtraReturnProductLists.Sum(x => x.TotalAmount):N2}").Bold();
+                            });
+                        }
+
+                        // Space between tables
+                        column.Item().PaddingBottom(15);
+
+                        // Second table - Damage Products
+                        column.Item().Table(table =>
+                        {
+                            // Define columns for damage products
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(3);  // Damage Product Name
+                                columns.RelativeColumn(1.5f); // Unit Price
+                                columns.RelativeColumn(1.5f); // Quantity
+                                columns.RelativeColumn(1.5f); // Total Price
+                            });
+
+                            // Header row
+                            table.Header(header =>
+                            {
+                                header.Cell().Background("#f5f5f5").Padding(5).Text("Damage Product Name").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Unit Price").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Quantity").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Total Price").Bold();
+                            });
+
+                            // Damage Product Data rows
+                            foreach (var item in DamageProductDetails)
+                            {
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).Text(item.ProductName);
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.ProductPrice:N2}");
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.Quantity.ToString());
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.TotalPrice:N2}");
+                            }
+
+                            // Footer
+                            table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Damage Price:").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{DamageProductDetails.Sum(x => x.TotalPrice):N2}").Bold();
+
+                            // Footer
+                            table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Cash Paid:").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid):N2}").Bold();
+
+                            //SR Discount Data rows
+                            foreach (var item in SRDiscountList)
+                            {
+                                table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.Customer.Name} Discount:");
+                                table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DiscountAmount:N2}");
+                            }
+
+                            // Footer
+                            table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Discount Amount:").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{SRDiscountList.Sum(x => x.DiscountAmount):N2}").Bold();
+
+                            //Shop Due Data rows
+                            foreach (var item in DSRShopDueList)
+                            {
+                                table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DueHistory}");
+                                table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DueAmount:N2}");
+                            }
+
+                            // Footer
+                            table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Due Amount:").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{DSRShopDueList.Sum(x => x.DueAmount):N2}").Bold();
+
+                            // Daily Expense Lis Data rows
+                            foreach (var item in DailyExpenseList)
+                            {
+                                table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DailyExpenseType.Name} Amount:");
+                                table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.Amount:N2}");
+                            }
+
+                            // Footer
+                            table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Expense Amount:").Bold();
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{DailyExpenseList.Sum(x => x.Amount):N2}").Bold();
+
+                        });
+
+                        // Total Due section
+                        column.Item().BorderTop(1).BorderColor(QuestPDF.Helpers.Colors.Black).PaddingTop(10)
+                            .AlignRight().Text($"Total Amount: {OrderDetails.Sum(x => x.TotalPrice):N2}").FontSize(12).Bold();
+                        column.Item().PaddingTop(10).AlignRight().Text($"Total Paid: {GrandTotal:N2}").FontSize(12).Bold();
+                        column.Item().PaddingTop(10).AlignRight().Text($"Total Due: {TotalDue:N2}").FontSize(14).FontColor("#FF0000").Bold();
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Order_Details_{OrderId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    public async Task OrderExportToPdf()
+    {
+
+        var orderList = await m_Lookup.OrderExportToPdfList(OrderId);
+
+        // Calculate totals for each column
+        decimal s_cbTotal = 0;
+        decimal s_pdTotal = 0;
+        decimal s_pqTotal = 0;
+        decimal r_cbTotal = 0;
+        decimal r_pdTotal = 0;
+        decimal r_pqTotal = 0;
+
+        foreach (var item in orderList)
+        {
+            s_cbTotal += item.S_CB;
+            s_pdTotal += item.S_PD;
+            s_pqTotal += item.S_PQ;
+            r_cbTotal += item.R_CB;
+            r_pdTotal += item.R_PD;
+            r_pqTotal += item.R_PQ;
+        }
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set margins
+                page.MarginTop(20);
+                page.MarginBottom(20);
+                page.MarginLeft(40);
+                page.MarginRight(40);
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Column(column =>
+                    {
+                        // First table - Order Details
+                        column.Item().Table(table =>
+                        {
+                            // Define columns for order details
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(2.1f);  // Name
+                                columns.RelativeColumn(1.1f);  // S-C/B
+                                columns.RelativeColumn(1.1f);  // S-P/D
+                                columns.RelativeColumn(1.1f);  // S-P/Q
+                                columns.RelativeColumn(1.1f);  // R-C/B
+                                columns.RelativeColumn(1.1f);  // R-P/D
+                                columns.RelativeColumn(1.1f);  // R-P/Q
+                            });
+
+                            // Header row
+                            table.Header(header =>
+                            {
+                                header.Cell().Background("#f5f5f5").Padding(5).Text("Name").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("S-C/B").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("S-P/D").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("S-P/Q").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("R-C/B").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("R-P/D").Bold();
+                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("R-P/Q").Bold();
+                            });
+
+                            // Data rows
+                            foreach (var item in orderList)
+                            {
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).Text(item.ProductName);
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.S_CB.ToString());
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.S_PD.ToString());
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.S_PQ.ToString());
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.R_CB.ToString());
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.R_PD.ToString());
+                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.R_PQ.ToString());
+                            }
+
+                            // Footer row with totals
+                            table.Footer(footer =>
+                            {
+                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Total: ").Bold();
+                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(s_cbTotal.ToString()).Bold();
+                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(s_pdTotal.ToString()).Bold();
+                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(s_pqTotal.ToString()).Bold();
+                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(r_cbTotal.ToString()).Bold();
+                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(r_pdTotal.ToString()).Bold();
+                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(r_pqTotal.ToString()).Bold();
+                            });
+                        });
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Order_Details_{OrderId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Order Details Report").Bold().FontSize(10);
+                column.Item().Table(table =>
+        {
+            table.ColumnsDefinition(columns =>
+                {
+                    columns.ConstantColumn(80); // Label width
+                    columns.RelativeColumn();  // Value width
+                });
+
+                    table.Cell().Text("Order No#:").Bold().FontSize(10);
+                    table.Cell().Text(OrderInfo.OrderId.ToString()).FontSize(10);
+
+                    table.Cell().Text("Customer:").Bold().FontSize(10);
+                    table.Cell().Text(OrderInfo.CustomerName).FontSize(10);
+
+                    table.Cell().Text("Area:").Bold().FontSize(10);
+                    table.Cell().Text(OrderInfo.Area).FontSize(10);
+
+                    table.Cell().Text("Date:").Bold().FontSize(10);
+                    table.Cell().Text(OrderInfo.OrderDate.ToString("dd-MM-yyyy")).FontSize(10);
+                });
+
+                });
+        });
+    }
+}
+
+ *@

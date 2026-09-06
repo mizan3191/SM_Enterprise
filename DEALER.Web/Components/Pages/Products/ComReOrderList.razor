@@ -1,0 +1,200 @@
+﻿@page "/ReOrders"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+<Message @ref="notificationComponent" />
+<h3>Re Order</h3>
+
+@if (Products == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+
+
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <!-- Search Icon -->
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+                </span>
+
+                <!-- Search Text Box -->
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search ..." @oninput="OnSearch"
+                Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@FilterProducts" TItem="ProductDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="ProductDTO" Property="@nameof(ProductDTO.Id)" Title="Id" Width="100px" />
+                <RadzenDataGridColumn TItem="ProductDTO" Property="@nameof(ProductDTO.Name)" Title="Product Name" Width="100px" />
+                <RadzenDataGridColumn TItem="ProductDTO" Property="@nameof(ProductDTO.SupplierName)" Title="Company Name" Width="100px" />
+                <RadzenDataGridColumn TItem="ProductDTO" Property="@nameof(ProductDTO.ReOrderLevel)" Title="ReOrder Level" Width="100px" />
+                <RadzenDataGridColumn TItem="ProductDTO" Property="@nameof(ProductDTO.StockQty)" Title="Stock Qty" Width="100px" />
+                <RadzenDataGridColumn TItem="ProductDTO" Title="Actions" Width="100px">
+                    <Template Context="product">
+                        <RadzenButton Text="Purchase" ButtonStyle="ButtonStyle.Primary" Click="() => ReOrder(product.SupplierId)" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Inject]
+    private IProduct m_Product { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    private IEnumerable<ProductDTO> Products { get; set; } = new List<ProductDTO>();
+
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    private IEnumerable<ProductDTO> FilterProducts { get; set; } = new List<ProductDTO>();
+
+    private string search = string.Empty;
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Products = await m_Product.GetAllReOrderProducts();
+        FilterProducts = Products;
+    }
+
+    private void ReOrder(int supplierId)
+    {
+        _navigationManager.NavigateTo($"/Purchase/{0}/{supplierId}");
+    }
+
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterProducts = Products;
+        }
+        else
+        {
+            FilterProducts = Products.Where(c =>
+                (!string.IsNullOrEmpty(c.Name) && c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.SupplierName) && c.SupplierName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.ReOrderLevel.ToString()) && c.ReOrderLevel.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.StockQty.ToString()) && c.StockQty.ToString().Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterProducts, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Product Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Company Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Re Order Level").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Current Stock Qty").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilterProducts)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Name);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.SupplierName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.ReOrderLevel.ToString());
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.StockQty.ToString());
+                        }
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Product Re Order List_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Product Re Order List Report").Bold().FontSize(10);
+            });
+        });
+    }
+
+}

@@ -1,0 +1,383 @@
+﻿@page "/Graphs"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<!-- Start Last 30 Days Sales Chart -->
+
+<div class="card shadow-sm readOnlySection">
+
+    <div class="row p-2">
+        <div class="col-md-12">
+            <h3>Last 30 Days Sales Chart</h3>
+        </div>
+    </div>
+    <div class="row p-2">
+
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date" />
+        </div>
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date" />
+        </div>
+        <div class="col-md-4">
+            <RadzenButton Text="Filter" Click="FilterSalesData" Style="margin-top:5px;" />
+        </div>
+    </div>
+</div>
+
+<div class="rz-p-0 rz-p-md-12">
+    @if (DailySales == null || !DailySales.Any())
+    {
+        <p>No data available.</p>
+    }
+    else
+    {
+        <RadzenChart>
+            <RadzenColumnSeries Data="@DailySales"
+                                CategoryProperty="MonthName"
+                                Title="Daily Sales"
+                                ValueProperty="Amount" />
+        </RadzenChart>
+    }
+</div>
+
+<!-- End Last 30 Days Sales Chart -->
+
+<!-- Start Last 30 Days Daily Expense Chart -->
+
+<div class="card shadow-sm readOnlySection">
+
+    <div class="row p-2">
+        <div class="col-md-12">
+            <h3>Last 30 Days Expense Chart</h3>
+        </div>
+    </div>
+    <div class="row p-2">
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date" />
+        </div>
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date" />
+        </div>
+        <div class="col-md-4">
+            <RadzenButton Text="Filter" Click="FilterDailyExpenseData" Style="margin-top:5px;" />
+        </div>
+    </div>
+</div>
+
+<div class="rz-p-0 rz-p-md-12">
+    @if (DailyExpense == null || !DailyExpense.Any())
+    {
+        <p>No data available.</p>
+    }
+    else
+    {
+        <RadzenChart>
+            <RadzenColumnSeries Data="@DailyExpense"
+                                CategoryProperty="MonthName"
+                                Title="Daily Expense"
+                                ValueProperty="Amount" />
+        </RadzenChart>
+    }
+</div>
+<!-- End Last 30 Days Daily Expense Chart -->
+
+<!-- Start Last 30 Days Profit Chart -->
+
+<div class="card shadow-sm readOnlySection">
+
+    <div class="row p-2">
+        <div class="col-md-12">
+            <h3>Last 30 Days Profit Chart</h3>
+        </div>
+    </div>
+    <div class="row p-2">
+
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date" />
+        </div>
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date" />
+        </div>
+        <div class="col-md-4">
+            <RadzenButton Text="Filter" Click="FilterProfitData" Style="margin-top:5px;" />
+        </div>
+    </div>
+</div>
+
+<div class="rz-p-0 rz-p-md-12">
+    @if (DailyProfit == null || !DailyProfit.Any())
+    {
+        <p>No data available.</p>
+    }
+    else
+    {
+        <RadzenChart>
+            <RadzenColumnSeries Data="@DailyProfit"
+                                CategoryProperty="MonthName"
+                                Title="Daily Profit"
+                                ValueProperty="Amount" />
+        </RadzenChart>
+    }
+</div>
+
+<!-- End Last 30 Days Profit Chart -->
+<!-- Start Last 30 Days Sales based on the Supplier Chart -->
+<div class="card shadow-sm readOnlySection">
+
+    <div class="row p-2">
+        <div class="col-md-8">
+            <h3>Last 30 Days Sales Chart : @CopysupplierName </h3>
+        </div>
+        <div class="col-md-4">
+            <RadzenDropDown TValue="int?"
+                            Data="@CopySupplierList"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Placeholder="Search Company"
+                            AllowClear="true"
+                            AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            Change="@FilterSupplierList30DaysData"
+                            Style="width:100%">
+            </RadzenDropDown>
+        </div>
+    </div>
+</div>
+
+<div class="rz-p-0 rz-p-md-12">
+    @if (Last30DaysSalesSupplier == null || !Last30DaysSalesSupplier.Any())
+    {
+        <p>No data available.</p>
+    }
+    else
+    {
+        <RadzenChart>
+            <RadzenColumnSeries Data="@Last30DaysSalesSupplier"
+                                CategoryProperty="MonthName"
+                                Title="Daily Sales"
+                                ValueProperty="Amount" />
+        </RadzenChart>
+    }
+</div>
+
+<!-- End Last 30 Days Sales based on the Supplier Chart -->
+
+<!-- Start Last 12 Month Sales based on the Supplier Chart -->
+<div class="card shadow-sm readOnlySection">
+
+    <div class="row p-2">
+        <div class="col-md-8">
+            <h3>Last 12 Month Sales Chart : @supplierName </h3>
+        </div>
+        <div class="col-md-4">
+            <RadzenDropDown TValue="int?"
+                            Data="@SupplierList"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Placeholder="Search Company"
+                            AllowClear="true"
+                            AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            Change="@FilterSupplierListData"
+                            Style="width:100%">
+            </RadzenDropDown>
+        </div>
+    </div>
+</div>
+
+<div class="rz-p-0 rz-p-md-12">
+    @if (Last12MonthSalesSupplier == null || !Last12MonthSalesSupplier.Any())
+    {
+        <p>No data available.</p>
+    }
+    else
+    {
+        <RadzenChart>
+            <RadzenColumnSeries Data="@Last12MonthSalesSupplier"
+                                CategoryProperty="MonthName"
+                                Title="Monthly Sales"
+                                ValueProperty="Amount" />
+        </RadzenChart>
+    }
+</div>
+
+<!-- End Last 12 Month Sales based on the Supplier Chart -->
+
+<!-- Start Last 12 Month Expense Chart -->
+<div class="card shadow-sm readOnlySection">
+
+    <div class="row p-2">
+        <div class="col-md-12">
+            <h3>Last 12 Month Expense Chart</h3>
+        </div>
+    </div>
+    <div class="row p-2">
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date" />
+        </div>
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date" />
+        </div>
+        <div class="col-md-4">
+            <RadzenButton Text="Filter" Click="FilterLast12MonthExpenseData" Style="margin-top:5px;" />
+        </div>
+    </div>
+</div>
+
+<div class="rz-p-0 rz-p-md-12">
+    @if (Last12MonthExpense == null || !Last12MonthExpense.Any())
+    {
+        <p>No data available.</p>
+    }
+    else
+    {
+        <RadzenChart>
+            <RadzenColumnSeries Data="@Last12MonthExpense"
+                                CategoryProperty="MonthName"
+                                Title="Monthly Expense"
+                                ValueProperty="Amount" />
+        </RadzenChart>
+    }
+</div>
+<!-- End Last 12 Month Expense Chart -->
+
+<!-- Start Last 12 Month Profit Chart -->
+
+<div class="card shadow-sm readOnlySection">
+
+    <div class="row p-2">
+        <div class="col-md-12">
+            <h3>Last 12 Month Profit Chart</h3>
+        </div>
+    </div>
+    <div class="row p-2">
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date" />
+        </div>
+        <div class="col-md-4">
+            <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date" />
+        </div>
+        <div class="col-md-4">
+            <RadzenButton Text="Filter" Click="FilterMonthlyProfitData" Style="margin-top:5px;" />
+        </div>
+    </div>
+</div>
+
+<div class="rz-p-0 rz-p-md-12">
+    @if (MonthlyProfit == null || !MonthlyProfit.Any())
+    {
+        <p>No data available.</p>
+    }
+    else
+    {
+        <RadzenChart>
+            <RadzenColumnSeries Data="@MonthlyProfit"
+                                CategoryProperty="MonthName"
+                                Title="Monthly Profit"
+                                ValueProperty="Amount" />
+        </RadzenChart>
+    }
+</div>
+<!-- End Last 12 Month Profit Chart -->
+
+@code {
+    [Inject]
+    private IChart m_Chart { get; set; }
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    private IList<BarGraphDTO> DailySales = new List<BarGraphDTO>();
+    private IList<BarGraphDTO> DailyProfit = new List<BarGraphDTO>();
+    private IList<BarGraphDTO> DailyExpense = new List<BarGraphDTO>();
+    private IList<BarGraphDTO> Last12MonthExpense = new List<BarGraphDTO>();
+    private IList<BarGraphDTO> Last12MonthSalesSupplier = new List<BarGraphDTO>();
+    private IList<BarGraphDTO> Last30DaysSalesSupplier = new List<BarGraphDTO>();
+    private IList<BarGraphDTO> MonthlyProfit = new List<BarGraphDTO>();
+    private IList<Lov> SupplierList = new List<Lov>();
+    private IList<Lov> CopySupplierList = new List<Lov>();
+
+
+    private DateTime? startDate { get; set; }
+    private DateTime? endDate { get; set; }
+    private int supplierId { get; set; }
+    private int CopysupplierId { get; set; }
+    private string supplierName { get; set; } = string.Empty;
+    private string CopysupplierName { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SupplierList = await m_Lookup.GetAllSupplierList();
+        CopySupplierList = SupplierList;
+        DailyProfit = m_Chart.GetLast30DaysProfitHistory(startDate, endDate);
+        DailySales = m_Chart.Get30DaysSalesHistory(startDate, endDate);
+        DailyExpense = m_Chart.Get30DaysDailyExpenseHistory(startDate, endDate);
+        Last12MonthExpense = m_Chart.GetLast12MonthExpenseHistory(startDate, endDate);
+        MonthlyProfit = m_Chart.GetMonthlyProfitHistory(startDate, endDate);
+
+        StateHasChanged();
+    }
+
+
+    private void FilterSalesData()
+    {
+        DailySales = m_Chart.Get30DaysSalesHistory(startDate, endDate);
+        StateHasChanged();
+    }
+
+    private void FilterDailyExpenseData()
+    {
+        DailyExpense = m_Chart.Get30DaysDailyExpenseHistory(startDate, endDate);
+        StateHasChanged();
+
+
+    }
+
+    private void FilterProfitData()
+    {
+        DailyProfit = m_Chart.GetLast30DaysProfitHistory(startDate, endDate);
+        StateHasChanged();
+    }
+
+    private void FilterLast12MonthExpenseData()
+    {
+        Last12MonthExpense = m_Chart.GetLast30DaysProfitHistory(startDate, endDate);
+        StateHasChanged();
+    }
+
+    private void FilterMonthlyProfitData()
+    {
+        MonthlyProfit = m_Chart.GetLast30DaysProfitHistory(startDate, endDate);
+        StateHasChanged();
+    }
+
+    private void FilterSupplierListData(object value)
+    {
+        if (int.TryParse(value?.ToString(), out var newId))
+        {
+            supplierId = newId > 0 ? newId : 0;
+            if (supplierId > 0)
+            {
+                supplierName = SupplierList.FirstOrDefault(x => x.Id == supplierId)?.Name ?? string.Empty;
+                Last12MonthSalesSupplier = m_Chart.GetLast12MonthSalesHistory(supplierId);
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private void FilterSupplierList30DaysData(object value)
+    {
+        if (int.TryParse(value?.ToString(), out var newId))
+        {
+            CopysupplierId = newId > 0 ? newId : 0;
+            if (CopysupplierId > 0)
+            {
+                CopysupplierName = CopySupplierList.FirstOrDefault(x => x.Id == CopysupplierId)?.Name ?? string.Empty;
+                Last30DaysSalesSupplier = m_Chart.GetLast30DaysSalesHistory(CopysupplierId);
+            }
+        }
+
+        StateHasChanged();
+    }
+}

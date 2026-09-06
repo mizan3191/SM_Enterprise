@@ -1,0 +1,759 @@
+﻿@page "/ShopDuesSellTime/{DSRCustomerId:int}/{OrderId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+
+<h3>Shop Dues</h3>
+
+@if (DSRShopDueList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+
+            <RadzenButton Text="Back" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+
+            <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success" />
+
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3 mx-3" style="width: fit-content;">
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i>
+                </span>
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+        </div>
+        
+        <RadzenDataGrid Data="@FilterDSRShopDueList" TItem="DSRShopDueForOrderDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Shop Name" Width="200px">
+                    <Template Context="item">
+                        <div>@item.ShopName</div>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.DueAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterDSRShopDueList.Sum(o => o.DueAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Total Cylinder" Width="120px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.TotalCylinderQty</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterDSRShopDueList.Sum(o => o.TotalCylinderQty)</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Property="@nameof(DSRShopDueForOrderDTO.DateFormatted)" Title="Date" Width="150px" />
+
+                <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Referred By" Width="150px">
+                    <Template Context="item">
+                        <div>@item.CustomerName</div>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Issued By" Width="150px">
+                    <Template Context="item">
+                        <div>@item.DSRCustomerName</div>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Actions" Width="100px">
+                    <Template Context="context">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                      Click="() => Edit(context.Id)" style="margin-right: 5px;" title="Edit" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="() => ConfirmDelete(context.Id)" title="Delete" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@if (showModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>@(DSRShopDue.Id > 0 ? "Edit Shop Due" : "Add Shop Due")</h3>
+                </div>
+
+
+                <EditForm Model="@DSRShopDue" OnValidSubmit="HandleSubmit">
+                    <div class="card dataForm ">
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Referred By</label>
+                                <RadzenDropDown @bind-Value="DSRShopDue.EmployeeId"
+                                                Data="@EmployeeList"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Search Name"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Shop Name</label>
+                                <RadzenDropDown @bind-Value="DSRShopDue.ShopId"
+                                                Data="@ShopList"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Search Shop Name"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Due Amount</label>
+                                <InputNumber @bind-Value="DSRShopDue.DueAmount" class="form-control" />
+
+                            </div>
+                        </div>
+                        
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Date</label>
+                                <RadzenDatePicker @bind-Value="DSRShopDue.Date" DateFormat="yyyy-MM-dd" Class="w-100" />
+                            </div>
+                        </div>
+                        
+                        <!-- Empty Cylinder Products Section -->
+                        <div class="row m-3">
+                            <div class="col-12">
+                                <h5 class="mb-3">Empty Cylinder Details</h5>
+                                
+                                <!-- Add Product Button - Shows only when basic info is not saved yet -->
+                                @if (!DSRShopDue.IsSaved)
+                                {
+                                    <div class="mb-3">
+                                        <RadzenButton Text="+ Add Product"
+                                                      ButtonStyle="ButtonStyle.Primary"
+                                                      Click="SaveDraftAndAddProduct"
+                                                      Icon="add" />
+                                        <span class="text-muted ms-2 small">Save basic info first, then add cylinder details</span>
+                                    </div>
+                                }
+                                
+                                <div class="table-responsive">
+                                    @if (DSRShopDue.IsSaved)
+                                    {
+                                        <div class="mb-2">
+                                            <RadzenButton Text="+ Add Product"
+                                                          ButtonStyle="ButtonStyle.Primary"
+                                                          Size="ButtonSize.Small"
+                                                          Click="AddProduct"
+                                                          Icon="add" />
+                                        </div>
+                                    }
+
+                                    <div class="table-responsive" style="max-height: 280px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px;">
+                                        <table class="table table-bordered table-striped mb-0">
+                                            <thead class="table-light sticky-top" style="z-index: 1;">
+                                                <tr>
+                                                    <th style="width: 50%;">Product Name</th>
+                                                    <th style="width: 35%;">Cylinder Quantity</th>
+                                                    <th style="width: 15%;">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (DSRShopDue.Products != null && DSRShopDue.Products.Any())
+                                                {
+                                                    @for (int i = 0; i < DSRShopDue.Products.Count; i++)
+                                                    {
+                                                        var rowIndex = i;
+                                                        var product = DSRShopDue.Products[rowIndex];
+                                                        <tr>
+                                                            <td>
+                                                                <RadzenDropDown @bind-Value="product.ProductId"
+                                                                                Data="@ProductList"
+                                                                                TextProperty="Name"
+                                                                                ValueProperty="Id"
+                                                                                Placeholder="Select Product"
+                                                                                Class="w-100"
+                                                                                AllowClear="true"
+                                                                                AllowFiltering="true"
+                                                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                                                                Disabled="@(product.Id > 0)" />
+                                                            </td>
+                                                            <td>
+                                                                <InputNumber @bind-Value="product.CylinderQty"
+                                                                             class="form-control"
+                                                                             min="1"
+                                                                             disabled="@(product.Id > 0)" />
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <RadzenButton Icon="delete"
+                                                                              ButtonStyle="ButtonStyle.Danger"
+                                                                              Size="ButtonSize.Small"
+                                                                              Click="() => RemoveProduct(rowIndex)"
+                                                                              title="Remove Product" />
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <tr>
+                                                        <td colspan="3" class="text-center text-muted py-3">
+                                                            @if (DSRShopDue.IsSaved)
+                                                            {
+                                                                <span>No products added yet. Click "Add Product" to add empty cylinders.</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>Click "Add Product" button above to save basic info and add cylinder details.</span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                @if (DSRShopDue.Products != null && DSRShopDue.Products.Any())
+                                {
+                                    <div class="alert alert-info mt-2">
+                                        <strong>Total Empty Cylinders: </strong>
+                                        <span class="badge bg-primary fs-6">@DSRShopDue.Products.Sum(p => p.CylinderQty)</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="row m-3">
+                            <div class="col-md-12">
+                                <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" Icon="save" />
+                                <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" Icon="cancel" />
+                            </div>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int DSRCustomerId { get; set; }
+
+
+    [Parameter]
+    public int OrderId { get; set; }
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IDSRShopDue m_DSRShopDue { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    public IEnumerable<Lov> ShopList { get; set; } = new List<Lov>();
+    private IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
+    private IEnumerable<Lov> ProductList { get; set; } = new List<Lov>();
+
+    private bool showModal = false;
+
+    public DSRShopDue DSRShopDue { get; set; } = new DSRShopDue();
+    private Message notificationComponent;
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    public IEnumerable<DSRShopDueForOrderDTO> DSRShopDueList { get; set; } = new List<DSRShopDueForOrderDTO>();
+
+    private IEnumerable<DSRShopDueForOrderDTO> FilterDSRShopDueList { get; set; } = new List<DSRShopDueForOrderDTO>();
+
+    private string search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await LoadLookupData();
+        LoadData();
+    }
+
+    private async Task LoadLookupData()
+    {
+        EmployeeList = await m_Lookup.GetAllEmployeeList();
+        ShopList = await m_Lookup.GetAllShopList();
+        ProductList = await m_Lookup.GetAllProductList();
+    }
+
+    // ---------------------------------------------------------------
+    // First click on "Add Product" (before basic info is saved):
+    // Saves the basic DSRShopDue info, then opens ONE empty product row.
+    // ---------------------------------------------------------------
+    private async Task SaveDraftAndAddProduct()
+    {
+        // Validate basic fields
+        if (DSRShopDue.EmployeeId <= 0 || DSRShopDue.EmployeeId is null)
+        {
+            notificationComponent.Show(
+                "নাম নির্বাচন করুন",
+                "চালিয়ে যাওয়ার আগে একটি নাম নির্বাচন করুন।",
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        if (DSRShopDue.ShopId <= 0)
+        {
+            notificationComponent.Show(
+                "দোকান নির্বাচন করুন",
+                "চালিয়ে যাওয়ার আগে একটি দোকান নির্বাচন করুন।",
+
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        if (DSRShopDue.DueAmount <= 0)
+        {
+            notificationComponent.Show(
+                "বকেয়া পরিমাণ সঠিক নয়",
+                "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।",
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        try
+        {
+            DSRShopDue.DSRCustomerId = DSRCustomerId;
+            DSRShopDue.OrderId = OrderId;
+
+            // Save only the main entity without products
+            var savedId = m_DSRShopDue.CreateDSRShopDue(DSRShopDue);
+            DSRShopDue.Id = savedId;
+            DSRShopDue.IsSaved = true;
+
+            // Open exactly one empty row for the user to fill in
+            DSRShopDue.Products = new List<ShopEmptyCylinderProduct>
+            {
+                new ShopEmptyCylinderProduct()
+            };
+
+            notificationComponent.Show(
+                "দোকানের বকেয়া সংরক্ষিত হয়েছে",
+                "এখন আপনি সিলিন্ডারের তথ্য যোগ করতে পারেন।",
+
+                NotificationSeverity.Success);
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show(
+                "Error",
+                $"An error occurred: {ex.Message}",
+                NotificationSeverity.Error);
+        }
+    }
+
+    private async Task AddProduct()
+    {
+        // --- Step 1: Main entity এখনো save হয়নি → আগে save করো ---
+        if (!DSRShopDue.IsSaved)
+        {
+            if (DSRShopDue.EmployeeId <= 0 || DSRShopDue.EmployeeId is null)
+            {
+                notificationComponent.Show("নাম নির্বাচন করুন", "চালিয়ে যাওয়ার আগে একটি নাম নির্বাচন করুন।", NotificationSeverity.Warning);
+                return;
+            }
+            if (DSRShopDue.ShopId <= 0)
+            {
+                notificationComponent.Show("দোকান নির্বাচন করুন", "চালিয়ে যাওয়ার আগে একটি দোকান নির্বাচন করুন।", NotificationSeverity.Warning);
+                return;
+            }
+            if (DSRShopDue.DueAmount <= 0)
+            {
+                notificationComponent.Show("বকেয়া পরিমাণ সঠিক নয়", "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।", NotificationSeverity.Warning);
+                return;
+            }
+            try
+            {
+                DSRShopDue.DSRCustomerId = DSRCustomerId;
+                DSRShopDue.OrderId = OrderId;
+                DSRShopDue.Products = new List<ShopEmptyCylinderProduct>(); // products ছাড়া save
+                var savedId = m_DSRShopDue.CreateDSRShopDue(DSRShopDue);
+                DSRShopDue.Id = savedId;
+                DSRShopDue.IsSaved = true;
+                // প্রথম empty row খোলো
+                DSRShopDue.Products.Add(new ShopEmptyCylinderProduct());
+                notificationComponent.Show("তথ্য সংরক্ষিত", "এখন সিলিন্ডারের তথ্য যোগ করুন।", NotificationSeverity.Success);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                notificationComponent.Show("Error", $"An error occurred: {ex.Message}", NotificationSeverity.Error);
+            }
+            return; // ← এই বারের জন্য শেষ, পরের click এ নিচের logic চলবে
+        }
+        // --- Step 2: Last unsaved row validate ও save করো ---
+        if (DSRShopDue.Products == null)
+            DSRShopDue.Products = new List<ShopEmptyCylinderProduct>();
+        if (DSRShopDue.Products.Any())
+        {
+            var lastProduct = DSRShopDue.Products.Last();
+            if (lastProduct.Id <= 0) // ✅ এই row টা DB-তে যায়নি
+            {
+                if (lastProduct.ProductId <= 0)
+                {
+                    notificationComponent.Show("পণ্য নির্বাচন করুন", "নতুন সারি যোগ করার আগে একটি পণ্য নির্বাচন করুন।", NotificationSeverity.Warning);
+                    return;
+                }
+                if (lastProduct.CylinderQty <= 0)
+                {
+                    notificationComponent.Show("সিলিন্ডার সংখ্যা সঠিক নয়", "সঠিক সিলিন্ডার সংখ্যা দিন।", NotificationSeverity.Warning);
+                    return;
+                }
+                try
+                {
+                    lastProduct.DSRShopDueId = DSRShopDue.Id;
+                    m_DSRShopDue.AddShopEmptyCylinderProduct(lastProduct);
+                    // ✅ EF Core এখন lastProduct.Id set করে দেবে
+                    notificationComponent.Show("পণ্য যোগ হয়েছে", "পণ্য সফলভাবে সংরক্ষিত হয়েছে।", NotificationSeverity.Success);
+                }
+                catch (Exception ex)
+                {
+                    notificationComponent.Show("Error", $"An error occurred: {ex.Message}", NotificationSeverity.Error);
+                    return;
+                }
+            }
+        }
+        // নতুন empty row খোলো
+        DSRShopDue.Products!.Add(new ShopEmptyCylinderProduct());
+        StateHasChanged();
+    }
+
+    // ✅ FIX: RemoveProduct — সত্যিকারের delete call করো
+    private async Task RemoveProduct(int index)
+    {
+        if (DSRShopDue.Products == null) return;
+       
+        var product = DSRShopDue.Products[index];
+        if (product.Id > 0)
+        {
+            try
+            {
+                m_DSRShopDue.DeleteShopEmptyCylinderProduct(product.Id); // ✅ Fixed: comment সরানো হয়েছে
+                notificationComponent.Show("Product Remove", "Product has been Deleted Successfully .", NotificationSeverity.Warning);
+            }
+            catch (Exception ex)
+            {
+                notificationComponent.Show("Error", $"An error occurred while deleting: {ex.Message}", NotificationSeverity.Error);
+                return;
+            }
+        }
+        DSRShopDue.Products.Remove(product); // index-based না, reference-based
+        StateHasChanged();
+    }
+
+
+    // ✅ FIX: HandleSubmit — products এখন independent, তাই শুধু main entity update
+    private async Task HandleSubmit()
+    {
+        if (DSRShopDue.EmployeeId <= 0 || DSRShopDue.EmployeeId is null)
+        {
+            notificationComponent.Show("নাম নির্বাচন করুন", "চালিয়ে যাওয়ার আগে একটি নাম নির্বাচন করুন।", NotificationSeverity.Warning);
+            return;
+        }
+        if (DSRShopDue.ShopId <= 0)
+        {
+            notificationComponent.Show("দোকান নির্বাচন করুন", "চালিয়ে যাওয়ার আগে একটি দোকান নির্বাচন করুন।", NotificationSeverity.Warning);
+            return;
+        }
+        if (DSRShopDue.DueAmount <= 0)
+        {
+            notificationComponent.Show("বকেয়া পরিমাণ সঠিক নয়", "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।", NotificationSeverity.Warning);
+            return;
+        }
+        try
+        {
+            if (DSRShopDue.Id > 0)
+            {
+                // ✅ FIX: Last unsaved row handle করো (যদি থাকে)
+                if (DSRShopDue.Products != null && DSRShopDue.Products.Any())
+                {
+                    var lastProduct = DSRShopDue.Products.Last();
+                    if (lastProduct.Id <= 0) // unsaved
+                    {
+                        if (lastProduct.ProductId > 0 && lastProduct.CylinderQty > 0)
+                        {
+                            // ভরা আছে → save করো
+                            lastProduct.DSRShopDueId = DSRShopDue.Id;
+                            m_DSRShopDue.AddShopEmptyCylinderProduct(lastProduct);
+                        }
+                        else if (lastProduct.ProductId <= 0 && lastProduct.CylinderQty <= 0)
+                        {
+                            // খালি row → list থেকে বাদ দাও (save করার দরকার নেই)
+                            DSRShopDue.Products.Remove(lastProduct);
+                        }
+                        else
+                        {
+                            // Partially filled → error
+                            notificationComponent.Show("পণ্যের তথ্য অসম্পূর্ণ", "সব পণ্যের তথ্য সম্পূর্ণ করুন বা খালি row মুছে দিন।", NotificationSeverity.Warning);
+                            return;
+                        }
+                    }
+                }
+                m_DSRShopDue.UpdateDSRShopDue(DSRShopDue);
+                notificationComponent.Show("আপডেট সফল", "দোকানের বকেয়ার তথ্য সফলভাবে আপডেট করা হয়েছে।", NotificationSeverity.Success);
+            }
+            else
+            {
+                // নতুন record (IsSaved = false মানে AddProduct click হয়নি, direct Save)
+                DSRShopDue.DSRCustomerId = DSRCustomerId;
+                DSRShopDue.OrderId = OrderId;
+                m_DSRShopDue.CreateDSRShopDue(DSRShopDue);
+                notificationComponent.Show("সংরক্ষিত হয়েছে", "দোকানের বকেয়ার তথ্য সফলভাবে যোগ করা হয়েছে।", NotificationSeverity.Success);
+            }
+            showModal = false;
+            LoadData();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", $"An error occurred: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+
+
+
+    private async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+        {
+            OkButtonText = "Yes, Delete",
+            CancelButtonText = "No, Keep",
+            ShowClose = true,
+        };
+
+        bool? confirmed = await DialogService.Confirm("Are you absolutely sure you want to delete this item?", "Delete Confirmation", options);
+
+        if (confirmed == true)
+        {
+            Delete(id);
+        }
+    }
+
+
+    private void Delete(int id)
+    {
+        try
+        {
+            m_DSRShopDue.DeleteShopDue(id);
+            notificationComponent.Show(
+                "দোকানের বকেয়া মুছে ফেলা হয়েছে",
+                "দোকানের বকেয়ার তথ্য সফলভাবে মুছে ফেলা হয়েছে।",
+                NotificationSeverity.Success);
+
+            LoadData();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show(
+                "Error",
+                $"An error occurred: {ex.Message}",
+                NotificationSeverity.Error);
+        }
+    }
+
+    private void Edit(int id)
+    {
+        try
+        {
+            DSRShopDue = m_DSRShopDue.GetDSRShopDue(id);
+            if (DSRShopDue.Products == null)
+            {
+                DSRShopDue.Products = new List<ShopEmptyCylinderProduct>();
+            }
+            DSRShopDue.IsSaved = true;
+
+            showModal = true;
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show(
+                "Error",
+                $"An error occurred: {ex.Message}",
+                NotificationSeverity.Error);
+        }
+    }
+
+    private void AddNew()
+    {
+        DSRShopDue = new DSRShopDue()
+        {
+            DSRCustomerId = DSRCustomerId,
+            OrderId = OrderId,
+            Date = m_Lookup.GetOrderDate(OrderId),
+            Products = new List<ShopEmptyCylinderProduct>(),
+            IsSaved = false
+        };
+        showModal = true;
+    }
+
+    private void LoadData()
+    {
+        DSRShopDueList = m_DSRShopDue.GetAllDSRShopDueByOrderId(OrderId);
+        FilterDSRShopDueList = DSRShopDueList;
+    }
+
+    private void CloseModal()
+    {
+
+        showModal = false;
+        DSRShopDue = new DSRShopDue();
+    }
+
+    private void Cancel()
+    {
+        _navigationManager.NavigateTo($"/Sales");
+    }
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterDSRShopDueList = DSRShopDueList;
+        }
+        else
+        {
+            FilterDSRShopDueList = DSRShopDueList.Where(c =>
+                (!string.IsNullOrEmpty(c.ShopName) && c.ShopName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DueAmount.ToString()) && c.DueAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.CustomerName) && c.CustomerName.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+    }
+
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterDSRShopDueList, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.MarginTop(20);
+                page.MarginBottom(20);
+                page.MarginLeft(40);
+                page.MarginRight(40);
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                        });
+
+
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Shop Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Total Cylinder").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Referred By").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                        });
+
+                        foreach (var item in FilterDSRShopDueList)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.ShopName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{item.DueAmount:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.TotalCylinderQty.ToString());
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.CustomerName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.DateFormatted);
+                        }
+
+                        table.Cell().ColumnSpan(1).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterDSRShopDueList.Sum(x => x.DueAmount):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(FilterDSRShopDueList.Sum(x => x.TotalCylinderQty).ToString()).Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold();
+                    });
+
+                page.Footer().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignCenter().Text(text =>
+                    {
+                        text.CurrentPageNumber();
+                        text.Span(" / ");
+
+                        text.TotalPages();
+                    });
+                    row.RelativeItem();
+                });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Shop Dues_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Shop Dues Report").Bold().FontSize(10);
+            });
+        });
+    }
+}

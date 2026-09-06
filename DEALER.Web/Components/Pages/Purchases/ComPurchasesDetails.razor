@@ -1,0 +1,201 @@
+﻿@page "/PurchasesDetails/{PurchaseId:int}"
+
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<style>
+    .rz-datatable-footer {
+        font-weight: bold;
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+    }
+</style>
+
+@if (PurchasesDetails is null || PurchasesDetails.Count() == 0)
+{
+    <p><em> No order details found for Order #@PurchaseId.</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <h4>Order #@PurchaseId</h4>
+        <h4>Total Due: @Purchase.TotalDue.ToString("0.00")</h4>
+
+
+        <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportPurchaseDetailsToPdf())" Style="margin-bottom: 1rem;" />
+
+        <RadzenDataGrid Data="@PurchasesDetails" TItem="PurchasesDetailsDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="PurchasesDetailsDTO" Property="@nameof(PurchasesDetailsDTO.ProductName)" Title="Product Name" Width="100px" />
+                <RadzenDataGridColumn TItem="PurchasesDetailsDTO" Property="@nameof(PurchasesDetailsDTO.SupplierName)" Title="Company Name" Width="100px" />
+
+                <RadzenDataGridColumn TItem="PurchasesDetailsDTO" Title="Unit Price" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.ProductPrice.ToString("N2")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+
+                @* <RadzenDataGridColumn TItem="PurchasesDetailsDTO" Property="@nameof(PurchasesDetailsDTO.Quantity)" Title="Quantity" Width="100px" /> *@
+                <RadzenDataGridColumn TItem="PurchasesDetailsDTO" Property="@nameof(PurchasesDetailsDTO.Quantity)" Title="Quantity" Width="100px">
+                    <FooterTemplate>
+                        <div><strong>Total Product Price:</strong></div>
+                        <div><strong>Due Adjustment:</strong></div>
+                        <div><strong>Delivery Charge:</strong></div>
+                        <div><strong>Grand Total Amount:</strong></div>
+                        <div><strong>Discount:</strong></div>
+                        <div><strong>Total Pay:</strong></div>
+                        <div><strong>Total Due:</strong></div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="PurchasesDetailsDTO" Property="@nameof(PurchasesDetailsDTO.TotalPrice)" TextAlign="TextAlign.Right" Title="Total Price" Width="100px">
+                    <Template Context="item">
+                        <div>@item.TotalPrice.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end"><strong>@GrandTotal.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@Purchase.Adjustment.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@Purchase.DeliveryCharge.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@Purchase.TotalAmount.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@Purchase.Discount.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@Purchase.TotalPay.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@Purchase.TotalDue.ToString("N2")</strong></div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int PurchaseId { get; set; }
+
+    [Inject]
+    private IPurchase m_Purchase { get; set; }
+
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    private double GrandTotal { get; set; }
+    private Purchase Purchase { get; set; } = new();
+
+    private IEnumerable<PurchasesDetailsDTO> PurchasesDetails { get; set; } = new List<PurchasesDetailsDTO>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Purchase = await m_Purchase.GetPurchaseById(PurchaseId);
+        Purchase.TotalAmount += Purchase.Discount;
+        PurchasesDetails = await m_Purchase.GetPurchasesDetailsByOrderAsync(PurchaseId);
+        GrandTotal = PurchasesDetails.Sum(od => od.TotalPrice);
+    }
+
+    public async Task ExportPurchaseDetailsToPdf()
+    {
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(30);
+                page.DefaultTextStyle(x => x.FontSize(9));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content().PaddingVertical(10).Table(table =>
+                {
+                    table.ColumnsDefinition(columns =>
+                    {
+                        columns.RelativeColumn(2); // Product Name
+                        columns.RelativeColumn(2); // Company Name
+                        columns.RelativeColumn(1); // Unit Price
+                        columns.RelativeColumn(1); // Quantity
+                        // columns.RelativeColumn(1); // Discount
+                        columns.RelativeColumn(1); // Total Price
+                    });
+
+                    // Header row
+                    table.Header(header =>
+                    {
+                        header.Cell().Background("#f0f0f0").Padding(5).Text("Product Name").Bold();
+                        header.Cell().Background("#f0f0f0").Padding(5).Text("Company Name").Bold();
+                        header.Cell().Background("#f0f0f0").Padding(5).Text("Unit Price").Bold();
+                        header.Cell().Background("#f0f0f0").Padding(5).Text("Quantity").Bold();
+                        // header.Cell().Background("#f0f0f0").Padding(5).Text("Discount %").Bold();
+                        header.Cell().Background("#f0f0f0").Padding(5).AlignRight().Text("Total Price").Bold();
+                    });
+
+                    // Data rows
+                    foreach (var item in PurchasesDetails)
+                    {
+                        table.Cell().Padding(5).Text(item.ProductName);
+                        table.Cell().Padding(5).Text(item.SupplierName);
+                        table.Cell().Padding(5).Text($"{item.ProductPrice:N2}");
+                        table.Cell().Padding(5).Text(item.Quantity.ToString());
+                        // table.Cell().Padding(5).Text(item.Discount.ToString());
+                        table.Cell().Padding(5).AlignRight().Text($"{item.TotalPrice:N2}");
+                    }
+
+                    // Footer rows (summary)
+                    table.Cell().ColumnSpan(4).AlignRight().Padding(5).Text("Total Product Price").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{GrandTotal:N2}").Bold();
+
+                    table.Cell().ColumnSpan(4).AlignRight().Padding(5).Text("Delivery Charge").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{Purchase.DeliveryCharge:N2}");
+
+                    table.Cell().ColumnSpan(4).AlignRight().Padding(5).Text("Grand Total Amount").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{Purchase.TotalAmount:N2}");
+
+                    table.Cell().ColumnSpan(4).AlignRight().Padding(5).Text("Discount").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{Purchase.Discount:N2}");
+
+                    table.Cell().ColumnSpan(4).AlignRight().Padding(5).Text("Total Pay").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{Purchase.TotalPay:N2}");
+
+                    table.Cell().ColumnSpan(4).AlignRight().Padding(5).Text("Total Due").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{Purchase.TotalDue:N2}").Bold();
+                });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"PurchaseDetails_{PurchaseId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Purchase Details for Order #{PurchaseId}").Bold().FontSize(10);
+            });
+        });
+    }
+
+}

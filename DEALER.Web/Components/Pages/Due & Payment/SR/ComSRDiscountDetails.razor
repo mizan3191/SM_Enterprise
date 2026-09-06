@@ -1,0 +1,222 @@
+﻿@* @page "/SRDiscountDetails/{CustomerId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<ComPersonHeaderInfo Id="@CustomerId"></ComPersonHeaderInfo>
+<Message @ref="notificationComponent" />
+<h3>Shop Transaction Histories</h3>
+
+<div class="card-body pt-3">
+    <h4 class="pb-3">Total Due: @TotalDue.ToString()</h4>
+
+    <div class="d-flex align-items-center mb-3" style="width: 100%;">
+        <RadzenButton Text="Back" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+
+        <!-- Search Box -->
+        <div class="d-flex align-items-center border rounded me-3 mx-3" style="width: fit-content;">
+            <!-- Search Icon -->
+            <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+            </span>
+
+            <!-- Search Text Box -->
+            <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                           Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+        </div>
+
+        <!-- Export Button -->
+        <div class="d-flex align-items-center border rounded" style="width: fit-content;">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+            </RadzenStack>
+        </div>
+    </div>
+
+    <RadzenDataGrid Data="@FilterSRDiscountDetails" TItem="SRDiscount" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+        <Columns>
+            <RadzenDataGridColumn TItem="SRDiscount" Property="@nameof(SRDiscount.DateFormatted)" Title="Date" Width="200px" />
+
+            <RadzenDataGridColumn TItem="SRDiscount" Title="DSR Name" Width="200px">
+                <Template Context="item">
+                    <div>@item.DSRCustomer.Name</div>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="SRDiscount" Title="Discount Amount" Width="200px" TextAlign="TextAlign.Right">
+                <Template Context="item">
+                    <div>@item.DiscountAmount.ToString("N2")</div>
+                </Template>
+                <FooterTemplate>
+                    <div class="text-end fw-bold">@FilterSRDiscountDetails.Sum(o => o.DiscountAmount).ToString("N2")</div>
+                </FooterTemplate>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</div>
+
+@code {
+    [Parameter]
+    public int CustomerId { get; set; }
+
+    //[Inject]
+   // private ISRDiscount m_SRDiscount { get; set; }
+
+    [Inject]
+    private ICustomer m_Customer { get; set; }
+
+   // [Inject]
+   // private ISRPaymentHistory m_SRPaymentHistory { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+
+    private double TotalDue { get; set; } = 0;
+
+    private IEnumerable<SRDiscount> SRDiscountDetails { get; set; } = new List<SRDiscount>();
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    private IEnumerable<SRDiscount> FilterSRDiscountDetails { get; set; } = new List<SRDiscount>();
+
+    private string search = string.Empty;
+    private string SRName = string.Empty;
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SRName = m_Customer.GetCustomer(CustomerId).Name;
+        SRDiscountDetails = await m_SRDiscount.GetAllSRDiscount(CustomerId);
+        var SRPaymentHistoryList = await m_SRPaymentHistory.GetAllSRPaymentHistory(CustomerId);
+        var DiscountAmount = SRDiscountDetails.Sum(od => od.DiscountAmount);
+        var PaidAmount = SRPaymentHistoryList.Sum(od => od.AmountPaid);
+
+        TotalDue = DiscountAmount - PaidAmount;
+        FilterSRDiscountDetails = SRDiscountDetails;
+    }
+
+    private void Cancel()
+    {
+        _navigationManager.NavigateTo($"/SRDiscountList");
+    }
+
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterSRDiscountDetails = SRDiscountDetails;
+        }
+        else
+        {
+            FilterSRDiscountDetails = SRDiscountDetails.Where(c =>
+                (!string.IsNullOrEmpty(c.DSRCustomer.Name) && c.DSRCustomer.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DiscountAmount.ToString()) && c.DiscountAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterSRDiscountDetails, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("DSR Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilterSRDiscountDetails)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.DSRCustomer.Name);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.DiscountAmount:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.DateFormatted);
+                        }
+
+                        // Total Row
+                        table.Cell().ColumnSpan(1).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSRDiscountDetails.Sum(x => x.DiscountAmount):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold(); // Empty cell for Date column
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"SRDiscount_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"SR {SRName} Discount Report").Bold().FontSize(10);
+            });
+        });
+    }
+
+} *@

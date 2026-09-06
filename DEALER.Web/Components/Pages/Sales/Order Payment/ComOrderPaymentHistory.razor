@@ -1,0 +1,307 @@
+﻿@page "/OrderPaymentHistory/{CustomerId:int}/{OrderId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+
+<h3>Order Payment History</h3>
+
+@if (OrderPaymentHistoryByOrderList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <RadzenButton Text="Back" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="mx-2" />
+        <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success"></RadzenButton>
+
+        <RadzenDataGrid Data="@OrderPaymentHistoryByOrderList" TItem="OrderPaymentHistory" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="OrderPaymentHistory" Title="DSR Name" Width="100px">
+                    <Template Context="item">
+                        <div>@item.DSRCustomer.Name</div>
+                    </Template>
+                </RadzenDataGridColumn>
+                @* <RadzenDataGridColumn TItem="OrderPaymentHistory" Title="Referred By" Width="100px">
+                    <Template Context="item">
+                        <div>@item.Customer.Name</div>
+                    </Template>
+                </RadzenDataGridColumn> *@
+
+                <RadzenDataGridColumn TItem="OrderPaymentHistory" Title="Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.AmountPaid.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@OrderPaymentHistoryByOrderList.Sum(o => o.AmountPaid).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="OrderPaymentHistory" Title="Actions" Width="60px">
+                    <Template Context="context">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                      Click="() => Edit(context.Id)" style="margin-right: 5px;" title="Edit" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="() => ConfirmDelete(context.Id)" title="Delete" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@if (showModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>@(OrderPaymentHistory.Id > 0 ? "Edit Payment" : "Add Payment")</h3>
+                </div>
+
+                <EditForm Model="@OrderPaymentHistory" OnValidSubmit="HandleSubmit">
+                    <div class="card dataForm ">
+                        <div class="row m-3">
+                            @* <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Issued By</label>
+                                <RadzenDropDown @bind-Value="OrderPaymentHistory.CustomerId"
+                                                Data="@CustomerList"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Search"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                            </div> *@
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Due Amount</label>
+                                <InputNumber @bind-Value="DueAmount" class="form-control" disabled></InputNumber>
+                            </div>
+                       @*  </div>
+
+                        <div class="row m-3"> *@
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Amount</label>
+                                <InputNumber @bind-Value="OrderPaymentHistory.AmountPaid" class="form-control"></InputNumber>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Date</label>
+                                <RadzenDatePicker @bind-Value="OrderPaymentHistory.Date" DateFormat="yyyy-MM-dd" Class="w-100" />
+                            </div>
+                        </div>
+                        <br />
+                        <div class="col-md-12">
+                            <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+                            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    [Parameter]
+    public int CustomerId { get; set; }
+
+    [Parameter]
+    public int OrderId { get; set; }
+
+    [Inject]
+    private IOrderPaymentHistory m_OrderPaymentHistory { get; set; }
+
+    [Inject]
+    private IOrder m_Order { get; set; }
+
+  //  [Inject]
+    //private ISRDiscount m_SRDiscount { get; set; }
+
+    [Inject]
+    private IDSRShopDue m_DSRShopDue { get; set; }
+
+    [Inject]
+    private IDailyExpense m_DailyExpense { get; set; }
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IExtraReturnProduct m_ExtraReturnProduct { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    private Message notificationComponent;
+
+    // private IEnumerable<SRDiscount> SRDiscountList { get; set; } = new List<SRDiscount>();
+    private IEnumerable<DamageProductDetailsDTO> DamageProductDetails { get; set; } = new List<DamageProductDetailsDTO>();
+    public IEnumerable<DSRShopDue> DSRShopDueList { get; set; } = new List<DSRShopDue>();
+    public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
+    //private IEnumerable<ExtraReturnProductListDto> ExtraReturnProductLists { get; set; } = new List<ExtraReturnProductListDto>();
+
+
+    private IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
+    private IEnumerable<OrderPaymentHistory> OrderPaymentHistoryByOrderList { get; set; } = new List<OrderPaymentHistory>();
+
+    public OrderPaymentHistory OrderPaymentHistory { get; set; } = new();
+    private bool showModal = false;
+
+    private double DueAmount { get; set; } = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CustomerList = await m_Lookup.GetAllCustomerList();
+
+        //CustomerList = CustomerList.Where(c => !c.IsDeleted);
+
+        await LoadData();
+    }
+
+    private async Task HandleSubmit()
+    {
+
+        if (OrderPaymentHistory.AmountPaid <= 0)
+        {
+            notificationComponent.Show(
+    "পরিমাণ সঠিক নয়",
+    "পরিমাণ ০ হতে পারবে না।",
+    NotificationSeverity.Warning);
+            return;
+        }
+
+        if (OrderPaymentHistory.DSRCustomerId <= 0)
+        {
+            notificationComponent.Show(
+                "DSR কাস্টমার সঠিক নয়",
+                "নির্বাচিত DSR কাস্টমারটি সঠিক নয়।",
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        // if (OrderPaymentHistory.CustomerId <= 0)
+        // {
+        //     notificationComponent.Show("Empty Customer", "Issued by are not valid.", NotificationSeverity.Warning);
+        //     return;
+        // }
+
+        showModal = false;
+
+        if (OrderPaymentHistory.Id > 0)
+        {
+            m_OrderPaymentHistory.UpdateOrderPaymentHistory(OrderPaymentHistory);
+            notificationComponent.Show(
+                "অর্ডার পেমেন্ট আপডেট হয়েছে",
+                "অর্ডার পেমেন্টটি সফলভাবে আপডেট করা হয়েছে।",
+                NotificationSeverity.Success);
+        }
+        else
+        {
+            m_OrderPaymentHistory.CreateOrderPaymentHistory(OrderPaymentHistory);
+            notificationComponent.Show(
+    "অর্ডার পেমেন্ট যোগ করা হয়েছে",
+    "অর্ডার পেমেন্টটি সফলভাবে যোগ করা হয়েছে।",
+    NotificationSeverity.Success);
+        }
+
+        await LoadData();
+        StateHasChanged();
+
+        // _navigationManager.NavigateTo($"/Sales");
+    }
+
+    private void Edit(int id)
+    {
+        showModal = true;
+
+        if (id > 0)
+        {
+            OrderPaymentHistory = m_OrderPaymentHistory.GetOrderPaymentHistoryById(id);
+        }
+        else
+        {
+            OrderPaymentHistory = new OrderPaymentHistory()
+            {
+                OrderId = OrderId,
+                DSRCustomerId = CustomerId,
+                Date = m_Lookup.GetOrderDate(OrderId),
+            };
+        }
+    }
+
+    async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+        {
+            OkButtonText = "Yes, Delete",
+            CancelButtonText = "No, Keep",
+            ShowClose = true,
+        };
+
+        bool? confirmed = await DialogService.Confirm("Are you absolutely sure you want to delete this item?", "Delete Confirmation", options);
+
+        if (confirmed == true)
+        {
+            await Delete(id);
+        }
+    }
+
+    async Task Delete(int id)
+    {
+        m_OrderPaymentHistory.DeleteOrderPaymentHistory(id);
+        notificationComponent.Show(
+    "অর্ডার পেমেন্ট মুছে ফেলা হয়েছে",
+    "অর্ডার পেমেন্টের তথ্যটি সফলভাবে মুছে ফেলা হয়েছে।",
+    NotificationSeverity.Success);
+
+        await LoadData();
+        StateHasChanged(); // If you are managing the data source manually
+    }
+
+
+    private async Task LoadData()
+    {
+        OrderPaymentHistoryByOrderList = await m_OrderPaymentHistory.GetAllOrderPaymentHistoryByOrderId(OrderId);
+
+        var OrderDetails = await m_Order.GetOrderDetailsByOrderAsync(OrderId) ?? new List<OrderDetailsDTO>();
+        //SRDiscountList = await m_SRDiscount.GetAllSRDiscountByOrderId(OrderId);
+        DSRShopDueList = await m_DSRShopDue.GetAllDSRShopDue(OrderId);
+       // ExtraReturnProductLists = await m_ExtraReturnProduct.GetListByOrderIdAsync(OrderId);
+       // DamageProductDetails = await m_Order.GetDamageProductDetailsByOrderAsync(OrderId) ?? new List<DamageProductDetailsDTO>();
+        DailyExpenseList = m_DailyExpense.GetAllDailyExpense(OrderId);
+
+
+        var totalPrice = OrderDetails.Sum(od => od.TotalPrice);
+        var totalDamagePrice = DamageProductDetails?.Sum(od => od.TotalPrice) ?? 0;
+        //var srDiscountAmount = SRDiscountList.Sum(x => x.DiscountAmount);
+        var dsrShopDueList = DSRShopDueList.Sum(x => x.DueAmount);
+        var dailyExpenseList = DailyExpenseList.Sum(x => x.Amount);
+        var currentlyPaid = OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid);
+       //var extraReturnProductPayment = ExtraReturnProductLists.Sum(x => x.TotalAmount);
+
+        var TotalPaid = totalDamagePrice +  dsrShopDueList + dailyExpenseList + currentlyPaid ;
+        DueAmount = totalPrice - TotalPaid;
+
+    }
+
+    private void AddNew()
+    {
+        OrderPaymentHistory = new OrderPaymentHistory()
+        {
+            OrderId = OrderId,
+            DSRCustomerId = CustomerId,
+            Date = m_Lookup.GetOrderDate(OrderId),
+        };
+
+        showModal = true;
+    }
+
+    private void Cancel()
+    {
+        _navigationManager.NavigateTo($"/Sales");
+    }
+}

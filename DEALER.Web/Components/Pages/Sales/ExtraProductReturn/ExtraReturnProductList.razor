@@ -1,0 +1,417 @@
+﻿@page "/ExtraReturnProductList/{CustomerId:int}/{OrderId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject NotificationService NotificationService
+
+<Message @ref="notificationComponent" />
+
+<style>
+    .dataForm .table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .dataForm .table th, .dataForm .table td {
+        padding: 6px;
+    }
+
+    .dataForm .table th:nth-child(1), .dataForm .table td:nth-child(1) { width: 30%; }
+    .dataForm .table th:nth-child(2), .dataForm .table td:nth-child(2) { width: 15%; }
+    .dataForm .table th:nth-child(3), .dataForm .table td:nth-child(3) { width: 20%; }
+    .dataForm .table th:nth-child(4), .dataForm .table td:nth-child(4) { width: 20%; }
+    .dataForm .table th:nth-child(5), .dataForm .table td:nth-child(5) { width: 15%; }
+
+    .dataForm .table input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .dataForm .table td.text-end { text-align: right; }
+</style>
+
+<h3>Extra Empty Cylinder Return</h3>
+
+<div class="card dataForm">
+    <div class="row mt-3">
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Company</label>
+            <RadzenDropDown TValue="int?"
+                            @bind-Value="SelectedSupplierId"
+                            Data="@SupplierList"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Placeholder="Select Company"
+                            AllowClear="true"
+                            AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            Change="@OnSupplierChanged"
+                            Style="width:100%">
+            </RadzenDropDown>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Product (Empty Cylinder)</label>
+            <RadzenDropDown TValue="int?"
+                            @bind-Value="SelectedProductId"
+                            Data="@Products"
+                            TextProperty="DisplayNameSize"
+                            ValueProperty="Id"
+                            Placeholder="Select Empty Cylinder"
+                            AllowClear="true"
+                            AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            Style="width:100%">
+                <Template Context="product">
+                    <div>
+                        <div>@product.DisplayNameSize</div>
+                        <small style="color: #888;">Empty Price: @product.CurrentPrice?.CylinderBuyingPrice?.ToString("N2")</small>
+                    </div>
+                </Template>
+            </RadzenDropDown>
+        </div>
+
+        <div class="col-md-4 mb-3 d-flex align-items-end">
+            <RadzenButton Disabled="@(SelectedProductId == null)"
+                          Text="Add Empty Cylinder"
+                          Style="width:100%"
+                          ButtonStyle="ButtonStyle.Secondary"
+                          Click="AddProduct" />
+        </div>
+    </div>
+</div>
+
+<div class="card dataForm mt-3">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Empty Cylinder (Company)</th>
+                <th class="text-end">Empty Price</th>
+                <th class="text-center">Quantity</th>
+                <th class="text-end">Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var detail in Details)
+            {
+                var product = AllProducts.FirstOrDefault(p => p.Id == detail.ProductId);
+                <tr>
+                    <td>
+                        <RadzenDropDown TValue="int"
+                                        @bind-Value="detail.ProductId"
+                                        Data="@AllProducts"
+                                        TextProperty="DisplayNameSize"
+                                        ValueProperty="Id"
+                                        Placeholder="Select Empty Cylinder"
+                                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        Change="@(args => OnProductChanged(detail, args))">
+                            <Template Context="product">
+                                <div>
+                                    <div>@product.DisplayNameSize</div>
+                                    <small style="color: #888;">Empty Price: @product.CurrentPrice?.CylinderBuyingPrice?.ToString("N2")</small>
+                                </div>
+                            </Template>
+                        </RadzenDropDown>
+                    </td>
+                    <td class="text-end">
+                        <input type="number"
+                               step="0.01"
+                               min="0"
+                               value="@detail.EmptyCylinderPrice"
+                               @oninput="(e) => OnPriceChanged(detail, e)"
+                               class="form-control text-end" />
+                    </td>
+                    <td>
+                        <input type="number"
+                               min="1"
+                               value="@detail.Quantity"
+                               @oninput="(e) => OnQuantityChanged(detail, e)"
+                               class="form-control text-center" />
+                    </td>
+                    <td class="text-end"><strong>@detail.Price.ToString("N2")</strong></td>
+                    <td class="text-end">
+                        <RadzenButton Icon="delete" 
+                                      title="Remove" 
+                                      ButtonStyle="ButtonStyle.Danger" 
+                                      Click="() => RemoveProduct(detail)" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-end"><strong>Total Empty Cylinder Return Value:</strong></td>
+                <td class="text-end"><strong>@Details.Sum(d => d.Price).ToString("N2")</strong></td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="card mt-3">
+    <div class="row m-3">
+        <div class="col-md-4">
+            <label class="form-label">Return Date</label>
+            <RadzenDatePicker @bind-Value="ExtraReturnProduct.Date" 
+                              DateFormat="yyyy-MM-dd" 
+                              Class="w-100" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Remarks</label>
+            <input type="text"
+                   class="form-control"
+                   @bind="ExtraReturnProduct.Remarks"
+                   placeholder="Optional remarks" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Customer</label>
+            <input type="text"
+                   class="form-control"
+                   value="@CustomerName"
+                   readonly />
+        </div>
+    </div>
+</div>
+
+<RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Click="SaveExtraReturnProduct" class="mt-2 mb-2" />
+<RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+
+@code {
+    [Parameter]
+    public int CustomerId { get; set; }
+
+    [Parameter]
+    public int OrderId { get; set; }
+
+    [Inject]
+    private IExtraReturnProduct m_ExtraReturnProduct { get; set; }
+
+    [Inject]
+    private IProduct m_Product { get; set; }
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private ICustomer m_Customer { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    private Message notificationComponent;
+    private string CustomerName { get; set; } = string.Empty;
+
+    public List<ExtraReturnProductDetailViewModel> Details { get; set; } = new();
+    public IEnumerable<Product> Products { get; set; } = new List<Product>();
+    public IEnumerable<Product> AllProducts { get; set; } = new List<Product>();
+    public IEnumerable<Lov> SupplierList { get; set; } = new List<Lov>();
+
+    public int? SelectedSupplierId { get; set; }
+    public int? SelectedProductId { get; set; }
+
+    public ExtraReturnProduct ExtraReturnProduct { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        SupplierList = await m_Lookup.GetAllSupplierList();
+        AllProducts = await m_Product.GetAllProduct();
+        Products = AllProducts;
+
+        // Get customer name
+        var customer = m_Customer.GetEmployeeName(CustomerId);
+        CustomerName = customer ?? "Unknown";
+
+        ExtraReturnProduct = await m_ExtraReturnProduct.GetExtraReturnProductByOrderId(OrderId);
+
+        if (ExtraReturnProduct is null)
+        {
+            ExtraReturnProduct = new()
+            {
+                EmployeeId = CustomerId,
+                OrderId = OrderId,
+                CustomerId = CustomerId,
+                Date = DateTime.UtcNow
+            };
+        }
+        else
+        {
+            await LoadExistingExtraReturnProduct();
+        }
+    }
+
+    private void AddProduct()
+    {
+        if (SelectedProductId == null || SelectedProductId.Value <= 0)
+            return;
+
+        // Check if product already added
+        if (Details.Any(d => d.ProductId == SelectedProductId.Value))
+        {
+            notificationComponent.Show("Warning", 
+                "This empty cylinder is already added.", 
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        var product = AllProducts.FirstOrDefault(p => p.Id == SelectedProductId.Value);
+        if (product == null)
+            return;
+
+        var newDetail = new ExtraReturnProductDetailViewModel
+        {
+            ProductId = SelectedProductId.Value,
+            ProductName = product.DisplayNameSize,
+            Quantity = 1,
+            EmptyCylinderPrice = product.CurrentPrice?.CylinderBuyingPrice ?? 0,
+            Price = product.CurrentPrice?.CylinderBuyingPrice ?? 0
+        };
+
+        Details.Add(newDetail);
+        SelectedProductId = null;
+        CalculateTotal();
+    }
+
+    private void RemoveProduct(ExtraReturnProductDetailViewModel detail)
+    {
+        Details.Remove(detail);
+        CalculateTotal();
+    }
+
+    private void OnProductChanged(ExtraReturnProductDetailViewModel detail, object value)
+    {
+        if (value is int selectedProductId)
+        {
+            var product = AllProducts.FirstOrDefault(p => p.Id == selectedProductId);
+            if (product != null)
+            {
+                detail.ProductId = selectedProductId;
+                detail.ProductName = product.DisplayNameSize;
+                detail.EmptyCylinderPrice = product.CurrentPrice?.CylinderBuyingPrice ?? 0;
+                detail.Price = detail.Quantity * detail.EmptyCylinderPrice;
+                CalculateTotal();
+            }
+        }
+    }
+
+    private void OnQuantityChanged(ExtraReturnProductDetailViewModel detail, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int qty))
+        {
+            if (qty < 1) qty = 1;
+            detail.Quantity = qty;
+            detail.Price = detail.Quantity * detail.EmptyCylinderPrice;
+            CalculateTotal();
+        }
+    }
+
+    private void OnPriceChanged(ExtraReturnProductDetailViewModel detail, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double price))
+        {
+            if (price < 0) price = 0;
+            detail.EmptyCylinderPrice = price;
+            detail.Price = detail.Quantity * detail.EmptyCylinderPrice;
+            CalculateTotal();
+        }
+    }
+
+    private void CalculateTotal()
+    {
+        ExtraReturnProduct.TotalAmount = Details.Sum(d => d.Price);
+        StateHasChanged();
+    }
+
+    private void SaveExtraReturnProduct()
+    {
+        if (!Details.Any())
+        {
+            notificationComponent.Show("Validation Error", 
+                "Please add at least one empty cylinder.", 
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        if (Details.Any(d => d.Quantity <= 0))
+        {
+            notificationComponent.Show("Validation Error", 
+                "Quantity must be greater than zero.", 
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        try
+        {
+            ExtraReturnProduct.ExtraReturnProductDetails = Details.Select(od => new ExtraReturnProductDetails
+            {
+                ProductId = od.ProductId,
+                Quantity = od.Quantity,
+                EmptyCylinderPrice = od.EmptyCylinderPrice,
+                Price = od.Price
+            }).ToList();
+
+            ExtraReturnProduct.TotalAmount = Details.Sum(d => d.Price);
+
+            if (ExtraReturnProduct.Id > 0)
+            {
+                m_ExtraReturnProduct.UpdateExtraReturnProduct(ExtraReturnProduct);
+                notificationComponent.Show("Success", 
+                    "Extra return updated successfully.", 
+                    NotificationSeverity.Success);
+            }
+            else
+            {
+                m_ExtraReturnProduct.CreateExtraReturnProduct(ExtraReturnProduct);
+                notificationComponent.Show("Success", 
+                    "Extra return created successfully.", 
+                    NotificationSeverity.Success);
+            }
+
+            _navigationManager.NavigateTo($"/Sales");
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", 
+                $"Failed to save: {ex.Message}", 
+                NotificationSeverity.Error);
+        }
+    }
+
+    private async Task LoadExistingExtraReturnProduct()
+    {
+        if (ExtraReturnProduct != null)
+        {
+            Details = ExtraReturnProduct.ExtraReturnProductDetails.Select(od =>
+            {
+                var product = AllProducts.FirstOrDefault(p => p.Id == od.ProductId);
+                return new ExtraReturnProductDetailViewModel
+                {
+                    Id = od.Id,
+                    ProductId = od.ProductId,
+                    ProductName = product?.DisplayNameSize ?? "Unknown",
+                    Quantity = od.Quantity,
+                    EmptyCylinderPrice = od.EmptyCylinderPrice,
+                    Price = od.Price
+                };
+            }).ToList();
+
+            CalculateTotal();
+        }
+    }
+
+    private void OnSupplierChanged()
+    {
+        if (SelectedSupplierId.HasValue)
+        {
+            Products = AllProducts.Where(p => p.SupplierId == SelectedSupplierId.Value).ToList();
+        }
+        else
+        {
+            Products = AllProducts;
+        }
+    }
+
+    private void Cancel()
+    {
+        _navigationManager.NavigateTo($"/Sales");
+    }
+}

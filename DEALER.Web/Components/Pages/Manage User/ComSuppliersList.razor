@@ -1,0 +1,368 @@
+﻿@page "/AddEditSupplier"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DialogService DialogService
+
+
+<style>
+    .custom-checkbox-lg {
+        width: 1.5em;
+        height: 1.5em;
+    }
+
+    .form-check-label {
+        margin-left: 0.5em; /* Adds space between checkbox and label */
+    }
+</style>
+
+<h3>Companies</h3>
+
+<Message @ref="notificationComponent" />
+
+@if (FilterSuppliers == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <!-- Add New Button -->
+            <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success" class="me-3" />
+
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <!-- Search Icon -->
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i>
+                </span>
+
+                <!-- Search Text Box -->
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+
+        </div>
+        <RadzenDataGrid Data="@FilterSuppliers" TItem="Supplier" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="Supplier" Property="@nameof(Supplier.Name)" Title="Name" Width="250px" />
+                <RadzenDataGridColumn TItem="Supplier" Property="@nameof(Supplier.Phone)" Title="Phone" Width="150px" />
+                <RadzenDataGridColumn TItem="Supplier" Property="@nameof(Supplier.Address)" Title="Address" Width="250px" />
+                <RadzenDataGridColumn TItem="Supplier" Title="Disable" Width="80px">
+                    <Template Context="item">
+                        @{
+                            bool isDisabled = item.IsDisable == true;
+                            string text = isDisabled ? "Yes" : "No";
+                            string badgeColor = isDisabled ? "badge bg-danger " : "badge bg-primary"; // Blue for Yes, Red for No
+                        }
+                        <span class="@badgeColor">@text</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="Supplier" Title="Actions" Width="60px">
+                    <Template Context="supplier">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                        Click="() => Edit(supplier.Id)" style="margin-right: 5px;" title="Edit" />
+                        @* <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                        Click="() => ConfirmDelete(supplier.Id)" title="Delete" /> *@
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+
+@if (showModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>@(Supplier.Id > 0 ? "Edit Company" : "Add Company")</h3>
+                </div>
+
+                <EditForm Model="@Supplier" OnValidSubmit="HandleSubmit">
+                    <div class="card dataForm">
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk">Name</label>
+                                <InputText @bind-Value="Supplier.Name" class="form-control" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label>Phone</label>
+                                <InputText @bind-Value="Supplier.Phone" class="form-control" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label>Address</label>
+                                <InputText @bind-Value="Supplier.Address" class="form-control" />
+                            </div>
+                            @if (Supplier.Id > 0)
+                            {
+                                <div class="col-md-4 mb-3">
+                                    <div class="form-check mb-3 pt-4">
+                                        <InputCheckbox @bind-Value="Supplier.IsDisable" class="form-check-input custom-checkbox-lg" id="disableCheck" />
+                                        <label class="form-check-label" for="disableCheck">Disable</label>
+                                    </div>
+                                </div>
+                            }
+                            <div class="col-md-12">
+                                <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+                                <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" />
+                            </div>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    [Inject]
+    private ISupplier m_Supplier { get; set; }
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    NavigationManager NavigationManager { get; set; }
+
+    private bool showModal = false;
+    private Supplier Supplier { get; set; } = new Supplier();
+    private IList<Supplier> Suppliers { get; set; } = new List<Supplier>();
+    private Message notificationComponent;
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    private IEnumerable<Supplier> FilterSuppliers { get; set; } = new List<Supplier>();
+
+    private string search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private void AddNew()
+    {
+        Supplier = new Supplier();
+        showModal = true;
+    }
+
+    private void Edit(int id)
+    {
+        if (id > 0)
+        {
+            Supplier = Suppliers.FirstOrDefault(s => s.Id == id) ?? new Supplier();
+        }
+        else
+        {
+            Supplier = new Supplier();
+        }
+
+        showModal = true;
+    }
+
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(Supplier.Name))
+        {
+            notificationComponent.Show(
+                "কোম্পানির নাম লিখুন",
+                "অনুগ্রহ করে কোম্পানির নাম লিখুন।",
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        showModal = false;
+
+        if (Supplier.Id > 0)
+        {
+            m_Supplier.UpdateSupplier(Supplier);
+            notificationComponent.Show(
+    "কোম্পানি আপডেট হয়েছে",
+    "কোম্পানির তথ্য সফলভাবে আপডেট করা হয়েছে।",
+    NotificationSeverity.Success);
+        }
+        else
+        {
+            m_Supplier.CreateSupplier(Supplier);
+            notificationComponent.Show(
+                "কোম্পানি যোগ করা হয়েছে",
+                "কোম্পানির তথ্য সফলভাবে যোগ করা হয়েছে।",
+                NotificationSeverity.Success);
+        }
+
+        await LoadData();
+
+    }
+
+    // private async Task DeleteSupplier(int id)
+    // {
+    //     m_Supplier.DeleteSupplier(id);
+    //     notificationComponent.Show("Deleted Summary", "Company has been Deleted successfully", NotificationSeverity.Error);
+    //     await LoadData();
+    // }
+
+    async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+            {
+                OkButtonText = "Yes, Delete",
+                CancelButtonText = "No, Keep",
+                ShowClose = true,
+            };
+
+        bool? confirmed = await DialogService.Confirm("Are you absolutely sure you want to delete this item?", "Delete Confirmation", options);
+
+        if (confirmed == true)
+        {
+            await Delete(id);
+        }
+    }
+
+    async Task Delete(int id)
+    {
+        m_Supplier.DeleteSupplier(id);
+        notificationComponent.Show(
+    "কোম্পানি মুছে ফেলা হয়েছে",
+    "কোম্পানির তথ্য সফলভাবে মুছে ফেলা হয়েছে।",
+    NotificationSeverity.Success);
+      
+        await LoadData();
+        StateHasChanged(); // If you are managing the data source manually
+    }
+
+    private async Task LoadData()
+    {
+        Suppliers = await m_Supplier.GetAllSupplier();
+        FilterSuppliers = Suppliers;
+    }
+
+
+
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterSuppliers = FilterSuppliers;
+        }
+        else
+        {
+            FilterSuppliers = Suppliers.Where(c =>
+                (!string.IsNullOrEmpty(c.Name) && c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Phone) && c.Phone.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Address) && c.Address.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterSuppliers, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(3);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Phone").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Address").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilterSuppliers)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Name);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Phone);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Address);
+                        }
+
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Companies List_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Suppliers List Report").Bold().FontSize(10);
+            });
+        });
+    }
+}

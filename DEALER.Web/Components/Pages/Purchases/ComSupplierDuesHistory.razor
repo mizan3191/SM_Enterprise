@@ -1,0 +1,224 @@
+﻿@page "/SupplierDuesHistory"
+
+@using DEALER.DataAccess
+@using DEALER.Domain
+
+@using ClosedXML.Excel
+@using Microsoft.EntityFrameworkCore
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+<Message @ref="notificationComponent" />
+<h3>Company Dues History</h3>
+
+@if (SupplierDueHistory == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <!-- Search Icon -->
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+                </span>
+
+                <!-- Search Text Box -->
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+        </div>
+
+
+        <RadzenDataGrid Data="@FilteredSupplierDueHistory" TItem="SupplierDueDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="SupplierDueDTO" Property="@nameof(SupplierDueDTO.Name)" Title="Name" Width="200px" />
+                <RadzenDataGridColumn TItem="SupplierDueDTO" Property="@nameof(SupplierDueDTO.Phone)" Title="Phone" Width="150px" />
+                <RadzenDataGridColumn TItem="SupplierDueDTO" Title="Total Due" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.TotalDue.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilteredSupplierDueHistory.Sum(o => o.TotalDue).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="SupplierDueDTO" Title="Actions" Width="60px">
+                    <Template Context="customer">
+                        <RadzenButton Icon="visibility" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                                      Click="() => ViewOrder(customer.Id)" style="margin-right: 5px;" title="View" />
+                        <RadzenButton Icon="payment" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
+                                      Click="() => MakePayment(customer.Id)" title="Payment" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Inject]
+    private IOrder m_Order { get; set; }
+
+    [Inject]
+    private ISupplier m_Supplier { get; set; }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+
+    RadzenDataGrid<OrderDetail> grid;
+    private IEnumerable<SupplierDueDTO> SupplierDueHistory { get; set; } = new List<SupplierDueDTO>();
+    private IEnumerable<SupplierDueDTO> FilteredSupplierDueHistory { get; set; } = new List<SupplierDueDTO>();
+    private string search = string.Empty;
+    private Message notificationComponent;
+
+    protected override void OnInitialized()
+    {
+        SupplierDueHistory = m_Supplier.GetSupplierDueHistory();
+
+        FilteredSupplierDueHistory = SupplierDueHistory;
+    }
+
+    private void ViewOrder(int id)
+    {
+        _navigationManager.NavigateTo($"/SupplierWiseOrder/{id}");
+    }
+
+    private void MakePayment(int id)
+    {
+        _navigationManager.NavigateTo($"/SupplierPaymentHistory/{id}");
+    }
+
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilteredSupplierDueHistory = SupplierDueHistory;
+        }
+        else
+        {
+            FilteredSupplierDueHistory = SupplierDueHistory.Where(c =>
+                (!string.IsNullOrEmpty(c.Name) && c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.TotalDue.ToString()) && c.TotalDue.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Phone) && c.Phone.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilteredSupplierDueHistory, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(3);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Phone").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Amount").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilteredSupplierDueHistory)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Name);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Phone);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.TotalDue:N2}");
+                        }
+
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold();
+                        table.Cell().ColumnSpan(1).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilteredSupplierDueHistory.Sum(x => x.TotalDue):N2}").Bold();
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Company Due History_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Company Due History Report").Bold().FontSize(10);
+            });
+        });
+    }
+
+
+}

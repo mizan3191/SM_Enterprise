@@ -1,0 +1,477 @@
+﻿@inject NavigationManager NavigationManager
+@inject ICompany m_Company
+@inject IJSRuntime JS
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">@CompanyInfo.Name</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable">
+    <nav class="flex-column">
+
+        <!-- SALES Section -->
+        <AuthorizeView Roles="Admin,Manager,Sales,Administrator">
+            <Authorized>
+                <div class="nav-group">
+                    <div class="nav-group-title" @onclick="@(() => ToggleSection("sales"))">
+                        Sales
+                        <span class="toggle-icon">@GetToggleIcon("sales")</span>
+                    </div>
+                    <div class="nav-submenu @(IsSectionOpen("sales") ? "show" : "")">
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Sales">
+                                <span class="nav-menu" aria-hidden="true"></span> Sales Order
+                            </NavLink>
+                        </div>
+                        
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ProductSalesHistory">
+                                <span class="nav-menu" aria-hidden="true"></span>Product Sales History
+                            </NavLink>
+                        </div>
+                      
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="DRSSalesReturn">
+                                <span class="nav-menu" aria-hidden="true"></span> DRS Sales History
+                            </NavLink>
+                        </div>
+                       
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+
+        <!-- Due Section -->
+        <AuthorizeView Roles="Admin,Manager,Administrator">
+            <Authorized>
+                <div class="nav-group">
+                    <div class="nav-group-title" @onclick="@(() => ToggleSection("due"))">
+                        Due & Payment
+                        <span class="toggle-icon">@GetToggleIcon("due")</span>
+                    </div>
+                    <div class="nav-submenu @(IsSectionOpen("due") ? "show" : "")">
+
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="CustomerDuesHistory">
+                                <span class="nav-menu" aria-hidden="true"></span>DSR Due History
+                            </NavLink>
+                        </div>
+                   
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ShopPaymentHistory">
+                                <span class="nav-menu" aria-hidden="true"></span>Shop Payment History
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ShopDuePayment">
+                                <span class="nav-menu" aria-hidden="true"></span>Shop Due Payment List
+                            </NavLink>
+                        </div>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <!-- PURCHASES Section -->
+        <AuthorizeView Roles="Admin,Manager,Administrator">
+            <Authorized>
+                <div class="nav-group">
+                    <div class="nav-group-title" @onclick="@(() => ToggleSection("purchases"))">
+                        Purchases
+                        <span class="toggle-icon">@GetToggleIcon("purchases")</span>
+                    </div>
+                    <div class="nav-submenu @(IsSectionOpen("purchases") ? "show" : "")">
+                        
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Purchases">
+                                <span class="nav-menu" aria-hidden="true"></span> Purchases
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="SupplierDuesHistory">
+                                <span class="nav-menu" aria-hidden="true"></span> Due List
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="SupplierPaymentHistory">
+                                <span class="nav-menu" aria-hidden="true"></span> Payment History
+                            </NavLink>
+                        </div>
+                       
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <!-- Products Section -->
+        <AuthorizeView Roles="Admin,Manager,Administrator">
+            <Authorized>
+                <div class="nav-group">
+                    <div class="nav-group-title" @onclick="@(() => ToggleSection("products"))">
+                        Products
+                        <span class="toggle-icon">@GetToggleIcon("products")</span>
+                    </div>
+                    <div class="nav-submenu @(IsSectionOpen("products") ? "show" : "")">
+                       
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Products">
+                                <span class="nav-menu" aria-hidden="true"></span> Products
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ReOrders">
+                                <span class="nav-menu" aria-hidden="true"></span> Re-Orders List
+                            </NavLink>
+                        </div>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+
+        <!-- Expenses Section -->
+        <AuthorizeView Roles="Admin,Manager,Administrator">
+            <Authorized>
+                <div class="nav-group">
+                    <div class="nav-group-title" @onclick="@(() => ToggleSection("expenses"))">
+                        Expenses
+                        <span class="toggle-icon">@GetToggleIcon("expenses")</span>
+                    </div>
+                    <div class="nav-submenu @(IsSectionOpen("expenses") ? "show" : "")">
+                        
+                     @*    <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ProductAdjustment">
+                                <span class="nav-menu" aria-hidden="true"></span> Stock Adjustment
+                            </NavLink>
+                        </div> *@
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Expenses">
+                                <span class="nav-menu" aria-hidden="true"></span> Monthly Expenses
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="DailyExpense">
+                                <span class="nav-menu" aria-hidden="true"></span> Daily Expenses
+                            </NavLink>
+                        </div>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+@*         <!-- Damage Product Section -->
+        <AuthorizeView Roles="Admin,Manager,Administrator">
+            <Authorized>
+                <div class="nav-group">
+                    <div class="nav-group-title" @onclick="@(() => ToggleSection("damageProduct"))">
+                        Damage Product
+                        <span class="toggle-icon">@GetToggleIcon("damageProduct")</span>
+                    </div>
+                    <div class="nav-submenu @(IsSectionOpen("damageProduct") ? "show" : "")">
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="DamageStock">
+                                <span class="nav-menu" aria-hidden="true"></span> Damage Stock
+                            </NavLink>
+                        </div>
+                       
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="DamageProductHandoverSummary">
+                                <span class="nav-menu" aria-hidden="true"></span> Handover Summary
+                            </NavLink>
+                        </div>
+
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView> *@
+
+        <!-- LOOKUP Section -->
+        <AuthorizeView Roles="Admin,Manager,Administrator">
+            <Authorized>
+                <div class="nav-group">
+                    <div class="nav-group-title" @onclick="@(() => ToggleSection("lookup"))">
+                        Shared Data
+                        <span class="toggle-icon">@GetToggleIcon("lookup")</span>
+                    </div>
+                    <div class="nav-submenu @(IsSectionOpen("lookup") ? "show" : "")">
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ProductCategory">
+                                <span class="nav-menu" aria-hidden="true"></span> Categories
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Packaging">
+                                <span class="nav-menu" aria-hidden="true"></span> Packaging
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="UnitOfMeasurement">
+                                <span class="nav-menu" aria-hidden="true"></span> Unit of Measurement
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Size">
+                                <span class="nav-menu" aria-hidden="true"></span> Product Size
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="EmployeeType">
+                                <span class="nav-menu" aria-hidden="true"></span> Employee Type
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="CustomerType">
+                                <span class="nav-menu" aria-hidden="true"></span> Customer Type
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ExpenseType">
+                                <span class="nav-menu" aria-hidden="true"></span>  Monthly Expenses Type
+                            </NavLink>
+                        </div>
+
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="DailyExpenseType">
+                                <span class="nav-menu" aria-hidden="true"></span> Daily Expense Type
+                            </NavLink>
+                        </div>
+
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="PaymentMethod">
+                                <span class="nav-menu" aria-hidden="true"></span> Payment Method
+                            </NavLink>
+                        </div>
+
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ShippingMethod">
+                                <span class="nav-menu" aria-hidden="true"></span> Shipping Method
+                            </NavLink>
+                        </div>
+
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ReasonofAdjustment">
+                                <span class="nav-menu" aria-hidden="true"></span> Adjustment
+                            </NavLink>
+                        </div>
+
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Road">
+                                <span class="nav-menu" aria-hidden="true"></span> Road
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Shop">
+                                <span class="nav-menu" aria-hidden="true"></span> Shop
+                            </NavLink>
+                        </div>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <!-- Manage User Section -->
+        <AuthorizeView Roles="Admin,Manager,Administrator">
+            <Authorized>
+                <div class="nav-group">
+                    <div class="nav-group-title" @onclick="@(() => ToggleSection("admin"))">
+                        Manage User
+                        <span class="toggle-icon">@GetToggleIcon("admin")</span>
+                    </div>
+                    <div class="nav-submenu @(IsSectionOpen("admin") ? "show" : "")">
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Employees">
+                                <span class="nav-menu" aria-hidden="true"></span> Employees
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="StaffSalary">
+                                <span class="nav-menu" aria-hidden="true"></span> Staff Salary
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Customers">
+                                <span class="nav-menu" aria-hidden="true"></span> Customers
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="AddEditSupplier">
+                                <span class="nav-menu" aria-hidden="true"></span> Company
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ManageUser">
+                                <span class="nav-menu" aria-hidden="true"></span> Manage User
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="MyCompany">
+                                <span class="nav-menu" aria-hidden="true"></span> My Business
+                            </NavLink>
+                        </div>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        
+        <!-- History Section -->
+        <AuthorizeView Roles="Admin,Manager,Administrator">
+            <Authorized>
+                <div class="nav-group">
+                    <div class="nav-group-title" @onclick="@(() => ToggleSection("history"))">
+                        History
+                        <span class="toggle-icon">@GetToggleIcon("history")</span>
+                    </div>
+                    <div class="nav-submenu @(IsSectionOpen("history") ? "show" : "")">
+                        
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="TransactionHistory">
+                                <span class="nav-menu" aria-hidden="true"></span> Transaction History
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="Graphs">
+                                <span class="nav-menu" aria-hidden="true"></span> Chart History
+                            </NavLink>
+                        </div>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        <!-- Database Backup Section -->
+        <AuthorizeView Roles="Admin,Administrator">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <a class="nav-link" href="javascript:void(0)" @onclick="OpenBackupModal">
+                        <span class="nav-menu" aria-hidden="true"></span> Database Backup
+                    </a>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        
+    </nav>
+
+    @if (showBackupModal)
+    {
+        <div class="modal-backdrop-custom" @onclick="CloseBackupModal"></div>
+        <div class="modal-custom">
+            <div class="modal-content-custom">
+                <h5>Database Backup</h5>
+                <p>আপনি কি ডাটাবেস ব্যাকআপ ডাউনলোড করতে চান?</p>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger py-2">@errorMessage</div>
+                }
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" @onclick="CloseBackupModal" disabled="@isDownloading">
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary" @onclick="ConfirmBackup" disabled="@isDownloading">
+                        @if (isDownloading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            <span>Downloading...</span>
+                        }
+                        else
+                        {
+                            <span>Yes, Download</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+
+@code {
+
+    //[Inject]
+    // private ICompany m_Company { get; set; }
+
+    private CompanyInfo CompanyInfo { get; set; }
+
+    private bool showBackupModal = false;
+    private bool isDownloading = false;
+    private string errorMessage = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        CompanyInfo = m_Company.GetCompanyInfo();
+    }
+
+    private void OpenBackupModal()
+    {
+        errorMessage = string.Empty;
+        showBackupModal = true;
+    }
+
+    private void CloseBackupModal()
+    {
+        if (isDownloading) return; // downloading অবস্থায় close করতে দিবো না
+        showBackupModal = false;
+        errorMessage = string.Empty;
+    }
+
+    private async Task ConfirmBackup()
+    {
+        isDownloading = true;
+        errorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var zipBytes = await m_Company.CreateBackupZipAsync();
+            var fileName = $"database_backup_{DateTime.Now:yyyyMMdd_HHmmss}.zip";
+            await JS.InvokeVoidAsync("saveAsFile", fileName, Convert.ToBase64String(zipBytes));
+            showBackupModal = false;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "ব্যাকআপ তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।";
+        }
+        finally
+        {
+            isDownloading = false;
+            StateHasChanged();
+        }
+    }
+
+
+    private Dictionary<string, bool> sectionStates = new()
+    {
+        { "sales", false },
+        { "purchases", false },
+        { "products", false },
+        { "damageProduct", false },
+        { "history", false },
+        { "due", false },
+        { "expenses", false },
+        { "lookup", false },
+        { "admin", false }
+    };
+
+    private void ToggleSection(string sectionName)
+    {
+        sectionStates[sectionName] = !sectionStates[sectionName];
+    }
+
+    private bool IsSectionOpen(string sectionName)
+    {
+        return sectionStates.TryGetValue(sectionName, out var isOpen) && isOpen;
+    }
+
+    private string GetToggleIcon(string sectionName)
+    {
+        return IsSectionOpen(sectionName) ? "▼" : "►";
+    }
+}

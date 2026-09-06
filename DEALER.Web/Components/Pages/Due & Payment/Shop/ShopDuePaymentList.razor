@@ -1,0 +1,342 @@
+﻿@page "/ShopDuePayment"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+<Message @ref="notificationComponent" />
+<h3>Shop Due Payment Histories</h3>
+
+@if (FilterShopDuePaymentListSummaryList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <!-- Back Button -->
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <!-- Search Icon -->
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i>
+                </span>
+
+                <!-- Search Text Box -->
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+
+            <!-- Spacer to push dates to the right -->
+            <div class="flex-grow-1"></div>
+
+            <!-- Date Filter - Now aligned to the right with consistent widths -->
+            <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center me-3">
+                    <RadzenDatePicker @bind-Value="fromDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date"
+                                      Style="width: 180px;" />
+                </div>
+                <div class="d-flex align-items-center">
+                    <RadzenDatePicker @bind-Value="toDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date"
+                                      Style="width: 180px;" />
+                </div>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@FilterShopDuePaymentListSummaryList" TItem="ShopDuePaymentListSummary" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="ShopDuePaymentListSummary" Title="Shop Name" Width="200px">
+                    <Template Context="context">
+                        @context.ShopName
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ShopDuePaymentListSummary" Title="Owner Name" Width="100px">
+                    <Template Context="context">
+                        @context.OwnerName
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ShopDuePaymentListSummary" Title="Area" Width="100px">
+                    <Template Context="context">
+                        @context.Area
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ShopDuePaymentListSummary" Title="Referred By" Width="100px">
+                    <Template Context="context">
+                        @context.ReferredBy
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="ShopDuePaymentListSummary" Title="Due Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.ShopDueAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterShopDuePaymentListSummaryList.Sum(o => o.ShopDueAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ShopDuePaymentListSummary" Title="Paid Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.ShopPaidAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterShopDuePaymentListSummaryList.Sum(o => o.ShopPaidAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ShopDuePaymentListSummary" Property="@nameof(ShopDuePaymentListSummary.DateFormatted)" Title="Date" Width="80px">
+                    <FooterTemplate>
+                        <div class="fw-bold">
+                            @((FilterShopDuePaymentListSummaryList.Sum(o => o.ShopDueAmount) - FilterShopDuePaymentListSummaryList.Sum(o => o.ShopPaidAmount)).ToString("N2"))
+                        </div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+
+@code {
+    [Inject]
+    private IDSRShopPaymentHistory m_DSRShopPaymentHistory { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    public IEnumerable<ShopDuePaymentListSummary> ShopDuePaymentListSummaryList { get; set; } = new List<ShopDuePaymentListSummary>();
+    public IEnumerable<ShopDuePaymentListSummary> FilterShopDuePaymentListSummaryList { get; set; } = new List<ShopDuePaymentListSummary>();
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    private string search = string.Empty;
+
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ShopDuePaymentListSummaryList = await m_DSRShopPaymentHistory.GetAllShopDuePaymentListSummary();
+        FilterShopDuePaymentListSummaryList = ShopDuePaymentListSummaryList.OrderBy(x => x.ShopName).ToList();
+    }
+
+    public DateTime? fromDate
+    {
+        get => _fromDate;
+        set
+        {
+            if (_fromDate != value)
+            {
+                _fromDate = value;
+                FilterData();
+            }
+        }
+    }
+
+    public DateTime? toDate
+    {
+        get => _toDate;
+        set
+        {
+            if (_toDate != value)
+            {
+                _toDate = value;
+                FilterData();
+            }
+        }
+    }
+
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    // private void FilterData()
+    // {
+    //     if (string.IsNullOrWhiteSpace(search))
+    //     {
+    //         FilterShopDuePaymentListSummaryList = ShopDuePaymentListSummaryList;
+    //     }
+    //     else
+    //     {
+    //         FilterShopDuePaymentListSummaryList = ShopDuePaymentListSummaryList.Where(c =>
+    //             (!string.IsNullOrEmpty(c.ShopName) && c.ShopName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+    //             (!string.IsNullOrEmpty(c.Area) && c.Area.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+    //             (!string.IsNullOrEmpty(c.IssuedBy) && c.IssuedBy.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+    //             (!string.IsNullOrEmpty(c.ShopPaidAmount.ToString()) && c.ShopPaidAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+    //             (!string.IsNullOrEmpty(c.ShopDueAmount.ToString()) && c.ShopDueAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+    //             (!string.IsNullOrEmpty(c.Date.ToString()) && c.Date.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+    //             (!string.IsNullOrEmpty(c.OwnerName.ToString()) && c.OwnerName.Contains(search, StringComparison.OrdinalIgnoreCase))
+    //         ).ToList();
+    //     }
+
+
+    //     // Apply date filtering with proper date-only comparison
+    //     if (fromDate.HasValue || toDate.HasValue)
+    //     {
+    //         // Convert to DateOnly for comparison (or use DateTime.Date)
+    //         var filterFrom = fromDate?.Date ?? DateTime.MinValue;
+    //         var filterTo = toDate?.Date.AddDays(1) ?? DateTime.MaxValue; // Add 1 day to include entire end date
+
+    //         FilterShopDuePaymentListSummaryList = FilterShopDuePaymentListSummaryList.Where(x =>
+    //             x.Date.Date >= filterFrom &&
+    //             x.Date.Date < filterTo
+    //         ).ToList();
+    //     }
+
+    // }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterShopDuePaymentListSummaryList = ShopDuePaymentListSummaryList;
+        }
+        else
+        {
+            FilterShopDuePaymentListSummaryList = ShopDuePaymentListSummaryList.Where(c =>
+                (c.ShopName != null && c.ShopName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (c.Area != null && c.Area.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (c.ReferredBy != null && c.ReferredBy.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (c.ShopPaidAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (c.ShopDueAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (c.Date.ToString("yyyy-MM-dd").Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (c.OwnerName != null && c.OwnerName.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        // Date filtering
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            var filterFrom = fromDate?.Date ?? DateTime.MinValue;
+            var filterTo = toDate?.Date.AddDays(1) ?? DateTime.MaxValue;
+
+            FilterShopDuePaymentListSummaryList = FilterShopDuePaymentListSummaryList
+                .Where(x => x.Date.Date >= filterFrom && x.Date.Date < filterTo)
+                .ToList();
+        }
+
+    }
+
+
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterShopDuePaymentListSummaryList, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                // Set individual margins
+                page.MarginTop(20);     // Top margin
+                page.MarginBottom(20);  // Bottom margin
+                page.MarginLeft(40);    // Left margin
+                page.MarginRight(40);   // Right margin
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(2);
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Shop Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Owner Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Area").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Referred By").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Due Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Paid Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var customer in FilterShopDuePaymentListSummaryList)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.ShopName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.OwnerName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Area);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.ReferredBy);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.ShopDueAmount:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.ShopPaidAmount:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Date);
+
+                        }
+
+                        var totalDue = FilterShopDuePaymentListSummaryList.Sum(x => x.ShopDueAmount);
+                        var totalPayment = FilterShopDuePaymentListSummaryList.Sum(x => x.ShopPaidAmount);
+                        var totalDuePayment = totalDue - totalPayment;
+                        // Total Row
+                        table.Cell().ColumnSpan(4).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{totalDue:N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{totalPayment:N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{totalDuePayment:N2}").Bold();
+
+
+                    });
+
+                page.Footer().Row(row =>
+                    {
+                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                        row.RelativeItem().AlignCenter().Text(text =>
+                        {
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                        row.RelativeItem(); // Empty space for right side (optional)
+                    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Shop Due Payment Histories_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Shop Due Payment Histories Report").Bold().FontSize(10);
+            });
+        });
+    }
+
+}

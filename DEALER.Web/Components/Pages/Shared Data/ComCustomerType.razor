@@ -1,0 +1,205 @@
+﻿@page "/CustomerType"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+
+<h3>Customer Type</h3>
+
+@if (CustomerTypeList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success"></RadzenButton>
+
+        <RadzenDataGrid Data="@CustomerTypeList" TItem="CustomerType" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="CustomerType" Property="@nameof(CustomerType.Name)" Title="Customer Type" Width="200px" />
+                <RadzenDataGridColumn TItem="CustomerType" Property="@nameof(CustomerType.Description)" Title="Description" Width="350px" />
+                <RadzenDataGridColumn TItem="CustomerType" Title="Deleted" Width="80px">
+                    <Template Context="item">
+                        @{
+                            bool isDisabled = item.IsDeleted == true;
+                            string text = isDisabled ? "Yes" : "No";
+                            string badgeColor = isDisabled ? "badge bg-danger" : "badge bg-primary"; // Blue for Yes, Red for No
+                        }
+                        <span class="@badgeColor">@text</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="CustomerType" Title="Actions" Width="60px">
+                    <Template Context="product">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                      Click="() => Edit(product.Id)" style="margin-right: 5px;" title="Edit" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="() => ConfirmDelete(product.Id)" title="Delete" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@if (showModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>@(CustomerType.Id > 0 ? "Edit Customer Type" : "Add Customer Type")</h3>
+                </div>
+
+                <EditForm Model="@CustomerType" OnValidSubmit="HandleSubmit">
+                    <div class="card dataForm ">
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk">Name</label>
+                                <InputText @bind-Value="CustomerType.Name" class="form-control"></InputText>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label>Comments</label>
+                                <InputText @bind-Value="CustomerType.Description" class="form-control"></InputText>
+                            </div>
+
+                            @if (CustomerType.Id > 0)
+                            {
+                                <div class="col-md-4 mb-3">
+                                    <div class="form-check mb-3 pt-4">
+                                        <InputCheckbox @bind-Value="CustomerType.IsDeleted" class="form-check-input custom-checkbox-lg" id="disableCheck" />
+                                        <label class="form-check-label" for="disableCheck">Deleted</label>
+                                    </div>
+                                </div>
+                            }
+
+                        </div>
+                        <br />
+                        <div class="col-md-12">
+                            <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
+                            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" />
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private NavigationManager _navigationManager { get; set; }
+
+    public IEnumerable<CustomerType> CustomerTypeList { get; set; } = new List<CustomerType>();
+
+    private bool showModal = false;
+
+    public CustomerType CustomerType { get; set; }
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(CustomerType.Name))
+        {
+            notificationComponent.Show(
+                "কাস্টমারের ধরন প্রয়োজন",
+                "অনুগ্রহ করে কাস্টমারের ধরন লিখুন।",
+                NotificationSeverity.Warning);
+            return;
+        }
+
+        showModal = false;
+
+        if (CustomerType.Id > 0)
+        {
+            m_Lookup.UpdateCustomerType(CustomerType);
+            notificationComponent.Show(
+    "কাস্টমারের ধরন আপডেট হয়েছে",
+    "কাস্টমারের ধরনের তথ্য সফলভাবে আপডেট করা হয়েছে।",
+    NotificationSeverity.Success);
+        }
+        else
+        {
+            m_Lookup.CreateCustomerType(CustomerType);
+            notificationComponent.Show(
+                "কাস্টমারের ধরন যোগ করা হয়েছে",
+                "কাস্টমারের ধরনের তথ্য সফলভাবে যোগ করা হয়েছে।",
+                NotificationSeverity.Success);
+        }
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private void Edit(int id)
+    {
+        showModal = true;
+
+        if (id > 0)
+        {
+            CustomerType = m_Lookup.GetCustomerType(id);
+        }
+        else
+        {
+            CustomerType = new CustomerType()
+                {
+                };
+        }
+    }
+
+    async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+            {
+                OkButtonText = "Yes, Delete",
+                CancelButtonText = "No, Keep",
+                ShowClose = true,
+            };
+
+        bool? confirmed = await DialogService.Confirm("Are you absolutely sure you want to delete this item?", "Delete Confirmation", options);
+
+        if (confirmed == true)
+        {
+            await Delete(id);
+        }
+    }
+
+    async Task Delete(int id)
+    {
+        m_Lookup.DeleteCustomerType(id);
+        notificationComponent.Show(
+            "কাস্টমারের ধরন মুছে ফেলা হয়েছে",
+            "কাস্টমারের ধরনের তথ্য সফলভাবে মুছে ফেলা হয়েছে।",
+            NotificationSeverity.Success);
+
+        await LoadData();
+        StateHasChanged(); // If you are managing the data source manually
+    }
+
+
+    private void AddNew()
+    {
+        CustomerType = new CustomerType()
+            {
+            };
+        showModal = true;
+    }
+
+    private async Task LoadData()
+    {
+        CustomerTypeList = await m_Lookup.GetAllCustomerType();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+}
