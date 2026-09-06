@@ -254,7 +254,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        ClientList = await m_Lookup.GetAllCustomerList();
+        ClientList = await m_Lookup.GetAllEmployeeList();
         PaymentMethodList = await m_Lookup.GetAllPaymentMethodList();
 
         //ClientList = ClientList.Where(c => !c.IsDeleted);

@@ -1,4 +1,4 @@
-﻿@page "/ShopDuesSellTime/{DSRCustomerId:int}/{OrderId:int}"
+﻿@page "/ShopDuesSellTime/{DSREmployeeId:int}/{OrderId:int}"
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject DialogService DialogService
@@ -66,12 +66,12 @@ else
 
                 <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Referred By" Width="150px">
                     <Template Context="item">
-                        <div>@item.CustomerName</div>
+                        <div>@item.EmployeeName</div>
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Issued By" Width="150px">
                     <Template Context="item">
-                        <div>@item.DSRCustomerName</div>
+                        <div>@item.DSREmployeeName</div>
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Actions" Width="100px">
@@ -259,7 +259,7 @@ else
 
 @code {
     [Parameter]
-    public int DSRCustomerId { get; set; }
+    public int DSREmployeeId { get; set; }
 
 
     [Parameter]
@@ -343,7 +343,7 @@ else
 
         try
         {
-            DSRShopDue.DSRCustomerId = DSRCustomerId;
+            DSRShopDue.DSREmployeeId = DSREmployeeId;
             DSRShopDue.OrderId = OrderId;
 
             // Save only the main entity without products
@@ -396,7 +396,7 @@ else
             }
             try
             {
-                DSRShopDue.DSRCustomerId = DSRCustomerId;
+                DSRShopDue.DSREmployeeId = DSREmployeeId;
                 DSRShopDue.OrderId = OrderId;
                 DSRShopDue.Products = new List<ShopEmptyCylinderProduct>(); // products ছাড়া save
                 var savedId = m_DSRShopDue.CreateDSRShopDue(DSRShopDue);
@@ -527,7 +527,7 @@ else
             else
             {
                 // নতুন record (IsSaved = false মানে AddProduct click হয়নি, direct Save)
-                DSRShopDue.DSRCustomerId = DSRCustomerId;
+                DSRShopDue.DSREmployeeId = DSREmployeeId;
                 DSRShopDue.OrderId = OrderId;
                 m_DSRShopDue.CreateDSRShopDue(DSRShopDue);
                 notificationComponent.Show("সংরক্ষিত হয়েছে", "দোকানের বকেয়ার তথ্য সফলভাবে যোগ করা হয়েছে।", NotificationSeverity.Success);
@@ -611,7 +611,7 @@ else
     {
         DSRShopDue = new DSRShopDue()
         {
-            DSRCustomerId = DSRCustomerId,
+            DSREmployeeId = DSREmployeeId,
             OrderId = OrderId,
             Date = m_Lookup.GetOrderDate(OrderId),
             Products = new List<ShopEmptyCylinderProduct>(),
@@ -656,7 +656,7 @@ else
                 (!string.IsNullOrEmpty(c.ShopName) && c.ShopName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.DueAmount.ToString()) && c.DueAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.CustomerName) && c.CustomerName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                (!string.IsNullOrEmpty(c.EmployeeName) && c.EmployeeName.Contains(search, StringComparison.OrdinalIgnoreCase))
             ).ToList();
         }
     }
@@ -709,7 +709,7 @@ else
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.ShopName);
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{item.DueAmount:N2}");
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.TotalCylinderQty.ToString());
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.CustomerName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.EmployeeName);
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.DateFormatted);
                         }
 

@@ -183,7 +183,7 @@ else
                             <div class="col-md-4 mb-3">
                                 <label class="Asterisk">Given By</label>
                                 <RadzenDropDown @bind-Value="Expense.CustomerId"
-                                                Data="@CustomerList"
+                                                Data="@EmployeeList"
                                                 TextProperty="Name"
                                                 ValueProperty="Id"
                                                 Placeholder="Select Customer"
@@ -226,7 +226,7 @@ else
     public IEnumerable<Expense> Expenses { get; set; } = new List<Expense>();
     public IEnumerable<Lov> PaymentMethods { get; set; } = new List<Lov>();
     public IEnumerable<Lov> ExpenseTypes { get; set; } = new List<Lov>();
-    public IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
+    public IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
 
     private bool showModal = false;
 
@@ -249,7 +249,7 @@ else
     {
         PaymentMethods = await m_Lookup.GetAllPaymentMethodList();
         ExpenseTypes = await m_Lookup.GetAllExpenseTypeList();
-        CustomerList = await m_Lookup.GetAllCustomerList();
+        EmployeeList = await m_Lookup.GetAllEmployeeList();
 
         //CustomerList = CustomerList.Where(c => !c.IsDeleted);
         //PaymentMethods = PaymentMethods.Where(c => !c.IsDeleted);
@@ -339,7 +339,7 @@ else
                 ExpenseDate = DateTime.Now,
                 ExpenseTypeId = ExpenseTypes.FirstOrDefault()?.Id ?? 0,
                 PaymentMethodId = PaymentMethods.FirstOrDefault()?.Id ?? 0,
-                CustomerId = CustomerList.FirstOrDefault()?.Id ?? 0,
+                CustomerId = EmployeeList.FirstOrDefault()?.Id ?? 0,
             };
         }
     }

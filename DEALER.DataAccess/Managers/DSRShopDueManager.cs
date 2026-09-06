@@ -38,7 +38,7 @@
                 if (DSRShopDue.OrderId > 0)
                 {
                     var lastPayment = _dbContext.CustomerPaymentHistories
-                                    .Where(p => p.CustomerId == DSRShopDue.DSRCustomerId)
+                                    .Where(p => p.EmployeeId == DSRShopDue.DSREmployeeId)
                                     .OrderByDescending(p => p.Id)
                                     .FirstOrDefault();
 
@@ -47,7 +47,7 @@
 
                     var payment = new CustomerPaymentHistory()
                     {
-                        CustomerId = DSRShopDue.DSRCustomerId.Value,
+                        EmployeeId = DSRShopDue.DSREmployeeId.Value,
                         OrderId = DSRShopDue.OrderId,
                         DSRShopDueId = DSRShopDue.Id,
                         PaymentDate = DSRShopDue.Date,
@@ -129,11 +129,11 @@
                 }
                 _dbContext.SaveChanges();
                 // Update Customer Payment History
-                if (DSRShopDue.OrderId > 0 && DSRShopDue.DSRCustomerId.HasValue)
+                if (DSRShopDue.OrderId > 0 && DSRShopDue.DSREmployeeId.HasValue)
                 {
                     var payment = _dbContext.CustomerPaymentHistories
                         .FirstOrDefault(p => p.DSRShopDueId == DSRShopDue.Id
-                                          && p.CustomerId == DSRShopDue.DSRCustomerId);
+                                          && p.EmployeeId == DSRShopDue.DSREmployeeId);
                     if (payment != null)
                     {
                         double diff = DSRShopDue.DueAmount - previousAmount;
@@ -143,18 +143,18 @@
                         _dbContext.Update(payment);
                         _dbContext.SaveChanges();
                         if (diff != 0)
-                            RecalculateCustomerPayments(payment.CustomerId.Value, payment.Id, diff);
+                            RecalculateCustomerPayments(payment.EmployeeId.Value, payment.Id, diff);
                     }
                     else
                     {
                         var lastPayment = _dbContext.CustomerPaymentHistories
-                            .Where(p => p.CustomerId == DSRShopDue.DSRCustomerId)
+                            .Where(p => p.EmployeeId == DSRShopDue.DSREmployeeId)
                             .OrderByDescending(p => p.Id)
                             .FirstOrDefault();
                         double before = lastPayment?.TotalDueAfterPayment ?? 0;
                         _dbContext.CustomerPaymentHistories.Add(new CustomerPaymentHistory
                         {
-                            CustomerId = DSRShopDue.DSRCustomerId.Value,
+                            EmployeeId = DSRShopDue.DSREmployeeId.Value,
                             OrderId = DSRShopDue.OrderId,
                             DSRShopDueId = DSRShopDue.Id,
                             PaymentDate = DSRShopDue.Date,
@@ -345,7 +345,7 @@
                 if (shopDue.OrderId > 0 && shopDue.OrderId is not null)
                 {
                     var payment = _dbContext.CustomerPaymentHistories
-                                 .FirstOrDefault(p => p.CustomerId == shopDue.DSRCustomerId
+                                 .FirstOrDefault(p => p.EmployeeId == shopDue.DSREmployeeId
                                  && p.OrderId == shopDue.OrderId
                                  && p.DSRShopDueId == shopDue.Id);
 
@@ -356,7 +356,7 @@
                         _dbContext.SaveChanges();
 
                         // Recalculate subsequent payments (subtract the amount)
-                        RecalculateCustomerPayments(payment.CustomerId.Value, payment.Id, -payment.AmountPaid);
+                        RecalculateCustomerPayments(payment.EmployeeId.Value, payment.Id, -payment.AmountPaid);
                     }
                 }
 
@@ -369,7 +369,7 @@
             }
         }
 
-        private void RecalculateCustomerPayments(int customerId, int id, double amount)
+        private void RecalculateCustomerPayments(int employeeId, int id, double amount)
         {
             if (amount == 0)
                 return;
@@ -377,7 +377,7 @@
             try
             {
                 var payments = _dbContext.CustomerPaymentHistories
-                                   .Where(p => p.CustomerId == customerId && p.Id > id)
+                                   .Where(p => p.EmployeeId == employeeId && p.Id > id)
                                    .OrderBy(p => p.Id)
                                    .ToList();
 
@@ -406,7 +406,7 @@
             {
                 return _dbContext.DSRShopDues
                     .Include(x => x.Employee)
-                    .Include(x => x.DSRCustomer)
+                    .Include(x => x.DSREmployee)
                     .Include(x => x.Shop)
                     .Include(x => x.Products)
                         .ThenInclude(p => p.Product)
@@ -415,8 +415,8 @@
                     .Select(x => new DSRShopDueForOrderDTO
                     {
                         Id = x.Id,
-                        CustomerName = x.Employee != null ? x.Employee.Name : "",
-                        DSRCustomerName = x.DSRCustomer != null ? x.DSRCustomer.Name : "",
+                        EmployeeName = x.Employee != null ? x.Employee.Name : "",
+                        DSREmployeeName = x.DSREmployee != null ? x.DSREmployee.Name : "",
                         ShopName = x.Shop != null ? x.Shop.Name : "",
                         OrderId = x.OrderId,
                         DueAmount = x.DueAmount,
@@ -488,7 +488,7 @@
             {
                 return _dbContext.DSRShopDues
                     .Include(x => x.Employee)
-                    .Include(x => x.DSRCustomer)
+                    .Include(x => x.DSREmployee)
                     .Include(x => x.Shop)
                     .Include(x => x.Products)
                         .ThenInclude(p => p.Product)
@@ -524,7 +524,7 @@
                     .Select(x => new DSRShopDueDTO
                     {
                         Id = x.Id,
-                        CustomerName = x.Employee.Name,
+                        EmployeeName = x.Employee.Name,
                         ShopName = x.Shop.Name,
                         OrderId = x.OrderId,
                         DueAmount = x.DueAmount,
@@ -558,15 +558,15 @@
 
                 return _dbContext.DSRShopDues
                     .Include(x => x.Employee)
-                    .Include(x => x.DSRCustomer)
+                    .Include(x => x.DSREmployee)
                     .Include(x => x.Shop)
                     .Where(x => x.Date.Date >= fromDate && x.Date.Date <= toDate && !x.IsDeleted && x.ShopId == shopId && !x.Shop.IsDeleted)
                     .OrderByDescending(x => x.Id)
                     .Select(x => new DSRShopDueDTO
-                    {
+                    { 
                         Id = x.Id,
-                        CustomerName = x.Employee.Name,
-                        IssuedBYCustomerName = x.DSRCustomer.Name,
+                        EmployeeName = x.Employee.Name,
+                        IssuedByName = x.DSREmployee.Name,
                         ShopName = x.Shop.Name,
                         OrderId = x.OrderId,
                         DueAmount = x.DueAmount,
@@ -590,8 +590,11 @@
             {
                 return await _dbContext.DSRShopDues
                     .Include(x => x.Employee)
-                    .Include(x => x.DSRCustomer)
+                    .Include(x => x.DSREmployee)
                     .Include(x => x.Shop)
+                    .Include(x => x.Products)               // ✅ Products list
+                        .ThenInclude(p => p.Product)         // ✅ প্রতিটি product
+                            .ThenInclude(p => p.CurrentPrice) // ✅ সেই product এর price
                     .Where(x => x.OrderId == orderId && !x.IsDeleted && !x.Shop.IsDeleted)
                     .OrderByDescending(x => x.Id)
                     .ToListAsync();
@@ -616,7 +619,7 @@
                 var paymentQuery = _dbContext.DSRShopPaymentHistories
                     .Where(x => !x.IsDeleted &&
                                x.ShopId == shopId &&
-                               x.CustomerId == employeeId)
+                               x.EmployeeId == employeeId)
                     .Select(x => x.AmountPaid);
 
                 var totalDue = await dueQuery.SumAsync();

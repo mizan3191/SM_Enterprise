@@ -70,7 +70,7 @@ else
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="DailyExpense" Title="Issue By" Width="200px">
                     <Template Context="item">
-                        <div>@item.Customer.Name</div>
+                        <div>@item.Employee.Name</div>
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="DailyExpense" Property="@nameof(DailyExpense.DateFormatted)" Title="Date" Width="150px" />
@@ -125,8 +125,8 @@ else
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="Asterisk form-label">Issued By</label>
-                                <RadzenDropDown @bind-Value="DailyExpense.CustomerId"
-                                                Data="@CustomerList"
+                                <RadzenDropDown @bind-Value="DailyExpense.EmployeeId"
+                                                Data="@EmployeeList"
                                                 TextProperty="Name"
                                                 ValueProperty="Id"
                                                 Placeholder="Name"
@@ -160,7 +160,7 @@ else
     public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
 
     public IEnumerable<Lov> DailyExpenseTypeList { get; set; } = new List<Lov>();
-    private IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
+    private IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
 
     private bool showModal = false;
 
@@ -180,7 +180,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        CustomerList = await m_Lookup.GetAllCustomerList();
+        EmployeeList = await m_Lookup.GetAllEmployeeList();
         DailyExpenseTypeList = await m_Lookup.GetAllDailyExpenseTypeList();
 
         await LoadData();
@@ -197,7 +197,7 @@ else
             return;
         }
 
-        if (DailyExpense.CustomerId <= 0)
+        if (DailyExpense.EmployeeId <= 0)
         {
             notificationComponent.Show(
                 "ইস্যুকারীর নাম নির্বাচন করুন",
@@ -369,7 +369,7 @@ else
             FilterDailyExpenseList = DailyExpenseList.Where(c =>
                 (!string.IsNullOrEmpty(c.DailyExpenseType.Name) && c.DailyExpenseType.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.Amount.ToString()) && c.Amount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.Customer.Name) && c.Customer.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Employee.Name) && c.Employee.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase))
             ).ToList();
         }
@@ -435,7 +435,7 @@ else
                         {
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.DailyExpenseType.Name);
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Amount);
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Customer.Name);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Employee.Name);
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Date);
                         }
                     });

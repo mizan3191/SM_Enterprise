@@ -6,8 +6,8 @@ namespace DEALER.Domain
     {
         public int Id { get; set; }
 
-        public string DailyExpenseType { get; set; }
-        public string CustomerName { get; set; }
+        public string DailyExpenseType { get; set; } 
+        public string EmployeeName { get; set; }
         public int? OrderId { get; set; }
         [StringLength(500)]
         public string Description { get; set; }

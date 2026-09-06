@@ -1,4 +1,4 @@
-﻿@page "/ExpenseOrderTime/{DSRCustomerId:int}/{OrderId:int}"
+﻿@page "/ExpenseOrderTime/{EmployeeId:int}/{OrderId:int}"
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject DialogService DialogService
@@ -27,7 +27,7 @@ else
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="DailyExpense" Title="Issued By" Width="150px">
                     <Template Context="item">
-                        <div>@item.Customer.Name</div>
+                        <div>@item.Employee.Name</div>
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="DailyExpense" Title="Amount" Width="100px" TextAlign="TextAlign.Right">
@@ -108,7 +108,7 @@ else
 
 @code {
     [Parameter]
-    public int DSRCustomerId { get; set; }
+    public int EmployeeId { get; set; }
 
     [Parameter]
     public int OrderId { get; set; }
@@ -196,7 +196,7 @@ else
         {
             DailyExpense = new DailyExpense()
             {
-                CustomerId = DSRCustomerId,
+                EmployeeId = EmployeeId,
                 OrderId = OrderId,
                 Date = m_Lookup.GetOrderDate(OrderId),
             };
@@ -208,7 +208,7 @@ else
         DailyExpense = new DailyExpense()
         {
 
-            CustomerId = DSRCustomerId,
+            EmployeeId = EmployeeId,
             OrderId = OrderId,
             Date = m_Lookup.GetOrderDate(OrderId),
         };

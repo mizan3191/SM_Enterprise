@@ -9,15 +9,15 @@ namespace DEALER.Domain
         public DateTime Date { get; set; }
         public string DateFormatted => Date.ToString("dd-MMM-yyyy (ddd)");
 
-        public int? CustomerId { get; set; }
+        public int? EmployeeId { get; set; }
 
-        [ForeignKey(nameof(CustomerId))]
-        public virtual Customer Customer { get; set; }
+        [ForeignKey(nameof(EmployeeId))]
+        public virtual Employee Employee { get; set; }
 
-        public int DSRCustomerId { get; set; }
+        public int DSREmployeeId { get; set; }
 
-        [ForeignKey(nameof(DSRCustomerId))]
-        public virtual Customer DSRCustomer { get; set; }
+        [ForeignKey(nameof(DSREmployeeId))]
+        public virtual Employee DSREmployee { get; set; }
 
         public int OrderId { get; set; }
         public virtual Order Order { get; set; }

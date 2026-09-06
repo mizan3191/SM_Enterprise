@@ -111,9 +111,9 @@ namespace DEALER.Infrastructure
             //     .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<OrderPaymentHistory>()
-                .HasOne(o => o.DSRCustomer)
+                .HasOne(o => o.DSREmployee)
                 .WithMany()
-                .HasForeignKey(o => o.DSRCustomerId)
+                .HasForeignKey(o => o.DSREmployeeId)
                 .OnDelete(DeleteBehavior.NoAction);
 
             //modelBuilder.Entity<SRDiscount>()

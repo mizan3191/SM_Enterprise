@@ -33,7 +33,7 @@
                 var payment = _dbContext.CustomerPaymentHistories
                                  .FirstOrDefault(p => p.OrderId == OrderPaymentHistory.OrderId
                                  && p.OrderPaymentHistoryId == OrderPaymentHistory.Id && !p.IsDeleted
-                                 && p.CustomerId == OrderPaymentHistory.DSRCustomerId);
+                                 && p.CustomerId == OrderPaymentHistory.DSREmployeeId);
 
 
                 var UpDownAmount = payment.AmountPaid - OrderPaymentHistory.AmountPaid;
@@ -133,7 +133,7 @@
                 if (orderPaymentHistory.OrderId > 0)
                 {
                     var customerPaymentHistories = _dbContext.CustomerPaymentHistories
-                                    .FirstOrDefault(p => p.CustomerId == orderPaymentHistory.DSRCustomerId
+                                    .FirstOrDefault(p => p.CustomerId == orderPaymentHistory.DSREmployeeId
                                     && p.OrderId == orderPaymentHistory.OrderId
                                     && p.OrderPaymentHistoryId == orderPaymentHistory.Id);
 
@@ -180,7 +180,7 @@
 
 
                 var lastPayment = _dbContext.CustomerPaymentHistories
-                                 .Where(p => p.CustomerId == OrderPaymentHistory.DSRCustomerId && !p.IsDeleted)
+                                 .Where(p => p.CustomerId == OrderPaymentHistory.DSREmployeeId && !p.IsDeleted)
                                  .OrderByDescending(p => p.Id)
                                  .FirstOrDefault();
 
@@ -190,7 +190,7 @@
                 // Add new entry to Customer Payment History
                 var payment = new CustomerPaymentHistory()
                 {
-                    CustomerId = OrderPaymentHistory.DSRCustomerId,
+                    CustomerId = OrderPaymentHistory.DSREmployeeId,
                     OrderId = OrderPaymentHistory.OrderId,
                     OrderPaymentHistoryId = OrderPaymentHistory.Id,
                     PaymentDate = OrderPaymentHistory.Date,
@@ -270,7 +270,7 @@
             try
             {
                 return _dbContext.OrderPaymentHistories
-                    .FirstOrDefault(c => c.DSRCustomerId == customerId && c.OrderId == orderId);
+                    .FirstOrDefault(c => c.DSREmployeeId == customerId && c.OrderId == orderId);
             }
             catch (Exception ex)
             {
@@ -283,8 +283,8 @@
             try
             {
                 return await _dbContext.OrderPaymentHistories
-                    .Include(x => x.DSRCustomer)
-                    .Where(x => x.CustomerId == customerId)
+                    .Include(x => x.DSREmployee)
+                    .Where(x => x.EmployeeId == customerId)
                     .OrderByDescending(x => x.Id)
                     .ToListAsync();
             }
@@ -300,8 +300,8 @@
             try
             {
                 return await _dbContext.OrderPaymentHistories
-                    .Include(x => x.Customer)
-                    .Include(x => x.DSRCustomer)
+                    .Include(x => x.Employee)
+                    .Include(x => x.DSREmployee)
                     .Where(x => x.OrderId == orderId && !x.IsDeleted)
                     .OrderByDescending(x => x.Id)
                     .ToListAsync();
@@ -317,9 +317,9 @@
             try
             {
                 return await _dbContext.OrderPaymentHistories
-                    .Include(x => x.Customer)
+                    .Include(x => x.Employee)
                     .Include(x => x.Order)
-                    .Include(x => x.DSRCustomer)
+                    .Include(x => x.DSREmployee)
                     .OrderByDescending(x => x.Id)
                     .ToListAsync();
             }

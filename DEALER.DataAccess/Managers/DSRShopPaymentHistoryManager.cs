@@ -139,7 +139,7 @@
             try
             {
                 return await _dbContext.DSRShopPaymentHistories
-                    .Include(x => x.Customer)
+                    .Include(x => x.Employee)
                     .Include(x => x.Shop)
                     .Include(x => x.PaymentMethod)
                     .Where(x => x.ShopId == shopId && !x.IsDeleted && !x.Shop.IsDeleted)
@@ -158,7 +158,7 @@
             try
             {
                 return await _dbContext.DSRShopPaymentHistories
-                    .Include(x => x.Customer)
+                    .Include(x => x.Employee)
                     .Include(x => x.Shop)
                     .Where(x => !x.Shop.IsDeleted)
                     .OrderByDescending(x => x.Id)
@@ -345,15 +345,15 @@
                 // Get payment entries with customer name
                 var payments = await _dbContext.DSRShopPaymentHistories
                     .Where(x => !x.IsDeleted)
-                    .Include(x => x.Customer)
+                    .Include(x => x.Employee)
                     .Select(x => new
                     {
                         x.ShopId,
                         x.Shop.Name,
-                        x.CustomerId,
+                        x.EmployeeId,
                         x.Shop.ShopOwner,
                         x.Shop.Area,
-                        CustomerName = x.Customer != null ? x.Customer.Name : string.Empty,
+                        CustomerName = x.Employee != null ? x.Employee.Name : string.Empty,
                         Date = x.PaymentDate.Date,
                         PaidAmount = x.AmountPaid,
                         IsPayment = true // Mark as payment entry
@@ -370,7 +370,7 @@
                             Date = g.Key.Date,
                             ShopId = g.Key.ShopId,
                             OrderId = g.Key.OrderId.Value,
-                            CustomerId = g.Key.EmployeeId.Value,
+                            EmployeeId = g.Key.EmployeeId.Value,
                             ShopName = g.First().Name,
                             OwnerName = g.First().ShopOwner,
                             Area = g.First().Area,
@@ -383,14 +383,14 @@
                     .ToList();
 
                 var paymentSummaries = payments
-                    .GroupBy(x => new { x.Date, x.ShopId, x.CustomerId })
+                    .GroupBy(x => new { x.Date, x.ShopId, x.EmployeeId })
                     .Select(g => new
                     {
                         Data = new TempShopDuePaymentListSummary
                         {
                             Date = g.Key.Date,
                             ShopId = g.Key.ShopId,
-                            CustomerId = g.Key.CustomerId,
+                            EmployeeId = g.Key.EmployeeId,
                             ShopName = g.First().Name,
                             OwnerName = g.First().ShopOwner,
                             Area = g.First().Area,
@@ -404,12 +404,12 @@
 
                 // Combine both lists and group
                 var combined = dueSummaries.Concat(paymentSummaries)
-                    .GroupBy(x => new { x.Data.Date, x.Data.ShopId, x.Data.CustomerId })
+                    .GroupBy(x => new { x.Data.Date, x.Data.ShopId, x.Data.EmployeeId })
                     .Select(g => new TempShopDuePaymentListSummary
                     {
                         Date = g.Key.Date,
                         ShopId = g.Key.ShopId,
-                        CustomerId = g.Key.CustomerId,
+                        EmployeeId = g.Key.EmployeeId,
                         // For OrderId, take the first non-null one (if any)
                         OrderId = g.FirstOrDefault(x => x.Data.OrderId != null)?.Data.OrderId ?? 0,
                         ShopName = g.First().Data.ShopName,
@@ -433,7 +433,7 @@
                         ShopId = x.ShopId,
                         ShopName = x.ShopName,
                         OrderId = x.OrderId,
-                        CustomerId = x.CustomerId,
+                        EmployeeId = x.EmployeeId,
                         OwnerName = x.OwnerName,
                         Area = x.Area,
                         ReferredBy = x.ReferredBy,

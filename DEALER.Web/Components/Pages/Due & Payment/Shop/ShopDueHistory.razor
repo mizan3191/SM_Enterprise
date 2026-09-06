@@ -84,13 +84,13 @@ else
 
                 <RadzenDataGridColumn TItem="DSRShopDueDTO" Title="Referred By" Width="100px">
                     <Template Context="item">
-                        <div>@item.CustomerName</div>
+                        <div>@item.EmployeeName</div>
                     </Template>
                 </RadzenDataGridColumn>
 
                 <RadzenDataGridColumn TItem="DSRShopDueDTO" Title="Issue By" Width="100px">
                     <Template Context="item">
-                        <div>@item.IssuedBYCustomerName</div>
+                        <div>@item.IssuedByName</div>
                     </Template>
                 </RadzenDataGridColumn>
 
@@ -205,7 +205,7 @@ else
                 (!string.IsNullOrEmpty(c.ShopNumber) && c.ShopNumber.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.DueAmount.ToString()) && c.DueAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.CustomerName) && c.CustomerName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                (!string.IsNullOrEmpty(c.EmployeeName) && c.EmployeeName.Contains(search, StringComparison.OrdinalIgnoreCase))
             ).ToList();
         }
 
@@ -278,7 +278,7 @@ else
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.ShopArea);
                             // table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Shop.Number);
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.DueAmount:N2}");
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.CustomerName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.EmployeeName);
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.DateFormatted);
 
                         }

@@ -9,8 +9,8 @@ namespace DEALER.Domain
         public int? EmployeeId { get; set; } 
         public virtual Employee Employee { get; set; }
 
-        public int? DSRCustomerId { get; set; }
-        public virtual Customer DSRCustomer { get; set; }
+        public int? DSREmployeeId { get; set; }
+        public virtual Employee DSREmployee { get; set; }
 
         public int ShopId { get; set; }
         public virtual Shop Shop { get; set; }
@@ -26,6 +26,14 @@ namespace DEALER.Domain
         public bool IsDeleted { get; set; }
         public DateTime Date { get; set; } = DateTime.Now;
         public string DateFormatted => Date.ToString("dd-MMM-yyyy (ddd)");
+
+        [NotMapped]
+        public double TotalCylinderDueAmount =>
+                                            Products?.Sum(p =>
+                                                p.CylinderQty * (p.Product?.CurrentPrice?.CylinderBuyingPrice ?? 0)
+                                            ) ?? 0;
+        [NotMapped]
+        public double GrandTotal => DueAmount + TotalCylinderDueAmount;
 
         [NotMapped]
         public bool IsSaved { get; set; } = false;

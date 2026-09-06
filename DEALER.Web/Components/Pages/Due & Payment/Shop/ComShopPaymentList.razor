@@ -66,7 +66,7 @@
 
             <RadzenDataGridColumn TItem="DSRShopPaymentHistory" Title="Referred By" Width="200px">
                 <Template Context="item">
-                    <div>@item.Customer.Name</div>
+                    <div>@item.Employee.Name</div>
                 </Template>
             </RadzenDataGridColumn>
 
@@ -103,8 +103,8 @@
                         <div class="row m-3">
                             <div class="col-md-4 mb-3">
                                 <label class="Asterisk">Referred By</label>
-                                <RadzenDropDown @bind-Value="DSRShopPaymentHistory.CustomerId"
-                                                Data="@CustomerList"
+                                <RadzenDropDown @bind-Value="DSRShopPaymentHistory.EmployeeId"
+                                                Data="@EmployeeList"
                                                 TextProperty="Name"
                                                 ValueProperty="Id"
                                                 Placeholder="Search"
@@ -177,7 +177,7 @@
     public IEnumerable<DSRShopPaymentHistory> FilterDSRShopPaymentHistoryList { get; set; } = new List<DSRShopPaymentHistory>();
     public IEnumerable<DSRDueSummary> DSRDueSummaryList { get; set; } = new List<DSRDueSummary>();
 
-    private IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
+    private IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
     private IEnumerable<Lov> ShopList { get; set; } = new List<Lov>();
 
     private string search = string.Empty;
@@ -189,7 +189,7 @@
     protected override async Task OnInitializedAsync()
     {
         ShopName = m_Lookup.GetShop(ShopId).Name;
-        CustomerList = await m_Lookup.GetAllCustomerList();
+        EmployeeList = await m_Lookup.GetAllEmployeeList();
         ShopList = await m_Lookup.GetAllShopList();
 
         //CustomerList = CustomerList.Where(c => !c.IsDeleted);
@@ -200,7 +200,7 @@
 
     private async Task HandleSubmit()
     {
-        if (DSRShopPaymentHistory.CustomerId <= 0)
+        if (DSRShopPaymentHistory.EmployeeId <= 0)
         {
             notificationComponent.Show("Validation Error", "Please select an Issued By before proceeding.", NotificationSeverity.Warning);
             return;
@@ -345,7 +345,7 @@
         else
         {
             FilterDSRShopPaymentHistoryList = DSRShopPaymentHistoryList.Where(c =>
-                (!string.IsNullOrEmpty(c.Customer.Name) && c.Customer.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Employee.Name) && c.Employee.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.AmountPaid.ToString()) && c.AmountPaid.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase))
             ).ToList();
@@ -413,7 +413,7 @@
                         {
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Shop.Name);
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.AmountPaid:N2}");
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Customer.Name);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Employee.Name);
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.DateFormatted);
                         }
 

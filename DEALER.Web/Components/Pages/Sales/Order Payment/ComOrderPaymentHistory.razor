@@ -22,7 +22,7 @@ else
             <Columns>
                 <RadzenDataGridColumn TItem="OrderPaymentHistory" Title="DSR Name" Width="100px">
                     <Template Context="item">
-                        <div>@item.DSRCustomer.Name</div>
+                        <div>@item.DSREmployee.Name</div>
                     </Template>
                 </RadzenDataGridColumn>
                 @* <RadzenDataGridColumn TItem="OrderPaymentHistory" Title="Referred By" Width="100px">
@@ -144,8 +144,8 @@ else
     public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
     //private IEnumerable<ExtraReturnProductListDto> ExtraReturnProductLists { get; set; } = new List<ExtraReturnProductListDto>();
 
-
-    private IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
+     
+    private IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
     private IEnumerable<OrderPaymentHistory> OrderPaymentHistoryByOrderList { get; set; } = new List<OrderPaymentHistory>();
 
     public OrderPaymentHistory OrderPaymentHistory { get; set; } = new();
@@ -155,10 +155,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        CustomerList = await m_Lookup.GetAllCustomerList();
-
-        //CustomerList = CustomerList.Where(c => !c.IsDeleted);
-
+        EmployeeList = await m_Lookup.GetAllEmployeeList();
         await LoadData();
     }
 
@@ -174,7 +171,7 @@ else
             return;
         }
 
-        if (OrderPaymentHistory.DSRCustomerId <= 0)
+        if (OrderPaymentHistory.DSREmployeeId <= 0)
         {
             notificationComponent.Show(
                 "DSR কাস্টমার সঠিক নয়",
@@ -227,7 +224,7 @@ else
             OrderPaymentHistory = new OrderPaymentHistory()
             {
                 OrderId = OrderId,
-                DSRCustomerId = CustomerId,
+                DSREmployeeId = CustomerId,
                 Date = m_Lookup.GetOrderDate(OrderId),
             };
         }
@@ -266,24 +263,21 @@ else
     private async Task LoadData()
     {
         OrderPaymentHistoryByOrderList = await m_OrderPaymentHistory.GetAllOrderPaymentHistoryByOrderId(OrderId);
-
         var OrderDetails = await m_Order.GetOrderDetailsByOrderAsync(OrderId) ?? new List<OrderDetailsDTO>();
-        //SRDiscountList = await m_SRDiscount.GetAllSRDiscountByOrderId(OrderId);
         DSRShopDueList = await m_DSRShopDue.GetAllDSRShopDue(OrderId);
-       // ExtraReturnProductLists = await m_ExtraReturnProduct.GetListByOrderIdAsync(OrderId);
-       // DamageProductDetails = await m_Order.GetDamageProductDetailsByOrderAsync(OrderId) ?? new List<DamageProductDetailsDTO>();
         DailyExpenseList = m_DailyExpense.GetAllDailyExpense(OrderId);
 
-
         var totalPrice = OrderDetails.Sum(od => od.TotalPrice);
-        var totalDamagePrice = DamageProductDetails?.Sum(od => od.TotalPrice) ?? 0;
-        //var srDiscountAmount = SRDiscountList.Sum(x => x.DiscountAmount);
-        var dsrShopDueList = DSRShopDueList.Sum(x => x.DueAmount);
         var dailyExpenseList = DailyExpenseList.Sum(x => x.Amount);
         var currentlyPaid = OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid);
-       //var extraReturnProductPayment = ExtraReturnProductLists.Sum(x => x.TotalAmount);
+        // ✅ DueAmount + TotalCylinderDueAmount (CylinderQty × CylinderBuyingPrice)
+        var dsrShopDueAmount = DSRShopDueList.Sum(x => x.DueAmount);
+       // var dsrCylinderDueAmount = DSRShopDueList.Sum(x => x.TotalCylinderDueAmount);
+        var dsrCylinderDueAmount = DSRShopDueList
+                                    .SelectMany(x => x.Products ?? new List<ShopEmptyCylinderProduct>())
+                                    .Sum(p => p.CylinderQty * (p.Product?.CurrentPrice?.CylinderBuyingPrice ?? 0));
 
-        var TotalPaid = totalDamagePrice +  dsrShopDueList + dailyExpenseList + currentlyPaid ;
+        var TotalPaid = dsrShopDueAmount + dsrCylinderDueAmount + dailyExpenseList + currentlyPaid;
         DueAmount = totalPrice - TotalPaid;
 
     }
@@ -293,7 +287,7 @@ else
         OrderPaymentHistory = new OrderPaymentHistory()
         {
             OrderId = OrderId,
-            DSRCustomerId = CustomerId,
+            DSREmployeeId = CustomerId,
             Date = m_Lookup.GetOrderDate(OrderId),
         };
 

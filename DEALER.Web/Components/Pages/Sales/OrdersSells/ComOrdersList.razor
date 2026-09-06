@@ -70,28 +70,28 @@ else
                 <RadzenDataGridColumn TItem="OrdersDTO" Title="Actions" Width="210px">
                     <Template Context="order">
                         <RadzenButton Icon="edit" Disabled="order.IsLock" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
-                                      Click="() => Edit(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Edit" />
+                                      Click="() => Edit(order.Id, order.EmployeeId)" style="margin-right: 5px;" title="Edit" />
 
                         <RadzenButton Icon="delete" Disabled="order.IsLock" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
                                       Click="() => ConfirmDelete(order.Id)" title="Delete" />
 
                         <RadzenButton Icon="description" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
-                                      Click="() => OrderDetails(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Details" />
+                                      Click="() => OrderDetails(order.Id, order.EmployeeId)" style="margin-right: 5px;" title="Details" />
 
                         <RadzenButton Icon="playlist_add" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
-                                      Click="() => ExtraReturnProduct(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Return Empty Cylinders" />
+                                      Click="() => ExtraReturnProduct(order.Id, order.EmployeeId)" style="margin-right: 5px;" title="Return Empty Cylinders" />
 
                         <RadzenButton Icon="undo" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
                                       Click="() => OrderReturn(order.Id, 0)" style="margin-right: 5px;" title="Return" />
 
                         <RadzenButton Icon="account_balance" ButtonStyle="ButtonStyle.Dark" Size="ButtonSize.Small"
-                                      Click="() => ShopDue(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Shop Dues" />
+                                      Click="() => ShopDue(order.Id, order.EmployeeId)" style="margin-right: 5px;" title="Shop Dues" />
 
                         <RadzenButton Icon="calculate" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
-                                      Click="() => DailyExpanse(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Daily Expense" />
+                                      Click="() => DailyExpanse(order.Id, order.EmployeeId)" style="margin-right: 5px;" title="Daily Expense" />
 
                         <RadzenButton Icon="receipt_long" ButtonStyle="ButtonStyle.Warning" Size="ButtonSize.Small"
-                                      Click="() => OrderPaymentHistory(order.Id, order.CustomerId)" style="margin-right: 5px;" title="Order Payment" />
+                                      Click="() => OrderPaymentHistory(order.Id, order.EmployeeId)" style="margin-right: 5px;" title="Order Payment" />
                     </Template>
                 </RadzenDataGridColumn>
             </Columns>

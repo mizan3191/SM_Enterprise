@@ -28,7 +28,7 @@
                 if (dailyExpenseEntity.OrderId > 0)
                 {
                     var customerPaymentHistories = _dbContext.CustomerPaymentHistories
-                                    .FirstOrDefault(p => p.CustomerId == dailyExpenseEntity.CustomerId
+                                    .FirstOrDefault(p => p.EmployeeId == dailyExpenseEntity.EmployeeId
                                     && p.OrderId == dailyExpenseEntity.OrderId
                                     && p.DailyExpenseId == dailyExpenseEntity.Id);
 
@@ -39,7 +39,7 @@
 
                     var amount = customerPaymentHistories.AmountPaid;
 
-                    RecalculateCustomerPaymentsAsync(customerPaymentHistories.CustomerId.Value, customerPaymentHistories.Id, amount);
+                    RecalculateCustomerPaymentsAsync(customerPaymentHistories.EmployeeId.Value, customerPaymentHistories.Id, amount);
 
                 }
 
@@ -76,7 +76,7 @@
                 if (DailyExpense.OrderId > 0)
                 {
                     var lastPayment = _dbContext.CustomerPaymentHistories
-                                    .Where(p => p.CustomerId == DailyExpense.CustomerId)
+                                    .Where(p => p.EmployeeId == DailyExpense.EmployeeId)
                                     .OrderByDescending(p => p.Id)
                                     .FirstOrDefault();
 
@@ -86,11 +86,11 @@
                     // Add new entry to Customer Payment History
                     var payment = new CustomerPaymentHistory()
                     {
-                        CustomerId = DailyExpense.CustomerId,
+                        EmployeeId = DailyExpense.EmployeeId,
                         OrderId = DailyExpense.OrderId,
                         DailyExpenseId = DailyExpense.Id,
                         PaymentDate = DailyExpense.Date,
-                        PaymentMethodId = 15,
+                        PaymentMethodId = 1,
                         TransactionID = string.Empty,
                         Number = string.Empty,
                         TotalAmountThisOrder = 0,
@@ -200,7 +200,7 @@
 
                 // Step 2: Get existing customer payment record
                 var payment = _dbContext.CustomerPaymentHistories
-                    .FirstOrDefault(p => p.DailyExpenseId == DailyExpense.Id && p.CustomerId == DailyExpense.CustomerId);
+                    .FirstOrDefault(p => p.DailyExpenseId == DailyExpense.Id && p.EmployeeId == DailyExpense.EmployeeId);
 
                 double upDownAmount = 0;
 
@@ -247,7 +247,7 @@
                 // Step 4: Recalculate downstream customer payments
                 if (payment != null)
                 {
-                    RecalculateCustomerPaymentsAsync(payment.CustomerId.Value, payment.Id, upDownAmount);
+                    RecalculateCustomerPaymentsAsync(payment.EmployeeId.Value, payment.Id, upDownAmount);
                 }
 
                 transaction.Commit();
@@ -304,7 +304,7 @@
 
 
 
-        private void RecalculateCustomerPaymentsAsync(int customerId, int id, double amount)
+        private void RecalculateCustomerPaymentsAsync(int employeeId, int id, double amount)
         {
             if (amount == 0)
                 return;
@@ -312,7 +312,7 @@
             try
             {
                 var payments = _dbContext.CustomerPaymentHistories
-                                   .Where(p => p.CustomerId == customerId && p.Id > id)
+                                   .Where(p => p.EmployeeId == employeeId && p.Id > id)
                                    .OrderBy(p => p.Id)
                                    .ToList();
 
@@ -364,7 +364,7 @@
 
 
                 return await _dbContext.DailyExpenses
-                    .Include(x => x.Customer)
+                    .Include(x => x.Employee)
                     .Include(x => x.DailyExpenseType)
                     .Where(x => !x.IsDeleted && x.Date.Date >= fromDate && x.Date.Date <= toDate)
                     .OrderByDescending(x => x.Id)
@@ -381,7 +381,7 @@
             try
             {
                 return _dbContext.DailyExpenses
-                    .Include(x => x.Customer)
+                    .Include(x => x.Employee)
                     .Include(x => x.DailyExpenseType)
                     .Include(x => x.Order)
                     .Where(x => x.OrderId == orderId && !x.IsDeleted)
@@ -398,7 +398,7 @@
             try
             {
                 return await _dbContext.DailyExpenses
-                    .Include(x => x.Customer)
+                    .Include(x => x.Employee)
                     .Include(x => x.DailyExpenseType)
                     .Include(x => x.Order)
                     .Where(x => x.OrderId == orderId && !x.IsDeleted)
@@ -406,7 +406,7 @@
                     .Select(x => new DailyExpenseDTO
                     {
                         Id = x.Id,
-                        CustomerName = x.Customer.Name,
+                        EmployeeName = x.Employee.Name,
                         OrderId = x.OrderId,
                         DailyExpenseType = x.DailyExpenseType.Name,
                         Description = x.Description,

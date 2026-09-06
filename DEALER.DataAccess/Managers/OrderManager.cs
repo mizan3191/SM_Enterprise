@@ -362,7 +362,7 @@ namespace DEALER.DataAccess
 
                 var orders = await _dbContext.Orders
                     .Where(x => !x.IsDeleted && x.Date.Date >= fromDate && x.Date.Date <= toDate)
-                    .Include(o => o.Customer)
+                    .Include(o => o.Employee)
                     .Include(o => o.OrderDetails)
                     .Include(o => o.CustomerPaymentHistories)
                     .Include(o => o.OrderPaymentHistories)
@@ -374,8 +374,8 @@ namespace DEALER.DataAccess
                     .Select(o => new OrdersDTO
                     {
                         Id = o.Id,
-                        Name = o.Customer.Name,
-                        CustomerId = o.Customer.Id,
+                        Name = o.Employee.Name,
+                        EmployeeId = o.Employee.Id,
                         Address = o.SelectedRoad,
                         OrderDate = o.Date,
                         TotalPrice = o.TotalAmount,
@@ -580,14 +580,71 @@ namespace DEALER.DataAccess
             throw new NotImplementedException();
         }
 
-        public Task<IEnumerable<OrderDetailsDTO>> GetOrderDetailsByOrderAsync(int orderId)
+        public async Task<IEnumerable<OrderDetailsDTO>> GetOrderDetailsByOrderAsync(int orderId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                // ✅ FIX 1: আগে DB থেকে data fetch করো
+                //    কারণ: DisplayNameSize একটা computed property,
+                //    EF Core এটাকে SQL-এ translate করতে পারে না।
+                var orderDetails = await _dbContext.OrderDetails
+                    .Include(od => od.Product)
+                        .ThenInclude(p => p.ProductsSize)
+                    .Where(od => od.OrderId == orderId)
+                    .ToListAsync();
+                // ✅ FIX 2: In-memory projection — UnitPrice নেই, তাই CylinderUnitPrice + GasUnitPrice
+                return orderDetails.Select(od =>
+                {
+                    var unitPrice = od.CylinderUnitPrice + od.GasUnitPrice;
+                    var returnQty = od.ReturnQuantity ?? 0;
+                    var sellingQty = od.Quantity - returnQty;
+                    return new OrderDetailsDTO
+                    {
+                        ProductName = od.Product?.DisplayNameSize ?? string.Empty,
+                        Quantity = od.Quantity,
+                        ReturnQuantity = returnQty,
+                        SellingQuantity = sellingQty,
+                        ProductPrice = unitPrice,
+                        TotalProductPrice = od.Quantity * unitPrice,
+                        ReturnPrice = returnQty * unitPrice,
+                        Discount = od.Discount,
+                        TotalPrice = sellingQty * unitPrice - od.Discount
+                    };
+                });
+            }
+            catch (Exception ex)
+            {
+                // _logger.LogError(ex, "Error getting order details for order {OrderId}", orderId);
+                return Enumerable.Empty<OrderDetailsDTO>();
+            }
         }
 
         public IEnumerable<CustomerDueDTO> GetCustomerDueHistory()
         {
-            throw new NotImplementedException();
+            try
+            {
+                var query = from employee in _dbContext.Employees
+                            join payment in _dbContext.CustomerPaymentHistories.Where(p => !p.IsDeleted)
+                                on employee.Id equals payment.EmployeeId into paymentsGroup
+                            select new CustomerDueDTO
+                            {
+                                Id = employee.Id,
+                                Name = employee.Name,
+                                Phone = employee.Phone,
+                                HouseName = employee.Address,
+                                TotalDue = paymentsGroup.OrderByDescending(p => p.Id)
+                                                        .Select(p => (double?)p.TotalDueAfterPayment)
+                                                        .FirstOrDefault() ?? 0
+                            };
+
+                return query.Where(c => c.TotalDue != 0)
+                            .OrderByDescending(c => c.TotalDue)
+                            .ToList();
+            }
+            catch (Exception ex)
+            {
+                return Enumerable.Empty<CustomerDueDTO>();
+            }
         }
     }
 }

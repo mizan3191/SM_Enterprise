@@ -9,8 +9,8 @@ namespace DEALER.Domain
         public int DailyExpenseTypeId { get; set; }
         public DailyExpenseType DailyExpenseType { get; set; }
 
-        public int CustomerId { get; set; }
-        public Customer Customer { get; set; }
+        public int EmployeeId { get; set; }
+        public Employee Employee { get; set; }
 
         public int? OrderId { get; set; }
         public Order Order { get; set; }
