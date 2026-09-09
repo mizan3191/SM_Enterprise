@@ -20,17 +20,11 @@ else
 
         <RadzenDataGrid Data="@OrderPaymentHistoryByOrderList" TItem="OrderPaymentHistory" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
             <Columns>
-                <RadzenDataGridColumn TItem="OrderPaymentHistory" Title="DSR Name" Width="100px">
+                <RadzenDataGridColumn TItem="OrderPaymentHistory" Title="Employee Name" Width="100px">
                     <Template Context="item">
-                        <div>@item.DSREmployee.Name</div>
+                        <div>@item.Employee.Name</div>
                     </Template>
                 </RadzenDataGridColumn>
-                @* <RadzenDataGridColumn TItem="OrderPaymentHistory" Title="Referred By" Width="100px">
-                    <Template Context="item">
-                        <div>@item.Customer.Name</div>
-                    </Template>
-                </RadzenDataGridColumn> *@
-
                 <RadzenDataGridColumn TItem="OrderPaymentHistory" Title="Amount" Width="100px" TextAlign="TextAlign.Right">
                     <Template Context="item">
                         <div>@item.AmountPaid.ToString("N2")</div>
@@ -64,25 +58,11 @@ else
                 <EditForm Model="@OrderPaymentHistory" OnValidSubmit="HandleSubmit">
                     <div class="card dataForm ">
                         <div class="row m-3">
-                            @* <div class="col-md-4 mb-3">
-                                <label class="Asterisk form-label">Issued By</label>
-                                <RadzenDropDown @bind-Value="OrderPaymentHistory.CustomerId"
-                                                Data="@CustomerList"
-                                                TextProperty="Name"
-                                                ValueProperty="Id"
-                                                Placeholder="Search"
-                                                Class="w-100"
-                                                AllowClear="true"
-                                                AllowFiltering="true"
-                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
-                            </div> *@
+                            
                             <div class="col-md-4 mb-3">
                                 <label class="Asterisk form-label">Due Amount</label>
                                 <InputNumber @bind-Value="DueAmount" class="form-control" disabled></InputNumber>
                             </div>
-                       @*  </div>
-
-                        <div class="row m-3"> *@
                             <div class="col-md-4 mb-3">
                                 <label class="Asterisk form-label">Amount</label>
                                 <InputNumber @bind-Value="OrderPaymentHistory.AmountPaid" class="form-control"></InputNumber>
@@ -138,14 +118,12 @@ else
 
     private Message notificationComponent;
 
-    // private IEnumerable<SRDiscount> SRDiscountList { get; set; } = new List<SRDiscount>();
     private IEnumerable<DamageProductDetailsDTO> DamageProductDetails { get; set; } = new List<DamageProductDetailsDTO>();
     public IEnumerable<ShopDueWithCylinderDto> DSRShopDueList { get; set; } = new List<ShopDueWithCylinderDto>();
     public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
     private IEnumerable<ExtraReturnProductGroupDto> ExtraReturnProductGroupedList { get; set; } = new List<ExtraReturnProductGroupDto>();
-    //private IEnumerable<ExtraReturnProductListDto> ExtraReturnProductLists { get; set; } = new List<ExtraReturnProductListDto>();
 
-    private IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
+   // private IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
     private IEnumerable<OrderPaymentHistory> OrderPaymentHistoryByOrderList { get; set; } = new List<OrderPaymentHistory>();
 
     public OrderPaymentHistory OrderPaymentHistory { get; set; } = new();
@@ -155,9 +133,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        CustomerList = await m_Lookup.GetAllCustomerList();
-
-        //CustomerList = CustomerList.Where(c => !c.IsDeleted);
+       // CustomerList = await m_Lookup.GetAllCustomerList();
 
         await LoadData();
     }
@@ -174,7 +150,7 @@ else
             return;
         }
 
-        if (OrderPaymentHistory.DSREmployeeId <= 0)
+        if (OrderPaymentHistory.EmployeeId <= 0)
         {
             notificationComponent.Show(
                 "DSR কাস্টমার সঠিক নয়",
@@ -227,7 +203,7 @@ else
             OrderPaymentHistory = new OrderPaymentHistory()
             {
                 OrderId = OrderId,
-                DSREmployeeId = EmployeeId,
+                EmployeeId = EmployeeId,
                 Date = m_Lookup.GetOrderDate(OrderId),
             };
         }
@@ -297,7 +273,7 @@ else
         OrderPaymentHistory = new OrderPaymentHistory()
         {
             OrderId = OrderId,
-            DSREmployeeId = EmployeeId,
+            EmployeeId = EmployeeId,
             Date = m_Lookup.GetOrderDate(OrderId),
         };
 

@@ -6,46 +6,365 @@
         border-top: 1px solid #dee2e6;
     }
 
+    .section-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 8px;
+        margin: 20px 0 15px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+        .section-header h4 {
+            margin: 0;
+            color: white;
+        }
+
+        .section-header .badge-custom {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            color: white;
+            font-weight: 500;
+        }
+
+    .shop-card {
+        border-left: 4px solid #667eea;
+        transition: all 0.3s ease;
+    }
+
+        .shop-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+    .shop-header {
+        background: #f8f9fa;
+        padding: 12px 15px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+        .shop-header .shop-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+            .shop-header .shop-info .shop-icon {
+                font-size: 24px;
+            }
+
+            .shop-header .shop-info .shop-name {
+                font-weight: 600;
+                font-size: 16px;
+            }
+
+            .shop-header .shop-info .shop-area {
+                color: #6c757d;
+                font-size: 14px;
+            }
+
+            .shop-header .shop-info .customer-name {
+                background: #e9ecef;
+                padding: 2px 12px;
+                border-radius: 12px;
+                font-size: 13px;
+            }
+
+        .shop-header .shop-stats {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+            .shop-header .shop-stats .stat-item {
+                text-align: center;
+                padding: 4px 12px;
+                border-radius: 6px;
+                background: white;
+                border: 1px solid #dee2e6;
+            }
+
+                .shop-header .shop-stats .stat-item .stat-label {
+                    font-size: 11px;
+                    color: #6c757d;
+                    display: block;
+                }
+
+                .shop-header .shop-stats .stat-item .stat-value {
+                    font-weight: 600;
+                    font-size: 16px;
+                }
+
+    .stat-value.due-amount {
+        color: #dc3545;
+    }
+
+    .stat-value.cylinder-count {
+        color: #0d6efd;
+    }
+
+    .stat-value.cylinder-value {
+        color: #198754;
+    }
+
+    .stat-value.payment-amount {
+        color: #28a745;
+    }
+
+    .grid-container {
+        padding: 10px 0;
+    }
+
+    .total-summary {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-top: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+        .total-summary .summary-item {
+            background: rgba(255,255,255,0.15);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+
+    .expense-card {
+        border-left: 4px solid #28a745;
+    }
+
+    .expense-header {
+        background: #f8f9fa;
+        padding: 10px 15px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+        .expense-header .expense-type {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .expense-header .expense-amount {
+            font-weight: 600;
+            color: #dc3545;
+        }
+
+    .expense-item {
+        padding: 8px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #f1f3f5;
+    }
+
+        .expense-item:last-child {
+            border-bottom: none;
+        }
+
+        .expense-item .expense-date {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+    .expense-total {
+        background: #f8f9fa;
+        padding: 10px 15px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        border-top: 2px solid #28a745;
+    }
+
+    .summary-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        text-align: center;
+        border: 1px solid #e9ecef;
+    }
+
+        .summary-card .summary-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-card .summary-value {
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 5px;
+        }
+
+            .summary-card .summary-value.positive {
+                color: #28a745;
+            }
+
+            .summary-card .summary-value.negative {
+                color: #dc3545;
+            }
+
+            .summary-card .summary-value.info {
+                color: #0d6efd;
+            }
+
+            .summary-card .summary-value.warning {
+                color: #ffc107;
+            }
+
+    .empty-message {
+        text-align: center;
+        padding: 20px;
+        color: #6c757d;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+        .empty-message i {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+    .payment-card {
+        border-left: 4px solid #28a745;
+    }
+
+    .payment-header {
+        background: #f8f9fa;
+        padding: 10px 15px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+        .payment-header .payment-method {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .payment-header .payment-amount {
+            font-weight: 600;
+            color: #28a745;
+        }
+
+    .payment-item {
+        padding: 8px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #f1f3f5;
+    }
+
+        .payment-item:last-child {
+            border-bottom: none;
+        }
+
+        .payment-item .payment-date {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .payment-item .payment-employee {
+            font-size: 12px;
+            color: #0d6efd;
+            font-weight: 500;
+        }
+
+    .payment-total {
+        background: #f8f9fa;
+        padding: 10px 15px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        border-top: 2px solid #28a745;
+    }
 </style>
+
 <Message @ref="notificationComponent" />
+
 @if (OrderDetails == null)
 {
-    <p><em> No order details found for Order #@OrderId.</em></p>
+    <p><em>No order details found for Order #@OrderId.</em></p>
 }
 else
 {
     <div class="card-body m-0">
-        <h4>Order #@OrderId</h4>
-        <h4>Total Due: @TotalDue.ToString("0.00")</h4>
-
-        <div class="d-flex align-items-center mb-3" style="width: 100%;">
-            <RadzenButton Text="Back" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
-
-            <!-- Export Button -->
-            <div class="d-flex align-items-center border rounded" style="width: fit-content;">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
-                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
-                </RadzenStack>
+        <!-- Header Section -->
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+            <div>
+                <h4 class="mb-0">Order #@OrderId</h4>
+                <small class="text-muted">@OrderInfo?.DateFormatted</small>
             </div>
-       
-            <!-- Export Button -->
-            <div class="d-flex align-items-center border rounded" style="width: fit-content;">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
-                    <RadzenButton Text="DOWNLOAD ORDER" Icon="picture_as_pdf" Click="@(args => OrderExportToPdf())" />
-                </RadzenStack>
+            <h4 class="mb-0 text-danger">Total Due: ৳@TotalDue.ToString("N2")</h4>
+        </div>
+
+        <!-- Buttons -->
+        <div class="d-flex align-items-center mb-3 flex-wrap" style="gap: 10px;">
+            <RadzenButton Text="Back" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" />
+            <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" ButtonStyle="ButtonStyle.Primary" />
+        </div>
+
+        <!-- Summary Section -->
+        <div class="summary-section">
+            <div class="summary-card">
+                <div class="summary-label">Total Order Amount</div>
+                <div class="summary-value info">৳@OrderDetails.Sum(x => x.TotalPrice).ToString("N2")</div>
             </div>
+            <div class="summary-card">
+                <div class="summary-label">Total Payment Received</div>
+                <div class="summary-value positive">৳@OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid).ToString("N2")</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Total Paid (All)</div>
+                <div class="summary-value positive">৳@GrandTotal.ToString("N2")</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Due Amount</div>
+                <div class="summary-value negative">৳@TotalDue.ToString("N2")</div>
+            </div>
+        </div>
+
+        <!-- Order Details Grid -->
+        <div class="section-header">
+            <h4>📋 Order Details</h4>
+            <span class="badge-custom">Total Items: @OrderDetails.Count()</span>
         </div>
 
         <RadzenDataGrid Data="@OrderDetails" TItem="OrderDetailsDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
             <Columns>
                 <RadzenDataGridColumn TItem="OrderDetailsDTO" Property="@nameof(OrderDetailsDTO.ProductName)" Title="Name" Width="150px" />
-
                 <RadzenDataGridColumn TItem="OrderDetailsDTO" Title="Unit Price" Width="80px" TextAlign="TextAlign.Right">
                     <Template Context="item">
                         <div class="text-end">@item.ProductPrice.ToString("N2")</div>
                     </Template>
                 </RadzenDataGridColumn>
-
                 <RadzenDataGridColumn TItem="OrderDetailsDTO" Title="Product Qty" Width="80px">
                     <Template Context="item">
                         <div>@item.Quantity</div>
@@ -54,7 +373,6 @@ else
                         <div class="fw-bold">@OrderDetails.Sum(x => x.Quantity)</div>
                     </FooterTemplate>
                 </RadzenDataGridColumn>
-
                 <RadzenDataGridColumn TItem="OrderDetailsDTO" Title="Return Qty" Width="80px">
                     <Template Context="item">
                         <div>@item.ReturnQuantity</div>
@@ -63,7 +381,6 @@ else
                         <div class="fw-bold">@OrderDetails.Sum(x => x.ReturnQuantity)</div>
                     </FooterTemplate>
                 </RadzenDataGridColumn>
-
                 <RadzenDataGridColumn TItem="OrderDetailsDTO" Title="Selling Qty" Width="80px">
                     <Template Context="item">
                         <div>@item.SellingQuantity</div>
@@ -80,7 +397,6 @@ else
                         <div class="fw-bold text-end">@OrderDetails.Sum(x => x.TotalProductPrice).ToString("N2")</div>
                     </FooterTemplate>
                 </RadzenDataGridColumn>
-
                 <RadzenDataGridColumn TItem="OrderDetailsDTO" Property="@nameof(OrderDetailsDTO.ReturnPrice)" Title="Return Price" Width="100px" TextAlign="TextAlign.Right">
                     <Template Context="item">
                         <div class="text-end">@item.ReturnPrice.ToString("N2")</div>
@@ -89,8 +405,6 @@ else
                         <div class="fw-bold text-end">@OrderDetails.Sum(x => x.ReturnPrice).ToString("N2")</div>
                     </FooterTemplate>
                 </RadzenDataGridColumn>
-
-
                 <RadzenDataGridColumn TItem="OrderDetailsDTO" Property="@nameof(OrderDetailsDTO.TotalPrice)" Title="DP" Width="100px" TextAlign="TextAlign.Right">
                     <Template Context="item">
                         <div class="text-end">@item.TotalPrice.ToString("N2")</div>
@@ -102,22 +416,78 @@ else
             </Columns>
         </RadzenDataGrid>
 
+        <!-- Payment History Section -->
+        @if (OrderPaymentHistoryByOrderList.Any())
+        {
+            <div class="section-header">
+                <h4>💳 Payment History</h4>
+                <span class="badge-custom">
+                    Total Payment: ৳@OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid).ToString("N2")
+                </span>
+            </div>
+
+            <div class="card mb-3 payment-card">
+                <div class="payment-header">
+                    <span class="payment-method">📊 Payment Summary</span>
+                    <span class="payment-amount">Total: ৳@OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid).ToString("N2")</span>
+                </div>
+                <div>
+                    @foreach (var payment in OrderPaymentHistoryByOrderList)
+                    {
+                        <div class="payment-item">
+                            <div>
+                                <span>Amount: ৳@payment.AmountPaid.ToString("N2")</span>
+                                <span class="payment-employee">| Employee: @payment.Employee?.Name</span>
+                                <span class="payment-date">| Date: @payment.DateFormatted</span>
+                            </div>
+                            <span class="payment-amount">৳@payment.AmountPaid.ToString("N2")</span>
+                        </div>
+                    }
+                    <div class="payment-total">
+                        <span>Total Payment Received</span>
+                        <span>৳@OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid).ToString("N2")</span>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="empty-message">
+                <i>💳</i>
+                No payment history found for this order.
+            </div>
+        }
+
+        <!-- Extra Empty Cylinder Return Section -->
         @if (ExtraReturnProductGroupedList.Any())
         {
-            <div class="mt-5">
-                <h4>Empty Cylinder Return (Company Wise)</h4>
+            <div class="section-header">
+                <h4>🔄 Empty Cylinder Return (Company Wise)</h4>
+                <span class="badge-custom">
+                    Total: ৳@ExtraReturnProductGroupedList.Sum(g => g.TotalAmount).ToString("N2")
+                </span>
             </div>
 
             @foreach (var group in ExtraReturnProductGroupedList)
             {
-                <div class="card mb-3">
-                    <div class="card-header bg-light">
-                        <strong>@group.SupplierName</strong>
-                        <span class="badge bg-info float-end">
-                            Total Cylinder: @group.TotalQuantity | Total Amount: @group.TotalAmount.ToString("N2")
-                        </span>
+                <div class="card mb-3 shop-card">
+                    <div class="shop-header">
+                        <div class="shop-info">
+                            <span class="shop-icon">🏭</span>
+                            <span class="shop-name">@group.SupplierName</span>
+                        </div>
+                        <div class="shop-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Total Cylinders</span>
+                                <span class="stat-value cylinder-count">@group.TotalQuantity</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Total Amount</span>
+                                <span class="stat-value due-amount">৳@group.TotalAmount.ToString("N2")</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body p-0">
+                    <div class="grid-container">
                         <RadzenDataGrid Data="@group.Details"
                                         TItem="ExtraReturnProductDetailsDto"
                                         PageSize="10"
@@ -129,7 +499,6 @@ else
                                                       Property="@nameof(ExtraReturnProductDetailsDto.ProductName)"
                                                       Title="Product Name"
                                                       Width="200px" />
-
                                 <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
                                                       Title="Empty Price"
                                                       Width="120px"
@@ -138,7 +507,6 @@ else
                                         <div class="text-end">@item.EmptyCylinderPrice.ToString("N2")</div>
                                     </Template>
                                 </RadzenDataGridColumn>
-
                                 <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
                                                       Title="Quantity"
                                                       Width="100px"
@@ -150,7 +518,6 @@ else
                                         <div class="fw-bold text-end">@group.TotalQuantity</div>
                                     </FooterTemplate>
                                 </RadzenDataGridColumn>
-
                                 <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
                                                       Title="Total Amount"
                                                       Width="150px"
@@ -162,7 +529,6 @@ else
                                         <div class="fw-bold text-end">@group.TotalAmount.ToString("N2")</div>
                                     </FooterTemplate>
                                 </RadzenDataGridColumn>
-
                                 <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
                                                       Title="Return Date"
                                                       Width="150px">
@@ -170,7 +536,6 @@ else
                                         <div>@item.ReturnDate.ToString("dd-MMM-yyyy")</div>
                                     </Template>
                                 </RadzenDataGridColumn>
-
                                 <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
                                                       Property="@nameof(ExtraReturnProductDetailsDto.Remarks)"
                                                       Title="Remarks"
@@ -180,21 +545,181 @@ else
                     </div>
                 </div>
             }
+        }
+        else
+        {
+            <div class="empty-message">
+                <i>📭</i>
+                No empty cylinder returns found for this order.
+            </div>
+        }
 
-            <!-- Grand Total for Returns -->
-            <div class="alert alert-info">
-                <strong>Total Empty Cylinder Return Value: </strong>
-                @ExtraReturnProductGroupedList.Sum(g => g.TotalAmount).ToString("N2")
+        <!-- Daily Expense Section -->
+        @if (DailyExpenseList.Any())
+        {
+            <div class="section-header">
+                <h4>💰 Daily Expenses</h4>
+                <span class="badge-custom">
+                    Total: ৳@DailyExpenseList.Sum(x => x.Amount).ToString("N2")
+                </span>
+            </div>
+
+            <div class="card mb-3 expense-card">
+                <div class="expense-header">
+                    <span class="expense-type">📊 Expense Summary</span>
+                    <span class="expense-amount">Total: ৳@DailyExpenseList.Sum(x => x.Amount).ToString("N2")</span>
+                </div>
+                <div>
+                    @foreach (var expense in DailyExpenseList)
+                    {
+                        <div class="expense-item">
+                            <div>
+                                <span>@expense.DailyExpenseType?.Name</span>
+                                <span class="expense-date">@expense.DateFormatted</span>
+                            </div>
+                            <span class="expense-amount">৳@expense.Amount.ToString("N2")</span>
+                        </div>
+                    }
+                    <div class="expense-total">
+                        <span>Total Expenses</span>
+                        <span>৳@DailyExpenseList.Sum(x => x.Amount).ToString("N2")</span>
+                    </div>
+                </div>
             </div>
         }
         else
         {
-            <div class="mt-3">
-                <p class="text-muted">No empty cylinder returns found for this order.</p>
+            <div class="empty-message">
+                <i>💳</i>
+                No daily expenses found for this order.
+            </div>
+        }
+
+        <!-- Shop Due & Empty Cylinder Section -->
+        @if (DSRShopDueList.Any())
+        {
+            <div class="section-header">
+                <h4>🏪 Shop Due & Empty Cylinder Details</h4>
+                <span class="badge-custom">
+                    Total Due: ৳@DSRShopDueList.Sum(x => x.DueAmount).ToString("N2")
+                </span>
+            </div>
+
+            @foreach (var shop in DSRShopDueList)
+            {
+                var totalCylinderValue = shop.CylinderDetails.Sum(c => c.Quantity * c.EmptyCylinderPrice);
+
+                <div class="card mb-3 shop-card">
+                    <div class="shop-header">
+                        <div class="shop-info">
+                            <span class="shop-icon">🏪</span>
+                            <span class="shop-name">@shop.ShopName</span>
+                            <span class="shop-area">📍 @shop.ShopArea</span>
+                            <span class="customer-name">👤 @shop.CustomerName</span>
+                        </div>
+                        <div class="shop-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Due Amount</span>
+                                <span class="stat-value due-amount">৳@shop.DueAmount.ToString("N2")</span>
+                            </div>
+                            @if (shop.CylinderDetails.Any())
+                            {
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Cylinders</span>
+                                    <span class="stat-value cylinder-count">@shop.CylinderDetails.Sum(c => c.Quantity)</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Cylinder Value</span>
+                                    <span class="stat-value cylinder-value">৳@totalCylinderValue.ToString("N2")</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @if (shop.CylinderDetails.Any())
+                    {
+                        <div class="grid-container">
+                            <RadzenDataGrid Data="@shop.CylinderDetails"
+                                            TItem="ShopCylinderDetailDto"
+                                            PageSize="10"
+                                            AllowPaging="false"
+                                            AllowSorting="true"
+                                            AllowFiltering="false">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="ShopCylinderDetailDto"
+                                                          Property="@nameof(ShopCylinderDetailDto.ProductName)"
+                                                          Title="Product Name"
+                                                          Width="200px" />
+                                    <RadzenDataGridColumn TItem="ShopCylinderDetailDto"
+                                                          Property="@nameof(ShopCylinderDetailDto.SupplierName)"
+                                                          Title="Company"
+                                                          Width="150px" />
+                                    <RadzenDataGridColumn TItem="ShopCylinderDetailDto"
+                                                          Title="Empty Price"
+                                                          Width="120px"
+                                                          TextAlign="TextAlign.Right">
+                                        <Template Context="item">
+                                            <div class="text-end">@item.EmptyCylinderPrice.ToString("N2")</div>
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="ShopCylinderDetailDto"
+                                                          Title="Quantity"
+                                                          Width="100px"
+                                                          TextAlign="TextAlign.Right">
+                                        <Template Context="item">
+                                            <div class="text-end">@item.Quantity</div>
+                                        </Template>
+                                        <FooterTemplate>
+                                            <div class="fw-bold text-end">@shop.CylinderDetails.Sum(c => c.Quantity)</div>
+                                        </FooterTemplate>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="ShopCylinderDetailDto"
+                                                          Title="Total Value"
+                                                          Width="150px"
+                                                          TextAlign="TextAlign.Right">
+                                        <Template Context="item">
+                                            <div class="text-end">@((item.Quantity * item.EmptyCylinderPrice).ToString("N2"))</div>
+                                        </Template>
+                                        <FooterTemplate>
+                                            <div class="fw-bold text-end">@totalCylinderValue.ToString("N2")</div>
+                                        </FooterTemplate>
+                                    </RadzenDataGridColumn>
+                                </Columns>
+                            </RadzenDataGrid>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-message" style="padding: 10px;">
+                            <i>📭</i> No empty cylinders for this shop
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Grand Total for Shops -->
+            <div class="total-summary">
+                <span>
+                    <strong>Total Shop Due:</strong> ৳@DSRShopDueList.Sum(x => x.DueAmount).ToString("N2")
+                </span>
+                <span>
+                    <strong>Total Cylinders:</strong> @DSRShopDueList.Sum(x => x.CylinderDetails.Sum(c => c.Quantity))
+                </span>
+                <span>
+                    <strong>Total Cylinder Value:</strong> ৳@DSRShopDueList.Sum(x => x.CylinderDetails.Sum(c => c.Quantity * c.EmptyCylinderPrice)).ToString("N2")
+                </span>
+            </div>
+        }
+        else
+        {
+            <div class="empty-message">
+                <i>🏪</i>
+                No shop due or empty cylinder records found for this order.
             </div>
         }
     </div>
 }
+
 
 @code {
     [Parameter]
@@ -202,7 +727,6 @@ else
 
     [Inject]
     private IOrder m_Order { get; set; }
-
 
     [Inject]
     private IDSRShopDue m_DSRShopDue { get; set; }
@@ -229,10 +753,10 @@ else
     private OrderInfo OrderInfo { get; set; }
     private Message notificationComponent;
 
-
     public IEnumerable<ShopDueWithCylinderDto> DSRShopDueList { get; set; } = new List<ShopDueWithCylinderDto>();
     public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
-    private IEnumerable<OrderPaymentHistory> OrderPaymentHistoryByOrderList { get; set; } = new List<OrderPaymentHistory>();
+    public IEnumerable<OrderPaymentHistory> OrderPaymentHistoryByOrderList { get; set; } = new List<OrderPaymentHistory>();
+    private IEnumerable<OrderPaymentHistory> SRDiscountList { get; set; } = new List<OrderPaymentHistory>();
 
     private double TotalDue { get; set; } = 0;
     private IEnumerable<ExtraReturnProductGroupDto> ExtraReturnProductGroupedList { get; set; } = new List<ExtraReturnProductGroupDto>();
@@ -240,29 +764,46 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        OrderInfo = await m_Order.GetOrderInfoById(OrderId);
-        DSRShopDueList = await m_DSRShopDue.GetShopDueWithCylindersAsync(OrderId);
+        try
+        {
+            // Load Order Info
+            OrderInfo = await m_Order.GetOrderInfoById(OrderId);
 
-        OrderDetails = await m_Order.GetOrderDetailsByOrderAsync(OrderId);
-        DailyExpenseList = m_DailyExpense.GetAllDailyExpense(OrderId);
-        OrderPaymentHistoryByOrderList = await m_OrderPaymentHistory.GetAllOrderPaymentHistoryByOrderId(OrderId);
-        ExtraReturnProductGroupedList = await m_ExtraReturnProduct.GetExtraReturnProductGroupedByCompanyAsync(OrderId);
+            // Load Order Details
+            OrderDetails = await m_Order.GetOrderDetailsByOrderAsync(OrderId) ?? new List<OrderDetailsDTO>();
 
-        var totalPrice = OrderDetails.Sum(od => od.TotalPrice);
-        var dsrShopDueList = DSRShopDueList.Sum(x => x.DueAmount);
-        var totalEmptyCylinderAmount = DSRShopDueList
-           .SelectMany(x => x.CylinderDetails)
-           .Sum(x => x.EmptyCylinderPrice * x.Quantity);
-        var dailyExpenseList = DailyExpenseList.Sum(x => x.Amount);
-        var orderPayment = OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid);
-        var extraReturnProductPayment = ExtraReturnProductGroupedList.Sum(x => x.TotalAmount);
+            // Load Shop Due with Cylinders
+            DSRShopDueList = await m_DSRShopDue.GetShopDueWithCylindersAsync(OrderId);
 
-        GrandTotal = dsrShopDueList + totalEmptyCylinderAmount + dailyExpenseList + orderPayment + extraReturnProductPayment;
-        TotalDue = totalPrice - GrandTotal;
+            // Load Extra Returns
+            ExtraReturnProductGroupedList = await m_ExtraReturnProduct.GetExtraReturnProductGroupedByCompanyAsync(OrderId);
 
-        StateHasChanged();
+            // Load Daily Expenses
+            DailyExpenseList = m_DailyExpense.GetAllDailyExpense(OrderId);
+
+            // Load Payment History
+            OrderPaymentHistoryByOrderList = await m_OrderPaymentHistory.GetAllOrderPaymentHistoryByOrderId(OrderId);
+
+            // Calculate totals
+            var totalOrderAmount = OrderDetails.Sum(od => od.TotalPrice);
+            var shopDueTotal = DSRShopDueList.Sum(x => x.DueAmount);
+            var shopCylinderValue = DSRShopDueList
+                .SelectMany(x => x.CylinderDetails)
+                .Sum(x => x.Quantity * x.EmptyCylinderPrice);
+            var dailyExpenseTotal = DailyExpenseList.Sum(x => x.Amount);
+            var paymentTotal = OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid);
+            var extraReturnTotal = ExtraReturnProductGroupedList.Sum(x => x.TotalAmount);
+
+            GrandTotal = shopDueTotal + shopCylinderValue + dailyExpenseTotal + paymentTotal + extraReturnTotal;
+            TotalDue = totalOrderAmount - GrandTotal;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent?.Show("Error", $"Failed to load order details: {ex.Message}", NotificationSeverity.Error);
+        }
     }
-
 
     private void Cancel()
     {
@@ -293,24 +834,22 @@ else
                     .PaddingVertical(10)
                     .Column(column =>
                     {
-                        // First table - Order Details
+                        // ==================== 1. ORDER DETAILS TABLE ====================
                         column.Item().Table(table =>
                         {
-                            // Define columns for order details
                             table.ColumnsDefinition(columns =>
                             {
                                 columns.RelativeColumn(2.1f);  // Name
-                                columns.RelativeColumn(1.1f);     // Unit Price
-                                columns.RelativeColumn(.8f);     // Quantity
-                                columns.RelativeColumn(.8f);     // Return Quantity
-                                columns.RelativeColumn(.8f);  // Selling Quantity
+                                columns.RelativeColumn(1.1f);  // Unit Price
+                                columns.RelativeColumn(.8f);   // Quantity
+                                columns.RelativeColumn(.8f);   // Return Quantity
+                                columns.RelativeColumn(.8f);   // Selling Quantity
                                 columns.RelativeColumn(1.8f);  // Total Product Price
                                 columns.RelativeColumn(1.6f);  // Return Price
-                                // columns.RelativeColumn(.8f);     // Discount %
                                 columns.RelativeColumn(1.8f);  // Total Price
                             });
 
-                            // Header row
+                            // Header
                             table.Header(header =>
                             {
                                 header.Cell().Background("#f5f5f5").Padding(5).Text("Name").Bold();
@@ -320,7 +859,6 @@ else
                                 header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("S-Qty").Bold();
                                 header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("P-Price").Bold();
                                 header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("R-Price").Bold();
-                                // header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Dis%").Bold();
                                 header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("S-Price").Bold();
                             });
 
@@ -334,7 +872,6 @@ else
                                 table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.SellingQuantity.ToString());
                                 table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.TotalProductPrice:N2}");
                                 table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.ReturnPrice:N2}");
-                                // table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.Discount.ToString());
                                 table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.TotalPrice:N2}");
                             }
 
@@ -348,122 +885,234 @@ else
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{OrderDetails.Sum(x => x.TotalPrice):N2}").Bold();
                         });
 
-
-                        // Space between tables
-
+                        // ==================== 2. EXTRA RETURN PRODUCTS ====================
                         if (ExtraReturnProductGroupedList.Any())
                         {
                             column.Item().PaddingTop(20);
-
-                            // Title
-                            column.Item().Text("Extra Return Product List");
+                            column.Item().Text("Empty Cylinder Return (Company Wise)").Bold().FontSize(12);
 
                             column.Item().Table(table =>
                             {
                                 table.ColumnsDefinition(columns =>
                                 {
-                                    columns.RelativeColumn(3);   // Name
-                                    columns.RelativeColumn(1.2f); // DP
-                                    columns.RelativeColumn(1.2f); // Return Qty
+                                    columns.RelativeColumn(3);   // Company Name
+                                    columns.RelativeColumn(1.2f); // Total Quantity
                                     columns.RelativeColumn(1.5f); // Total Amount
                                 });
 
                                 // Header
                                 table.Header(header =>
                                 {
-                                    header.Cell().Background("#f5f5f5").Padding(5).Text("Name").Bold();
-                                    header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("DP").Bold();
-                                    header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Return Qty").Bold();
+                                    header.Cell().Background("#f5f5f5").Padding(5).Text("Company Name").Bold();
+                                    header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Total Cylinder").Bold();
                                     header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Total Amount").Bold();
                                 });
 
                                 // Rows
-                                foreach (var item in ExtraReturnProductGroupedList)
+                                foreach (var group in ExtraReturnProductGroupedList)
                                 {
-                                    table.Cell().Padding(5).Text(item.SupplierName);
-                                    table.Cell().Padding(5).AlignRight().Text(item.TotalQuantity.ToString());
-                                    table.Cell().Padding(5).AlignRight().Text($"{item.TotalAmount:N2}");
+                                    table.Cell().Padding(5).Text(group.SupplierName);
+                                    table.Cell().Padding(5).AlignRight().Text(group.TotalQuantity.ToString());
+                                    table.Cell().Padding(5).AlignRight().Text($"{group.TotalAmount:N2}");
                                 }
 
-                                // Footer (Totals)
-                                table.Cell().ColumnSpan(2).Padding(5).AlignRight().Text("Total:").Bold();
+                                // Footer
+                                table.Cell().ColumnSpan(1).Padding(5).AlignRight().Text("Total:").Bold();
                                 table.Cell().Padding(5).AlignRight()
                                     .Text($"{ExtraReturnProductGroupedList.Sum(x => x.TotalQuantity)}").Bold();
                                 table.Cell().Padding(5).AlignRight()
                                     .Text($"{ExtraReturnProductGroupedList.Sum(x => x.TotalAmount):N2}").Bold();
                             });
+
+                            // Individual product details for each company
+                            foreach (var group in ExtraReturnProductGroupedList)
+                            {
+                                column.Item().PaddingTop(10);
+                                column.Item().Table(table =>
+                                {
+                                    table.ColumnsDefinition(columns =>
+                                    {
+                                        columns.RelativeColumn(2.5f); // Product Name
+                                        columns.RelativeColumn(1.5f); // Empty Price
+                                        columns.RelativeColumn(1f);   // Quantity
+                                        columns.RelativeColumn(1.5f); // Total Amount
+                                    });
+
+                                    // Sub-header with company name
+                                    table.Header(header =>
+                                    {
+                                        header.Cell().ColumnSpan(4)
+                                            .Background("#e9ecef")
+                                            .Padding(5)
+                                            .Text($"📦 {group.SupplierName} (Total: {group.TotalQuantity} pcs, ৳{group.TotalAmount:N2})")
+                                            .Bold();
+                                    });
+
+                                    // Product rows
+                                    foreach (var detail in group.Details)
+                                    {
+                                        table.Cell().Padding(5).Text(detail.ProductName);
+                                        table.Cell().Padding(5).AlignRight().Text($"{detail.EmptyCylinderPrice:N2}");
+                                        table.Cell().Padding(5).AlignRight().Text(detail.Quantity.ToString());
+                                        table.Cell().Padding(5).AlignRight().Text($"{detail.TotalAmount:N2}");
+                                    }
+
+                                    // Sub-total
+                                    table.Cell().ColumnSpan(2).Padding(5).AlignRight().Text("Sub-Total:").Bold();
+                                    table.Cell().Padding(5).AlignRight().Text($"{group.TotalQuantity}").Bold();
+                                    table.Cell().Padding(5).AlignRight().Text($"{group.TotalAmount:N2}").Bold();
+                                });
+                            }
                         }
 
-                        // Space between tables
-                        column.Item().PaddingBottom(15);
-
-                        // Second table - Damage Products
-                        column.Item().Table(table =>
+                        // ==================== 3. DAILY EXPENSES ====================
+                        if (DailyExpenseList.Any())
                         {
-                            // Define columns for damage products
-                            table.ColumnsDefinition(columns =>
+                            column.Item().PaddingTop(20);
+                            column.Item().Text("Daily Expenses").Bold().FontSize(12);
+
+                            column.Item().Table(table =>
                             {
-                                columns.RelativeColumn(3);  // Damage Product Name
-                                columns.RelativeColumn(1.5f); // Unit Price
-                                columns.RelativeColumn(1.5f); // Quantity
-                                columns.RelativeColumn(1.5f); // Total Price
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.RelativeColumn(2.5f); // Expense Type
+                                    columns.RelativeColumn(1.5f); // Amount
+                                    columns.RelativeColumn(1.5f); // Date
+                                });
+
+                                // Header
+                                table.Header(header =>
+                                {
+                                    header.Cell().Background("#f5f5f5").Padding(5).Text("Expense Type").Bold();
+                                    header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Amount").Bold();
+                                    header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                                });
+
+                                // Rows
+                                foreach (var expense in DailyExpenseList)
+                                {
+                                    table.Cell().Padding(5).Text(expense.DailyExpenseType?.Name ?? "N/A");
+                                    table.Cell().Padding(5).AlignRight().Text($"{expense.Amount:N2}");
+                                    table.Cell().Padding(5).Text(expense.DateFormatted);
+                                }
+
+                                // Footer
+                                table.Cell().ColumnSpan(1).Padding(5).AlignRight().Text("Total Expense:").Bold();
+                                table.Cell().Padding(5).AlignRight()
+                                    .Text($"{DailyExpenseList.Sum(x => x.Amount):N2}").Bold();
+                                table.Cell().Padding(5).Text("");
                             });
+                        }
 
-                            // Header row
-                            table.Header(header =>
+                        // ==================== 4. SHOP DUE & CYLINDER DETAILS ====================
+                        if (DSRShopDueList.Any())
+                        {
+                            column.Item().PaddingTop(20);
+                            column.Item().Text("Shop Due & Empty Cylinder Details").Bold().FontSize(12);
+
+                            foreach (var shop in DSRShopDueList)
                             {
-                                header.Cell().Background("#f5f5f5").Padding(5).Text("Damage Product Name").Bold();
-                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Unit Price").Bold();
-                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Quantity").Bold();
-                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Total Price").Bold();
-                            });
-                          
-                            // Footer
-                            table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Cash Paid:").Bold();
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid):N2}").Bold();
+                                var totalCylinderValue = shop.CylinderDetails.Sum(c => c.Quantity * c.EmptyCylinderPrice);
 
-                            //Shop Due Data rows
-                            // foreach (var item in DSRShopDueList)
-                            // {
-                            //     table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DueHistory}");
-                            //     table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DueAmount:N2}");
-                            // }
+                                column.Item().PaddingTop(10);
+                                column.Item().Table(table =>
+                                {
+                                    table.ColumnsDefinition(columns =>
+                                    {
+                                        columns.RelativeColumn(2.5f); // Product Name
+                                        columns.RelativeColumn(1.5f); // Company
+                                        columns.RelativeColumn(1.2f); // Empty Price
+                                        columns.RelativeColumn(1f);   // Quantity
+                                        columns.RelativeColumn(1.5f); // Total Value
+                                    });
 
-                            // Footer
-                            table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Due Amount:").Bold();
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{DSRShopDueList.Sum(x => x.DueAmount):N2}").Bold();
+                                    // Shop header
+                                    table.Header(header =>
+                                    {
+                                        header.Cell().ColumnSpan(5)
+                                            .Background("#d1e7dd")
+                                            .Padding(5)
+                                            .Text($"🏪 {shop.ShopName} | 📍 {shop.ShopArea} | 👤 {shop.CustomerName} | Due: ৳{shop.DueAmount:N2}")
+                                            .Bold();
+                                    });
 
-                            // Daily Expense Lis Data rows
-                            foreach (var item in DailyExpenseList)
-                            {
-                                table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DailyExpenseType.Name} Amount:");
-                                table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.Amount:N2}");
+                                    if (shop.CylinderDetails.Any())
+                                    {
+                                        // Product rows
+                                        foreach (var detail in shop.CylinderDetails)
+                                        {
+                                            table.Cell().Padding(5).Text(detail.ProductName);
+                                            table.Cell().Padding(5).Text(detail.SupplierName);
+                                            table.Cell().Padding(5).AlignRight().Text($"{detail.EmptyCylinderPrice:N2}");
+                                            table.Cell().Padding(5).AlignRight().Text(detail.Quantity.ToString());
+                                            table.Cell().Padding(5).AlignRight().Text($"{(detail.Quantity * detail.EmptyCylinderPrice):N2}");
+                                        }
+
+                                        // Shop total
+                                        table.Cell().ColumnSpan(3).Padding(5).AlignRight().Text("Shop Total:").Bold();
+                                        table.Cell().Padding(5).AlignRight()
+                                            .Text($"{shop.CylinderDetails.Sum(c => c.Quantity)}").Bold();
+                                        table.Cell().Padding(5).AlignRight()
+                                            .Text($"{totalCylinderValue:N2}").Bold();
+                                    }
+                                    else
+                                    {
+                                        table.Cell().ColumnSpan(5)
+                                            .Padding(5)
+                                            .Text("No empty cylinders for this shop")
+                                            .FontColor("#6c757d");
+                                    }
+                                });
                             }
 
-                            // Footer
-                            table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Expense Amount:").Bold();
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{DailyExpenseList.Sum(x => x.Amount):N2}").Bold();
+                            // Grand Total for all shops
+                            column.Item().PaddingTop(10);
+                            column.Item().Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.RelativeColumn(1);
+                                });
 
-                        });
+                                table.Cell()
+                                    .Background("#e9ecef")
+                                    .Padding(5)
+                                    .AlignRight()
+                                    .Text($"Total Shop Due: ৳{DSRShopDueList.Sum(x => x.DueAmount):N2} | " +
+                                          $"Total Cylinders: {DSRShopDueList.Sum(x => x.CylinderDetails.Sum(c => c.Quantity))} | " +
+                                          $"Total Cylinder Value: ৳{DSRShopDueList.Sum(x => x.CylinderDetails.Sum(c => c.Quantity * c.EmptyCylinderPrice)):N2}")
+                                    .Bold();
+                            });
+                        }
 
-                        // Total Due section
-                        column.Item().BorderTop(1).BorderColor(QuestPDF.Helpers.Colors.Black).PaddingTop(10)
-                            .AlignRight().Text($"Total Amount: {OrderDetails.Sum(x => x.TotalPrice):N2}").FontSize(12).Bold();
-                        column.Item().PaddingTop(10).AlignRight().Text($"Total Paid: {GrandTotal:N2}").FontSize(12).Bold();
-                        column.Item().PaddingTop(10).AlignRight().Text($"Total Due: {TotalDue:N2}").FontSize(14).FontColor("#FF0000").Bold();
+                        // ==================== 5. TOTAL SUMMARY ====================
+                        column.Item().PaddingTop(20);
+                        column.Item().BorderTop(1).BorderColor(QuestPDF.Helpers.Colors.Black).PaddingTop(10);
+
+                        column.Item().AlignRight()
+                            .Text($"Total Order Amount: ৳{OrderDetails.Sum(x => x.TotalPrice):N2}")
+                            .FontSize(12).Bold();
+
+                        column.Item().PaddingTop(5).AlignRight()
+                            .Text($"Total Paid: ৳{GrandTotal:N2}")
+                            .FontSize(12).Bold();
+
+                        column.Item().PaddingTop(5).AlignRight()
+                            .Text($"Total Due: ৳{TotalDue:N2}")
+                            .FontSize(14).FontColor("#FF0000").Bold();
                     });
 
                 page.Footer().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignCenter().Text(text =>
                     {
-                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
-                        row.RelativeItem().AlignCenter().Text(text =>
-                        {
-                            text.CurrentPageNumber();
-                            text.Span(" / ");
-                            text.TotalPages();
-                        });
-                        row.RelativeItem(); // Empty space for right side (optional)
+                        text.CurrentPageNumber();
+                        text.Span(" / ");
+                        text.TotalPages();
                     });
+                    row.RelativeItem();
+                });
             });
         });
 
@@ -474,121 +1123,6 @@ else
         await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
     }
 
-    public async Task OrderExportToPdf()
-    {
-
-        var orderList = await m_Lookup.OrderExportToPdfList(OrderId);
-
-        // Calculate totals for each column
-        decimal s_cbTotal = 0;
-        decimal s_pdTotal = 0;
-        decimal s_pqTotal = 0;
-        decimal r_cbTotal = 0;
-        decimal r_pdTotal = 0;
-        decimal r_pqTotal = 0;
-
-        foreach (var item in orderList)
-        {
-            s_cbTotal += item.S_CB;
-            s_pdTotal += item.S_PD;
-            s_pqTotal += item.S_PQ;
-            r_cbTotal += item.R_CB;
-            r_pdTotal += item.R_PD;
-            r_pqTotal += item.R_PQ;
-        }
-
-        var document = Document.Create(container =>
-        {
-            container.Page(page =>
-            {
-                // Set margins
-                page.MarginTop(20);
-                page.MarginBottom(20);
-                page.MarginLeft(40);
-                page.MarginRight(40);
-
-                page.Size(PageSizes.A4);
-                page.DefaultTextStyle(style => style.FontSize(10));
-
-                page.Header().Element(ComposeHeader);
-
-                page.Content()
-                    .PaddingVertical(10)
-                    .Column(column =>
-                    {
-                        // First table - Order Details
-                        column.Item().Table(table =>
-                        {
-                            // Define columns for order details
-                            table.ColumnsDefinition(columns =>
-                            {
-                                columns.RelativeColumn(2.1f);  // Name
-                                columns.RelativeColumn(1.1f);  // S-C/B
-                                columns.RelativeColumn(1.1f);  // S-P/D
-                                columns.RelativeColumn(1.1f);  // S-P/Q
-                                columns.RelativeColumn(1.1f);  // R-C/B
-                                columns.RelativeColumn(1.1f);  // R-P/D
-                                columns.RelativeColumn(1.1f);  // R-P/Q
-                            });
-
-                            // Header row
-                            table.Header(header =>
-                            {
-                                header.Cell().Background("#f5f5f5").Padding(5).Text("Name").Bold();
-                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("S-C/B").Bold();
-                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("S-P/D").Bold();
-                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("S-P/Q").Bold();
-                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("R-C/B").Bold();
-                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("R-P/D").Bold();
-                                header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("R-P/Q").Bold();
-                            });
-
-                            // Data rows
-                            foreach (var item in orderList)
-                            {
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).Text(item.ProductName);
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.S_CB.ToString());
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.S_PD.ToString());
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.S_PQ.ToString());
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.R_CB.ToString());
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.R_PD.ToString());
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.R_PQ.ToString());
-                            }
-
-                            // Footer row with totals
-                            table.Footer(footer =>
-                            {
-                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Total: ").Bold();
-                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(s_cbTotal.ToString()).Bold();
-                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(s_pdTotal.ToString()).Bold();
-                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(s_pqTotal.ToString()).Bold();
-                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(r_cbTotal.ToString()).Bold();
-                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(r_pdTotal.ToString()).Bold();
-                                footer.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text(r_pqTotal.ToString()).Bold();
-                            });
-                        });
-                    });
-
-                page.Footer().Row(row =>
-                    {
-                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
-                        row.RelativeItem().AlignCenter().Text(text =>
-                        {
-                            text.CurrentPageNumber();
-                            text.Span(" / ");
-                            text.TotalPages();
-                        });
-                        row.RelativeItem(); // Empty space for right side (optional)
-                    });
-            });
-        });
-
-        using var stream = new MemoryStream();
-        document.GeneratePdf(stream);
-
-        var fileName = $"Order_Details_{OrderId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
-        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
-    }
 
 
     void ComposeHeader(IContainer container)
