@@ -1,20 +1,15 @@
-﻿@page "/PrintOrder/{OrderId:int}/{CustomerId:int}"
+﻿@page "/PrintOrder/{OrderId:int}"
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 @if (OrderId > 0)
 {
-    @* <OrderDetails OrderId="@OrderId"></OrderDetails> *@
-    <ComPersonHeaderInfo Id="@CustomerId"></ComPersonHeaderInfo>
     <DEALER.Web.Components.Pages.Sales.OrdersSells.ComOrderDetails OrderId="@OrderId"></DEALER.Web.Components.Pages.Sales.OrdersSells.ComOrderDetails>
 }
 
 @code {
     [Parameter]
     public int OrderId { get; set; }
-
-    [Parameter]
-    public int CustomerId { get; set; }
 
     protected override void OnInitialized()
     {

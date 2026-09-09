@@ -114,7 +114,7 @@
                 return await _dbContext.Expenses
                     .Include(x => x.ExpenseType)
                     .Include(x => x.PaymentMethod)
-                    .Include(x => x.Customer)
+                    .Include(x => x.Employee)
                     .Where(x => !x.IsDeleted && x.ExpenseDate.Date >= fromDate && x.ExpenseDate.Date <= toDate)
                     .OrderByDescending(x => x.Id)
                     .ToListAsync();
@@ -142,7 +142,7 @@
                 return await _dbContext.Expenses
                     .Include(x => x.ExpenseType)
                     .Include(x => x.PaymentMethod)
-                    .Include(x => x.Customer)
+                    .Include(x => x.Employee)
                     .Where(x => !x.IsDeleted && x.ExpenseTypeId == 4 && x.ExpenseDate.Date >= fromDate && x.ExpenseDate.Date <= toDate)
                     .OrderByDescending(x => x.Id)
                     .ToListAsync();

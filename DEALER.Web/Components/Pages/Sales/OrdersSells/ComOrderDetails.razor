@@ -1,4 +1,4 @@
-﻿@* <style>
+﻿<style>
     .rz-datatable-footer {
         font-weight: bold;
         text-align: right;
@@ -102,119 +102,97 @@ else
             </Columns>
         </RadzenDataGrid>
 
-        @if (ExtraReturnProductLists.Any())
+        @if (ExtraReturnProductGroupedList.Any())
         {
-        <div class="mt-5">
-            <h4>Extra Return Product List</h4>
-        </div>
+            <div class="mt-5">
+                <h4>Empty Cylinder Return (Company Wise)</h4>
+            </div>
 
-        <RadzenDataGrid Data="@ExtraReturnProductLists" TItem="ExtraReturnProductListDto" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
-            <Columns>
-                <RadzenDataGridColumn TItem="ExtraReturnProductListDto" Property="@nameof(ExtraReturnProductListDto.ProductName)" Title="Name" Width="150px" />
+            @foreach (var group in ExtraReturnProductGroupedList)
+            {
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <strong>@group.SupplierName</strong>
+                        <span class="badge bg-info float-end">
+                            Total Cylinder: @group.TotalQuantity | Total Amount: @group.TotalAmount.ToString("N2")
+                        </span>
+                    </div>
+                    <div class="card-body p-0">
+                        <RadzenDataGrid Data="@group.Details"
+                                        TItem="ExtraReturnProductDetailsDto"
+                                        PageSize="10"
+                                        AllowPaging="false"
+                                        AllowSorting="true"
+                                        AllowFiltering="false">
+                            <Columns>
+                                <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
+                                                      Property="@nameof(ExtraReturnProductDetailsDto.ProductName)"
+                                                      Title="Product Name"
+                                                      Width="200px" />
 
-                <RadzenDataGridColumn TItem="ExtraReturnProductListDto" Title="DP" Width="80px" TextAlign="TextAlign.Right">
-                    <Template Context="item">
-                        <div class="text-end">@item.UnitPrice.ToString("N2")</div>
-                    </Template>
-                </RadzenDataGridColumn>
-                
-                <RadzenDataGridColumn TItem="ExtraReturnProductListDto" Title="Return Qty" Width="80px">
-                    <Template Context="item">
-                        <div>@item.Quantity</div>
-                    </Template>
-                    <FooterTemplate>
-                        <div class="fw-bold">@ExtraReturnProductLists.Sum(x => x.Quantity)</div>
-                    </FooterTemplate>
-                </RadzenDataGridColumn>
-                
-                <RadzenDataGridColumn TItem="ExtraReturnProductListDto" Property="@nameof(ExtraReturnProductListDto.TotalAmount)" Title="Total Amount" Width="100px" TextAlign="TextAlign.Right">
-                    <Template Context="item">
-                        <div class="text-end">@item.TotalAmount.ToString("N2")</div>
-                    </Template>
-                    <FooterTemplate>
-                        <div class="fw-bold text-end">@ExtraReturnProductLists.Sum(x => x.TotalAmount).ToString("N2")</div>
-                    </FooterTemplate>
-                </RadzenDataGridColumn>
-            </Columns>
-        </RadzenDataGrid>
+                                <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
+                                                      Title="Empty Price"
+                                                      Width="120px"
+                                                      TextAlign="TextAlign.Right">
+                                    <Template Context="item">
+                                        <div class="text-end">@item.EmptyCylinderPrice.ToString("N2")</div>
+                                    </Template>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
+                                                      Title="Quantity"
+                                                      Width="100px"
+                                                      TextAlign="TextAlign.Right">
+                                    <Template Context="item">
+                                        <div class="text-end">@item.Quantity</div>
+                                    </Template>
+                                    <FooterTemplate>
+                                        <div class="fw-bold text-end">@group.TotalQuantity</div>
+                                    </FooterTemplate>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
+                                                      Title="Total Amount"
+                                                      Width="150px"
+                                                      TextAlign="TextAlign.Right">
+                                    <Template Context="item">
+                                        <div class="text-end">@item.TotalAmount.ToString("N2")</div>
+                                    </Template>
+                                    <FooterTemplate>
+                                        <div class="fw-bold text-end">@group.TotalAmount.ToString("N2")</div>
+                                    </FooterTemplate>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
+                                                      Title="Return Date"
+                                                      Width="150px">
+                                    <Template Context="item">
+                                        <div>@item.ReturnDate.ToString("dd-MMM-yyyy")</div>
+                                    </Template>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn TItem="ExtraReturnProductDetailsDto"
+                                                      Property="@nameof(ExtraReturnProductDetailsDto.Remarks)"
+                                                      Title="Remarks"
+                                                      Width="150px" />
+                            </Columns>
+                        </RadzenDataGrid>
+                    </div>
+                </div>
+            }
+
+            <!-- Grand Total for Returns -->
+            <div class="alert alert-info">
+                <strong>Total Empty Cylinder Return Value: </strong>
+                @ExtraReturnProductGroupedList.Sum(g => g.TotalAmount).ToString("N2")
+            </div>
         }
-        <div class="mt-5">
-        </div>
-
-        <RadzenDataGrid Data="@DamageProductDetails" TItem="DamageProductDetailsDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
-            <Columns>
-                <RadzenDataGridColumn TItem="DamageProductDetailsDTO" Property="@nameof(DamageProductDetailsDTO.ProductName)" Title="Damage Product Name" Width="300px" />
-
-                <RadzenDataGridColumn HeaderCssClass="text-end" TItem="DamageProductDetailsDTO" Title="Unit Price" Width="150px" TextAlign="TextAlign.Right">
-                    <Template Context="item">
-                        <div class="text-end">@item.ProductPrice.ToString("N2")</div>
-                    </Template>
-                </RadzenDataGridColumn>
-
-                <RadzenDataGridColumn TItem="DamageProductDetailsDTO" HeaderCssClass="text-end" Property="@nameof(DamageProductDetailsDTO.Quantity)" Title="Quantity" Width="150px">
-                    <FooterTemplate>
-
-
-                        <div class="fw-bold text-end">Total Damage Price:</div>
-                        <hr />
-                        <div class="fw-bold text-end">Total Cash Paid:</div>
-                        <hr />
-                        @foreach (var dis in SRDiscountList)
-                        {
-                            <div class=" text-end">@dis.Customer.Name Discount:</div>
-                        }
-
-                        <div class="fw-bold text-end">Total Discount Amount:</div>
-                        <hr />
-                        @foreach (var shop in DSRShopDueList)
-                        {
-                            <div class="text-end">@shop.DueHistory:</div>
-                        }
-                        <div class="fw-bold text-end">Total Shop Amount:</div>
-                        <hr />
-                        @foreach (var expense in DailyExpenseList)
-                        {
-                            <div class=" text-end">@expense.DailyExpenseType.Name Amount:</div>
-                        }
-                        <div class="fw-bold text-end">Total Expense Amount:</div>
-                        <hr />
-                        <div class="fw-bold text-end">Grand Total Amount:</div>
-                    </FooterTemplate>
-                </RadzenDataGridColumn>
-
-                <RadzenDataGridColumn TItem="DamageProductDetailsDTO" HeaderCssClass="text-end" Property="@nameof(DamageProductDetailsDTO.TotalPrice)" Title="Total Price" Width="100px" TextAlign="TextAlign.Right">
-                    <Template Context="item">
-                        <div class="text-end">@item.TotalPrice.ToString("N2")</div>
-                    </Template>
-                    <FooterTemplate>
-
-                        <div class="fw-bold text-end"> @DamageProductDetails.Sum(x => x.TotalPrice).ToString("N2")</div>
-                        <hr />
-                        <div class="fw-bold text-end"> @OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid).ToString("N2")</div>
-                        <hr />
-                        @foreach (var dis in SRDiscountList)
-                        {
-                            <div class=" text-end"> @dis.DiscountAmount.ToString("N2")</div>
-                        }
-                        <div class="fw-bold text-end"> @SRDiscountList.Sum(x => x.DiscountAmount).ToString("N2")</div>
-                        <hr />
-                        @foreach (var shop in DSRShopDueList)
-                        {
-                            <div class="text-end"> @shop.DueAmount.ToString("N2")</div>
-                        }
-                        <div class="fw-bold text-end"> @DSRShopDueList.Sum(x => x.DueAmount).ToString("N2")</div>
-                        <hr />
-                        @foreach (var expense in DailyExpenseList)
-                        {
-                            <div class=" text-end"> @expense.Amount.ToString("N2")</div>
-                        }
-                        <div class="fw-bold text-end"> @DailyExpenseList.Sum(x => x.Amount).ToString("N2")</div>
-                        <hr />
-                        <div class="fw-bold text-end"> @GrandTotal.ToString("N2")</div>
-                    </FooterTemplate>
-                </RadzenDataGridColumn>
-            </Columns>
-        </RadzenDataGrid>
+        else
+        {
+            <div class="mt-3">
+                <p class="text-muted">No empty cylinder returns found for this order.</p>
+            </div>
+        }
     </div>
 }
 
@@ -225,8 +203,6 @@ else
     [Inject]
     private IOrder m_Order { get; set; }
 
-    [Inject]
-    private ISRDiscount m_SRDiscount { get; set; }
 
     [Inject]
     private IDSRShopDue m_DSRShopDue { get; set; }
@@ -253,39 +229,35 @@ else
     private OrderInfo OrderInfo { get; set; }
     private Message notificationComponent;
 
-    private IEnumerable<SRDiscount> SRDiscountList { get; set; } = new List<SRDiscount>();
 
-    public IEnumerable<DSRShopDue> DSRShopDueList { get; set; } = new List<DSRShopDue>();
+    public IEnumerable<ShopDueWithCylinderDto> DSRShopDueList { get; set; } = new List<ShopDueWithCylinderDto>();
     public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
     private IEnumerable<OrderPaymentHistory> OrderPaymentHistoryByOrderList { get; set; } = new List<OrderPaymentHistory>();
 
     private double TotalDue { get; set; } = 0;
-
-    private IEnumerable<ExtraReturnProductListDto> ExtraReturnProductLists { get; set; } = new List<ExtraReturnProductListDto>();
+    private IEnumerable<ExtraReturnProductGroupDto> ExtraReturnProductGroupedList { get; set; } = new List<ExtraReturnProductGroupDto>();
     private IEnumerable<OrderDetailsDTO> OrderDetails { get; set; } = new List<OrderDetailsDTO>();
-    private IEnumerable<DamageProductDetailsDTO> DamageProductDetails { get; set; } = new List<DamageProductDetailsDTO>();
 
     protected override async Task OnInitializedAsync()
     {
         OrderInfo = await m_Order.GetOrderInfoById(OrderId);
-        SRDiscountList = await m_SRDiscount.GetAllSRDiscountByOrderId(OrderId);
-        DSRShopDueList = await m_DSRShopDue.GetAllDSRShopDue(OrderId);
+        DSRShopDueList = await m_DSRShopDue.GetShopDueWithCylindersAsync(OrderId);
+
         OrderDetails = await m_Order.GetOrderDetailsByOrderAsync(OrderId);
-        ExtraReturnProductLists = await m_ExtraReturnProduct.GetListByOrderIdAsync(OrderId);
-        DamageProductDetails = await m_Order.GetDamageProductDetailsByOrderAsync(OrderId) ?? new List<DamageProductDetailsDTO>();
         DailyExpenseList = m_DailyExpense.GetAllDailyExpense(OrderId);
         OrderPaymentHistoryByOrderList = await m_OrderPaymentHistory.GetAllOrderPaymentHistoryByOrderId(OrderId);
-
+        ExtraReturnProductGroupedList = await m_ExtraReturnProduct.GetExtraReturnProductGroupedByCompanyAsync(OrderId);
 
         var totalPrice = OrderDetails.Sum(od => od.TotalPrice);
-        var totalDamagePrice = DamageProductDetails?.Sum(od => od.TotalPrice) ?? 0;
-        var srDiscountAmount = SRDiscountList.Sum(x => x.DiscountAmount);
         var dsrShopDueList = DSRShopDueList.Sum(x => x.DueAmount);
+        var totalEmptyCylinderAmount = DSRShopDueList
+           .SelectMany(x => x.CylinderDetails)
+           .Sum(x => x.EmptyCylinderPrice * x.Quantity);
         var dailyExpenseList = DailyExpenseList.Sum(x => x.Amount);
         var orderPayment = OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid);
-        var extraReturnProductPayment = ExtraReturnProductLists.Sum(x => x.TotalAmount);
+        var extraReturnProductPayment = ExtraReturnProductGroupedList.Sum(x => x.TotalAmount);
 
-        GrandTotal = totalDamagePrice + srDiscountAmount + dsrShopDueList + dailyExpenseList + orderPayment + extraReturnProductPayment;
+        GrandTotal = dsrShopDueList + totalEmptyCylinderAmount + dailyExpenseList + orderPayment + extraReturnProductPayment;
         TotalDue = totalPrice - GrandTotal;
 
         StateHasChanged();
@@ -379,7 +351,7 @@ else
 
                         // Space between tables
 
-                        if (ExtraReturnProductLists.Any())
+                        if (ExtraReturnProductGroupedList.Any())
                         {
                             column.Item().PaddingTop(20);
 
@@ -406,20 +378,19 @@ else
                                 });
 
                                 // Rows
-                                foreach (var item in ExtraReturnProductLists)
+                                foreach (var item in ExtraReturnProductGroupedList)
                                 {
-                                    table.Cell().Padding(5).Text(item.ProductName);
-                                    table.Cell().Padding(5).AlignRight().Text($"{item.UnitPrice:N2}");
-                                    table.Cell().Padding(5).AlignRight().Text(item.Quantity.ToString());
+                                    table.Cell().Padding(5).Text(item.SupplierName);
+                                    table.Cell().Padding(5).AlignRight().Text(item.TotalQuantity.ToString());
                                     table.Cell().Padding(5).AlignRight().Text($"{item.TotalAmount:N2}");
                                 }
 
                                 // Footer (Totals)
                                 table.Cell().ColumnSpan(2).Padding(5).AlignRight().Text("Total:").Bold();
                                 table.Cell().Padding(5).AlignRight()
-                                    .Text($"{ExtraReturnProductLists.Sum(x => x.Quantity)}").Bold();
+                                    .Text($"{ExtraReturnProductGroupedList.Sum(x => x.TotalQuantity)}").Bold();
                                 table.Cell().Padding(5).AlignRight()
-                                    .Text($"{ExtraReturnProductLists.Sum(x => x.TotalAmount):N2}").Bold();
+                                    .Text($"{ExtraReturnProductGroupedList.Sum(x => x.TotalAmount):N2}").Bold();
                             });
                         }
 
@@ -446,41 +417,17 @@ else
                                 header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Quantity").Bold();
                                 header.Cell().Background("#f5f5f5").Padding(5).AlignRight().Text("Total Price").Bold();
                             });
-
-                            // Damage Product Data rows
-                            foreach (var item in DamageProductDetails)
-                            {
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).Text(item.ProductName);
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.ProductPrice:N2}");
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text(item.Quantity.ToString());
-                                table.Cell().PaddingVertical(3).PaddingHorizontal(5).AlignRight().Text($"{item.TotalPrice:N2}");
-                            }
-
-                            // Footer
-                            table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Damage Price:").Bold();
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{DamageProductDetails.Sum(x => x.TotalPrice):N2}").Bold();
-
+                          
                             // Footer
                             table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Cash Paid:").Bold();
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid):N2}").Bold();
 
-                            //SR Discount Data rows
-                            foreach (var item in SRDiscountList)
-                            {
-                                table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.Customer.Name} Discount:");
-                                table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DiscountAmount:N2}");
-                            }
-
-                            // Footer
-                            table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Discount Amount:").Bold();
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{SRDiscountList.Sum(x => x.DiscountAmount):N2}").Bold();
-
                             //Shop Due Data rows
-                            foreach (var item in DSRShopDueList)
-                            {
-                                table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DueHistory}");
-                                table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DueAmount:N2}");
-                            }
+                            // foreach (var item in DSRShopDueList)
+                            // {
+                            //     table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DueHistory}");
+                            //     table.Cell().PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text($"{item.DueAmount:N2}");
+                            // }
 
                             // Footer
                             table.Cell().ColumnSpan(3).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total Due Amount:").Bold();
@@ -681,4 +628,3 @@ else
     }
 }
 
- *@

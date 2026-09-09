@@ -406,7 +406,7 @@
                     .Select(x => new DailyExpenseDTO
                     {
                         Id = x.Id,
-                        EmployeeName = x.Employee.Name,
+                        CustomerName = x.Employee.Name,
                         OrderId = x.OrderId,
                         DailyExpenseType = x.DailyExpenseType.Name,
                         Description = x.Description,

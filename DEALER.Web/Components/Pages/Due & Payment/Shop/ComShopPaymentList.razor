@@ -104,7 +104,7 @@
                             <div class="col-md-4 mb-3">
                                 <label class="Asterisk">Referred By</label>
                                 <RadzenDropDown @bind-Value="DSRShopPaymentHistory.EmployeeId"
-                                                Data="@EmployeeList"
+                                                Data="@CustomerList"
                                                 TextProperty="Name"
                                                 ValueProperty="Id"
                                                 Placeholder="Search"
@@ -177,7 +177,7 @@
     public IEnumerable<DSRShopPaymentHistory> FilterDSRShopPaymentHistoryList { get; set; } = new List<DSRShopPaymentHistory>();
     public IEnumerable<DSRDueSummary> DSRDueSummaryList { get; set; } = new List<DSRDueSummary>();
 
-    private IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
+    private IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
     private IEnumerable<Lov> ShopList { get; set; } = new List<Lov>();
 
     private string search = string.Empty;
@@ -189,7 +189,7 @@
     protected override async Task OnInitializedAsync()
     {
         ShopName = m_Lookup.GetShop(ShopId).Name;
-        EmployeeList = await m_Lookup.GetAllEmployeeList();
+        CustomerList = await m_Lookup.GetAllCustomerList();
         ShopList = await m_Lookup.GetAllShopList();
 
         //CustomerList = CustomerList.Where(c => !c.IsDeleted);

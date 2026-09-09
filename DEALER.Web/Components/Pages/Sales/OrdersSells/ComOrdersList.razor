@@ -76,7 +76,7 @@ else
                                       Click="() => ConfirmDelete(order.Id)" title="Delete" />
 
                         <RadzenButton Icon="description" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
-                                      Click="() => OrderDetails(order.Id, order.EmployeeId)" style="margin-right: 5px;" title="Details" />
+                                      Click="() => OrderDetails(order.Id)" style="margin-right: 5px;" title="Details" />
 
                         <RadzenButton Icon="playlist_add" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
                                       Click="() => ExtraReturnProduct(order.Id, order.EmployeeId)" style="margin-right: 5px;" title="Return Empty Cylinders" />
@@ -214,9 +214,9 @@ else
         _navigationManager.NavigateTo($"/Sale/{id}/{customerId}");
     }
 
-    private void OrderDetails(int id, int customerId)
+    private void OrderDetails(int id)
     {
-        _navigationManager.NavigateTo($"/PrintOrder/{id}/{customerId}");
+        _navigationManager.NavigateTo($"/PrintOrder/{id}");
     }
 
     private void OrderReturn(int orderid, int id)

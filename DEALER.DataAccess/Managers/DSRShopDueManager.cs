@@ -201,115 +201,6 @@
             return true;
         }
 
-        //public bool UpdateDSRShopDue(DSRShopDue DSRShopDue)
-        //{
-        //    using var transaction = _dbContext.Database.BeginTransaction();
-
-        //    try
-        //    {
-        //        // Get existing entity with products
-        //        var existing = _dbContext.DSRShopDues
-        //            .Include(d => d.Products)
-        //            .FirstOrDefault(d => d.Id == DSRShopDue.Id);
-
-        //        if (existing == null)
-        //            return false;
-
-        //        // Store previous amount for recalculation
-        //        var previousAmount = existing.DueAmount;
-
-        //        // Update main properties
-        //        existing.EmployeeId = DSRShopDue.EmployeeId;
-        //        existing.ShopId = DSRShopDue.ShopId;
-        //        existing.DueAmount = DSRShopDue.DueAmount;
-        //        existing.Date = DSRShopDue.Date;
-        //        existing.IsDeleted = DSRShopDue.IsDeleted;
-
-        //        // Update Products
-        //        // Remove old products
-        //        if (existing.Products != null && existing.Products.Any())
-        //        {
-        //            _dbContext.ShopEmptyCylinderProducts.RemoveRange(existing.Products);
-        //        }
-
-        //        // Add new products
-        //        if (DSRShopDue.Products != null && DSRShopDue.Products.Any())
-        //        {
-        //            foreach (var product in DSRShopDue.Products)
-        //            {
-        //                product.DSRShopDueId = DSRShopDue.Id;
-        //                _dbContext.ShopEmptyCylinderProducts.Add(product);
-        //            }
-        //        }
-
-        //        _dbContext.SaveChanges();
-
-        //        // Update Customer Payment History
-        //        if (DSRShopDue.OrderId > 0 && DSRShopDue.OrderId is not null)
-        //        {
-        //            var payment = _dbContext.CustomerPaymentHistories
-        //                             .FirstOrDefault(p => p.DSRShopDueId == DSRShopDue.Id
-        //                             && p.CustomerId == DSRShopDue.DSRCustomerId);
-
-        //            if (payment != null)
-        //            {
-        //                // Calculate the difference
-        //                double amountDifference = DSRShopDue.DueAmount - previousAmount;
-
-        //                // Update payment record
-        //                payment.PaymentDate = DSRShopDue.Date;
-        //                payment.AmountPaid = DSRShopDue.DueAmount;
-        //                payment.TotalDueAfterPayment += amountDifference;
-
-        //                _dbContext.Update(payment);
-        //                _dbContext.SaveChanges();
-
-        //                // Recalculate subsequent payments if amount changed
-        //                if (amountDifference != 0)
-        //                {
-        //                    RecalculateCustomerPayments(payment.CustomerId.Value, payment.Id, amountDifference);
-        //                }
-        //            }
-        //            else
-        //            {
-        //                // If no payment record exists, create one
-        //                var lastPayment = _dbContext.CustomerPaymentHistories
-        //                                .Where(p => p.CustomerId == DSRShopDue.DSRCustomerId)
-        //                                .OrderByDescending(p => p.Id)
-        //                                .FirstOrDefault();
-
-        //                double totalDueBefore = lastPayment?.TotalDueAfterPayment ?? 0;
-        //                double totalDueAfter = totalDueBefore + DSRShopDue.DueAmount;
-
-        //                var newPayment = new CustomerPaymentHistory()
-        //                {
-        //                    CustomerId = DSRShopDue.DSRCustomerId.Value,
-        //                    OrderId = DSRShopDue.OrderId,
-        //                    DSRShopDueId = DSRShopDue.Id,
-        //                    PaymentDate = DSRShopDue.Date,
-        //                    PaymentMethodId = 14,
-        //                    TransactionID = string.Empty,
-        //                    Number = string.Empty,
-        //                    TotalAmountThisOrder = 0,
-        //                    AmountPaid = DSRShopDue.DueAmount,
-        //                    TotalDueBeforePayment = totalDueBefore,
-        //                    TotalDueAfterPayment = totalDueAfter
-        //                };
-
-        //                _dbContext.CustomerPaymentHistories.Add(newPayment);
-        //                _dbContext.SaveChanges();
-        //            }
-        //        }
-
-        //        transaction.Commit();
-        //        return true;
-        //    }
-        //    catch (Exception)
-        //    {
-        //        transaction.Rollback();
-        //        throw;
-        //    }
-        //}
 
         public bool DeleteShopDue(int id)
         {
@@ -416,7 +307,7 @@
                     {
                         Id = x.Id,
                         EmployeeName = x.Employee != null ? x.Employee.Name : "",
-                        DSREmployeeName = x.DSREmployee != null ? x.DSREmployee.Name : "",
+                        DSRCustomerName = x.DSREmployee != null ? x.DSREmployee.Name : "",
                         ShopName = x.Shop != null ? x.Shop.Name : "",
                         OrderId = x.OrderId,
                         DueAmount = x.DueAmount,
@@ -563,10 +454,10 @@
                     .Where(x => x.Date.Date >= fromDate && x.Date.Date <= toDate && !x.IsDeleted && x.ShopId == shopId && !x.Shop.IsDeleted)
                     .OrderByDescending(x => x.Id)
                     .Select(x => new DSRShopDueDTO
-                    { 
+                    {
                         Id = x.Id,
                         EmployeeName = x.Employee.Name,
-                        IssuedByName = x.DSREmployee.Name,
+                        IssuedBYCustomerName = x.DSREmployee.Name,
                         ShopName = x.Shop.Name,
                         OrderId = x.OrderId,
                         DueAmount = x.DueAmount,
@@ -592,9 +483,6 @@
                     .Include(x => x.Employee)
                     .Include(x => x.DSREmployee)
                     .Include(x => x.Shop)
-                    .Include(x => x.Products)               // ✅ Products list
-                        .ThenInclude(p => p.Product)         // ✅ প্রতিটি product
-                            .ThenInclude(p => p.CurrentPrice) // ✅ সেই product এর price
                     .Where(x => x.OrderId == orderId && !x.IsDeleted && !x.Shop.IsDeleted)
                     .OrderByDescending(x => x.Id)
                     .ToListAsync();
@@ -634,5 +522,63 @@
             }
         }
 
+        public async Task<IEnumerable<ShopDueWithCylinderDto>> GetShopDueWithCylindersAsync(int orderId)
+        {
+            var result = await _dbContext.DSRShopDues
+                .Include(d => d.Shop)
+                .Include(d => d.Employee)
+                .Include(d => d.Products)
+                    .ThenInclude(p => p.Product)
+                        .ThenInclude(p => p.Supplier)
+                .Include(d => d.Products)
+                    .ThenInclude(p => p.Product)
+                        .ThenInclude(p => p.CurrentPrice)
+                .Where(d => d.OrderId == orderId && !d.IsDeleted)
+                .Select(d => new ShopDueWithCylinderDto
+                {
+                    ShopId = d.ShopId,
+                    ShopName = d.Shop.Name,
+                    ShopArea = d.Shop.Area,
+                    CustomerName = d.Employee != null ? d.Employee.Name : "",
+                    DueAmount = d.DueAmount,
+                    Date = d.Date,
+                    CylinderDetails = d.Products.Select(p => new ShopCylinderDetailDto
+                    {
+                        ProductId = p.ProductId,
+                        ProductName = p.Product.DisplayNameSize ?? p.Product.Name,
+                        SupplierId = p.Product.SupplierId,
+                        SupplierName = p.Product.Supplier.Name,
+                        Quantity = p.CylinderQty,
+                        EmptyCylinderPrice = p.Product.CurrentPrice != null ? p.Product.CurrentPrice.CylinderBuyingPrice : 0
+                    }).ToList()
+                })
+                .OrderBy(d => d.ShopName)
+                .ToListAsync();
+
+            return result;
+        }
+
+        public async Task<IEnumerable<ShopCylinderGroupDto>> GetShopCylindersGroupedBySupplierAsync(int orderId)
+        {
+            var shopDues = await GetShopDueWithCylindersAsync(orderId);
+
+            // Collect all cylinders from all shops
+            var allCylinders = shopDues.SelectMany(d => d.CylinderDetails).ToList();
+
+            // Group by Supplier
+            var grouped = allCylinders
+                .GroupBy(c => new { c.SupplierId, c.SupplierName })
+                .Select(g => new ShopCylinderGroupDto
+                {
+                    SupplierId = g.Key.SupplierId,
+                    SupplierName = g.Key.SupplierName,
+                    TotalQuantity = g.Sum(x => x.Quantity),
+                    Details = g.ToList()
+                })
+                .OrderBy(g => g.SupplierName)
+                .ToList();
+
+            return grouped;
+        }
     }
 }

@@ -16,10 +16,10 @@ namespace DEALER.Domain
         public int ExpenseTypeId { get; set; }
         public ExpenseType ExpenseType { get; set; } // e.g., Electricity Bill, Salary
 
-        public int? CustomerId { get; set; }
-        public Customer Customer { get; set; } // e.g., Electricity Bill, Salary
+        public int? EmployeeId { get; set; }
+        public Employee Employee { get; set; } // e.g., Electricity Bill, Salary
 
-        public string CustomerName => Customer?.Name ?? string.Empty;
+        public string EmployeeName => Employee?.Name ?? string.Empty;
 
         [StringLength(500)]
         public string Description { get; set; }

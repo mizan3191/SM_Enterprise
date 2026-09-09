@@ -17,7 +17,7 @@ else
         <RadzenDataGrid Data="@CustomerProductReturns" TItem="CustomerProductReturnDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
             <Columns>
                 <RadzenDataGridColumn TItem="CustomerProductReturnDTO" Property="@nameof(CustomerProductReturnDTO.Id)" Title="Id" Width="100px" />
-                <RadzenDataGridColumn TItem="CustomerProductReturnDTO" Property="@nameof(CustomerProductReturnDTO.CustomerName)" Title="Name" Width="150px" />
+                <RadzenDataGridColumn TItem="CustomerProductReturnDTO" Property="@nameof(CustomerProductReturnDTO.EmployeeName)" Title="Name" Width="150px" />
                 <RadzenDataGridColumn TItem="CustomerProductReturnDTO" Property="@nameof(CustomerProductReturnDTO.Products)" Title="Products Name" Width="250px" />
                 <RadzenDataGridColumn TItem="CustomerProductReturnDTO" Property="@nameof(CustomerProductReturnDTO.DateFormatted)" Title="Date" Width="140px" />
                 <RadzenDataGridColumn TItem="CustomerProductReturnDTO" Title="Price" Width="100px">

@@ -8,8 +8,8 @@ namespace DEALER.Domain
         public double AmountPaid { get; set; }
         public DateTime PaymentDate { get; set; } = DateTime.Now;
         public string DateFormatted => PaymentDate.ToString("dd-MMM-yyyy (ddd)");
-         
-        public int EmployeeId { get; set; } 
+
+        public int EmployeeId { get; set; }
         public virtual Employee Employee { get; set; }
 
 
@@ -60,7 +60,7 @@ namespace DEALER.Domain
     {
         public int ShopId { get; set; }
         public int OrderId { get; set; }
-        public int EmployeeId { get; set; }
+        public int CustomerId { get; set; }
         public string ShopName { get; set; }
         public string OwnerName { get; set; }
         public string Area { get; set; }
@@ -76,7 +76,7 @@ namespace DEALER.Domain
     {
         public int ShopId { get; set; }
         public int OrderId { get; set; }
-        public int EmployeeId { get; set; }
+        public int CustomerId { get; set; }
         public string ShopName { get; set; }
         public string OwnerName { get; set; }
         public string Area { get; set; }

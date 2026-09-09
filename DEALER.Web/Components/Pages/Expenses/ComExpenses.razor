@@ -76,7 +76,7 @@ else
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="Expense" Title="Staff" Width="150px">
                     <Template Context="context">
-                        @context.CustomerName
+                        @context.EmployeeName
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="Expense" Title="Description" Width="120px">
@@ -182,15 +182,15 @@ else
 
                             <div class="col-md-4 mb-3">
                                 <label class="Asterisk">Given By</label>
-                                <RadzenDropDown @bind-Value="Expense.CustomerId"
-                                                Data="@EmployeeList"
+                                <RadzenDropDown @bind-Value="Expense.EmployeeId"
+                                                Data="@CustomerList"
                                                 TextProperty="Name"
                                                 ValueProperty="Id"
                                                 Placeholder="Select Customer"
                                                 Class="w-100"
                                                 AllowFiltering="false"
                                                 FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
-                                <ValidationMessage For="@(() => Expense.CustomerId)" />
+                                <ValidationMessage For="@(() => Expense.EmployeeId)" />
                             </div>
                         </div>
                         <div class="row m-3">
@@ -226,7 +226,7 @@ else
     public IEnumerable<Expense> Expenses { get; set; } = new List<Expense>();
     public IEnumerable<Lov> PaymentMethods { get; set; } = new List<Lov>();
     public IEnumerable<Lov> ExpenseTypes { get; set; } = new List<Lov>();
-    public IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
+    public IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
 
     private bool showModal = false;
 
@@ -249,7 +249,7 @@ else
     {
         PaymentMethods = await m_Lookup.GetAllPaymentMethodList();
         ExpenseTypes = await m_Lookup.GetAllExpenseTypeList();
-        EmployeeList = await m_Lookup.GetAllEmployeeList();
+        CustomerList = await m_Lookup.GetAllCustomerList();
 
         //CustomerList = CustomerList.Where(c => !c.IsDeleted);
         //PaymentMethods = PaymentMethods.Where(c => !c.IsDeleted);
@@ -339,7 +339,7 @@ else
                 ExpenseDate = DateTime.Now,
                 ExpenseTypeId = ExpenseTypes.FirstOrDefault()?.Id ?? 0,
                 PaymentMethodId = PaymentMethods.FirstOrDefault()?.Id ?? 0,
-                CustomerId = EmployeeList.FirstOrDefault()?.Id ?? 0,
+                EmployeeId = CustomerList.FirstOrDefault()?.Id ?? 0,
             };
         }
     }
@@ -451,7 +451,7 @@ else
             FilterExpenses = Expenses.Where(c =>
                 (!string.IsNullOrEmpty(c.ExpenseType.Name) && c.ExpenseType.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.Amount.ToString()) && c.Amount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.Customer.Name) && c.Customer.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Employee.Name) && c.Employee.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.PaymentMethod.Name) && c.PaymentMethod.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase))
             ).ToList();

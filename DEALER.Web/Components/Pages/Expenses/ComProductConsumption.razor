@@ -1,4 +1,4 @@
-﻿@* @page "/ProductAdjustment"
+﻿@page "/ProductAdjustment"
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject DialogService DialogService
@@ -57,6 +57,7 @@ else
             <Columns>
                 <RadzenDataGridColumn TItem="ProductConsumptionDTO" Property="@nameof(ProductConsumptionDTO.ProductName)" Title="Product Name" Width="200px" />
                 <RadzenDataGridColumn TItem="ProductConsumptionDTO" Property="@nameof(ProductConsumptionDTO.ReasonOfConsumed)" Title="Reason" Width="150px" />
+                @* <RadzenDataGridColumn TItem="ProductConsumptionDTO" Property="@nameof(ProductConsumptionDTO.Person)" Title="Issued By" Width="200px" /> *@
                 <RadzenDataGridColumn TItem="ProductConsumptionDTO" Property="@nameof(ProductConsumptionDTO.QuantityConsumed)" Title="Quantity " Width="100px" />
                 <RadzenDataGridColumn TItem="ProductConsumptionDTO" Property="@nameof(ProductConsumptionDTO.DateFormatted)" Title="Date" Width="200px" />
 
@@ -188,7 +189,7 @@ else
         await LoadData();
 
         Products = await m_Lookup.GetAllProductList();
-        CustomerList = await m_Lookup.GetAllEmployeeList();
+        CustomerList = await m_Lookup.GetAllCustomerList();
         ReasonofAdjustments = await m_Lookup.GetAllReasonofAdjustmentList();
     }
 
@@ -464,4 +465,4 @@ else
         });
     }
 
-} *@
+}

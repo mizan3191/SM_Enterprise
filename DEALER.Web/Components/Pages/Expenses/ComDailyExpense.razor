@@ -126,7 +126,7 @@ else
                             <div class="col-md-4 mb-3">
                                 <label class="Asterisk form-label">Issued By</label>
                                 <RadzenDropDown @bind-Value="DailyExpense.EmployeeId"
-                                                Data="@EmployeeList"
+                                                Data="@CustomerList"
                                                 TextProperty="Name"
                                                 ValueProperty="Id"
                                                 Placeholder="Name"
@@ -160,7 +160,7 @@ else
     public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
 
     public IEnumerable<Lov> DailyExpenseTypeList { get; set; } = new List<Lov>();
-    private IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
+    private IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
 
     private bool showModal = false;
 
@@ -180,7 +180,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        EmployeeList = await m_Lookup.GetAllEmployeeList();
+        CustomerList = await m_Lookup.GetAllCustomerList();
         DailyExpenseTypeList = await m_Lookup.GetAllDailyExpenseTypeList();
 
         await LoadData();

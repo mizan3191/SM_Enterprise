@@ -17,8 +17,8 @@ namespace DEALER.Domain
         public int OrderId { get; set; }
         public virtual Order Order { get; set; }
 
-        public int? CustomerId { get; set; }
-        public virtual Customer Customer { get; set; }
+        //public int? CustomerId { get; set; }
+       // public virtual Customer Customer { get; set; }
 
         public double TotalAmount { get; set; }
         public bool IsDeleted { get; set; }
@@ -56,5 +56,28 @@ namespace DEALER.Domain
         public int Quantity { get; set; } = 1;
         public double EmptyCylinderPrice { get; set; }
         public double Price { get; set; }
+    }
+
+    public class ExtraReturnProductDetailsDto
+    {
+        public int ExtraReturnProductId { get; set; }
+        public int ProductId { get; set; }
+        public string ProductName { get; set; }
+        public int SupplierId { get; set; }
+        public string SupplierName { get; set; }
+        public int Quantity { get; set; }
+        public double EmptyCylinderPrice { get; set; }
+        public double TotalAmount { get; set; }
+        public DateTime ReturnDate { get; set; }
+        public string Remarks { get; set; }
+    }
+
+    // Company-wise grouped view model
+    public class ExtraReturnProductGroupDto
+    {
+        public string SupplierName { get; set; }
+        public int TotalQuantity { get; set; }
+        public double TotalAmount { get; set; }
+        public List<ExtraReturnProductDetailsDto> Details { get; set; } = new();
     }
 }

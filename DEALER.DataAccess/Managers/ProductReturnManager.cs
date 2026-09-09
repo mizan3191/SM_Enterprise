@@ -95,8 +95,8 @@
 
                 _dbContext.SaveChanges();
 
-                // Update customer payment (if customer is associated)
-                if (customerProductReturn.CustomerId.HasValue && customerProductReturn.CustomerId.Value > 0)
+                // Update customer payment (if employee is associated)
+                if (customerProductReturn.EmployeeId.HasValue && customerProductReturn.EmployeeId.Value > 0)
                 {
                     UpdateCustomerPaymentHistory(customerProductReturn);
                 }
@@ -227,7 +227,7 @@
                 _dbContext.SaveChanges();
 
                 // Update customer payment
-                if (existingReturn.CustomerId.HasValue && existingReturn.CustomerId.Value > 0)
+                if (existingReturn.EmployeeId.HasValue && existingReturn.EmployeeId.Value > 0)
                 {
                     UpdateCustomerPaymentHistory(existingReturn);
                 }
@@ -307,11 +307,11 @@
 
         private void UpdateCustomerPaymentHistory(CustomerProductReturn customerProductReturn)
         {
-            if (!customerProductReturn.CustomerId.HasValue)
+            if (!customerProductReturn.EmployeeId.HasValue)
                 return;
 
             var lastPayment = _dbContext.CustomerPaymentHistories
-                .Where(p => p.CustomerId == customerProductReturn.CustomerId.Value && !p.IsDeleted)
+                .Where(p => p.EmployeeId == customerProductReturn.EmployeeId.Value && !p.IsDeleted)
                 .OrderByDescending(p => p.Id)
                 .FirstOrDefault();
 
@@ -333,7 +333,7 @@
             {
                 var payment = new CustomerPaymentHistory
                 {
-                    CustomerId = customerProductReturn.CustomerId.Value,
+                    EmployeeId = customerProductReturn.EmployeeId.Value,
                     OrderId = customerProductReturn.OrderId,
                     CustomerProductReturnId = customerProductReturn.Id,
                     PaymentDate = customerProductReturn.Date,
@@ -418,7 +418,6 @@
                 var newReturn = new CustomerProductReturn
                 {
                     OrderId = order.Id,
-                    CustomerId = order.CustomerId,
                     EmployeeId = order.EmployeeId,
                     Date = DateTime.UtcNow,
                     TotalAmount = 0,
@@ -464,7 +463,7 @@
             try
             {
                 return await _dbContext.CustomerProductReturns
-                    .Include(r => r.Customer)
+                    .Include(r => r.Employee)
                     .Include(r => r.CustomerProductReturnDetails)
                         .ThenInclude(d => d.Product)
                     .Where(r => !r.IsDeleted)
@@ -473,7 +472,7 @@
                     {
                         Id = r.Id,
                         OrderId = r.OrderId,
-                        CustomerName = r.Customer != null ? r.Customer.Name : "N/A",
+                        EmployeeName = r.Employee != null ? r.Employee.Name : "N/A",
                         Products = string.Join(", ",
                             r.CustomerProductReturnDetails.Select(d =>
                                 $"{d.Product.Name}({d.ReturnQuantity})")),

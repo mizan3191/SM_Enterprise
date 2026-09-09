@@ -61,7 +61,7 @@ else
             <Columns>
                 <RadzenDataGridColumn TItem="Expense" Title="Staff" Width="150px">
                     <Template Context="context">
-                        @context.CustomerName
+                        @context.EmployeeName
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="Expense" Property="@nameof(Expense.DateFormatted)" Title="Date" Width="150px" />
@@ -124,7 +124,7 @@ else
     {
         new GroupDescriptor
         {
-            Property = nameof(Expense.CustomerName),
+            Property = nameof(Expense.EmployeeName),
             Title = "Staff",
             SortOrder = SortOrder.Ascending
         }
@@ -196,7 +196,7 @@ else
             FilterExpenses = Expenses.Where(c =>
                 (!string.IsNullOrEmpty(c.ExpenseType.Name) && c.ExpenseType.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.Amount.ToString()) && c.Amount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.Customer.Name) && c.Customer.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Employee.Name) && c.Employee.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.PaymentMethod.Name) && c.PaymentMethod.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase))
             ).ToList();

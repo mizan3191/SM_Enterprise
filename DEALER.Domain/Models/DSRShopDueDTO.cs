@@ -16,7 +16,7 @@
 
     public class DSRShopDueDTO : DSRShopDueDTOBase
     {
-        public string IssuedByName { get; set; }
+        public string IssuedBYCustomerName { get; set; }
         public string ShopShopOwner { get; set; }
         public string ShopArea { get; set; }
         public string ShopNumber { get; set; }
@@ -26,7 +26,7 @@
 
     public class DSRShopDueForOrderDTO : DSRShopDueDTOBase
     {
-        public string DSREmployeeName { get; set; }
+        public string DSRCustomerName { get; set; }
         public int? OrderId { get; set; }
         public int? TotalCylinderQty { get; set; }
         public List<ShopEmptyCylinderProductDTO> Products { get; set; } = new List<ShopEmptyCylinderProductDTO>();

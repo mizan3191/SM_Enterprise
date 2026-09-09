@@ -1,6 +1,4 @@
-﻿using static System.Runtime.InteropServices.JavaScript.JSType;
-
-namespace DEALER.Domain
+﻿namespace DEALER.Domain
 {
     public class CustomerPaymentHistory
     {
@@ -17,21 +15,21 @@ namespace DEALER.Domain
 
         public int? CustomerProductReturnId { get; set; }
         public virtual CustomerProductReturn CustomerProductReturn { get; set; }
-        
-       // public int? DamageProductReturnId { get; set; }
-       // public virtual DamageProductReturn DamageProductReturn { get; set; }
-        
+
+        // public int? DamageProductReturnId { get; set; }
+        // public virtual DamageProductReturn DamageProductReturn { get; set; }
+
         public int? ExtraReturnProductId { get; set; }
         public virtual ExtraReturnProduct ExtraReturnProduct { get; set; }
 
         public int? DSRShopDueId { get; set; }
         public virtual DSRShopDue DSRShopDue { get; set; }
-        
+
         public int? DailyExpenseId { get; set; }
         public virtual DailyExpense DailyExpense { get; set; }
 
-      //  public int? SRDiscountId { get; set; }
-       // public virtual SRDiscount SRDiscount { get; set; }
+        //  public int? SRDiscountId { get; set; }
+        // public virtual SRDiscount SRDiscount { get; set; }
 
         public int? OrderPaymentHistoryId { get; set; }
         public virtual OrderPaymentHistory OrderPaymentHistory { get; set; }
@@ -46,9 +44,9 @@ namespace DEALER.Domain
         public int? PaymentMethodId { get; set; }  // Cash, Card, etc.
         public PaymentMethod PaymentMethod { get; set; }  // Cash, Card, etc.
 
-        public string TransactionID { get; set; }  
+        public string TransactionID { get; set; }
         public string Number { get; set; }
 
         public bool IsDeleted { get; set; }
-    }    
+    }
 }

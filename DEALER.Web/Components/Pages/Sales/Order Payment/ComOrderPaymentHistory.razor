@@ -1,4 +1,4 @@
-﻿@page "/OrderPaymentHistory/{CustomerId:int}/{OrderId:int}"
+﻿@page "/OrderPaymentHistory/{EmployeeId:int}/{OrderId:int}"
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject NotificationService NotificationService
@@ -107,7 +107,7 @@ else
 
 @code {
     [Parameter]
-    public int CustomerId { get; set; }
+    public int EmployeeId { get; set; }
 
     [Parameter]
     public int OrderId { get; set; }
@@ -140,12 +140,12 @@ else
 
     // private IEnumerable<SRDiscount> SRDiscountList { get; set; } = new List<SRDiscount>();
     private IEnumerable<DamageProductDetailsDTO> DamageProductDetails { get; set; } = new List<DamageProductDetailsDTO>();
-    public IEnumerable<DSRShopDue> DSRShopDueList { get; set; } = new List<DSRShopDue>();
+    public IEnumerable<ShopDueWithCylinderDto> DSRShopDueList { get; set; } = new List<ShopDueWithCylinderDto>();
     public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
+    private IEnumerable<ExtraReturnProductGroupDto> ExtraReturnProductGroupedList { get; set; } = new List<ExtraReturnProductGroupDto>();
     //private IEnumerable<ExtraReturnProductListDto> ExtraReturnProductLists { get; set; } = new List<ExtraReturnProductListDto>();
 
-     
-    private IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
+    private IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
     private IEnumerable<OrderPaymentHistory> OrderPaymentHistoryByOrderList { get; set; } = new List<OrderPaymentHistory>();
 
     public OrderPaymentHistory OrderPaymentHistory { get; set; } = new();
@@ -155,7 +155,10 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        EmployeeList = await m_Lookup.GetAllEmployeeList();
+        CustomerList = await m_Lookup.GetAllCustomerList();
+
+        //CustomerList = CustomerList.Where(c => !c.IsDeleted);
+
         await LoadData();
     }
 
@@ -224,7 +227,7 @@ else
             OrderPaymentHistory = new OrderPaymentHistory()
             {
                 OrderId = OrderId,
-                DSREmployeeId = CustomerId,
+                DSREmployeeId = EmployeeId,
                 Date = m_Lookup.GetOrderDate(OrderId),
             };
         }
@@ -263,21 +266,28 @@ else
     private async Task LoadData()
     {
         OrderPaymentHistoryByOrderList = await m_OrderPaymentHistory.GetAllOrderPaymentHistoryByOrderId(OrderId);
+
         var OrderDetails = await m_Order.GetOrderDetailsByOrderAsync(OrderId) ?? new List<OrderDetailsDTO>();
-        DSRShopDueList = await m_DSRShopDue.GetAllDSRShopDue(OrderId);
+        DSRShopDueList = await m_DSRShopDue.GetShopDueWithCylindersAsync(OrderId);
+
+        ExtraReturnProductGroupedList = await m_ExtraReturnProduct.GetExtraReturnProductGroupedByCompanyAsync(OrderId);
+
         DailyExpenseList = m_DailyExpense.GetAllDailyExpense(OrderId);
 
-        var totalPrice = OrderDetails.Sum(od => od.TotalPrice);
-        var dailyExpenseList = DailyExpenseList.Sum(x => x.Amount);
-        var currentlyPaid = OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid);
-        // ✅ DueAmount + TotalCylinderDueAmount (CylinderQty × CylinderBuyingPrice)
-        var dsrShopDueAmount = DSRShopDueList.Sum(x => x.DueAmount);
-       // var dsrCylinderDueAmount = DSRShopDueList.Sum(x => x.TotalCylinderDueAmount);
-        var dsrCylinderDueAmount = DSRShopDueList
-                                    .SelectMany(x => x.Products ?? new List<ShopEmptyCylinderProduct>())
-                                    .Sum(p => p.CylinderQty * (p.Product?.CurrentPrice?.CylinderBuyingPrice ?? 0));
 
-        var TotalPaid = dsrShopDueAmount + dsrCylinderDueAmount + dailyExpenseList + currentlyPaid;
+        var totalPrice = OrderDetails.Sum(od => od.TotalPrice);
+        var totalDamagePrice = DamageProductDetails?.Sum(od => od.TotalPrice) ?? 0;
+        var dsrShopDueList = DSRShopDueList.Sum(x => x.DueAmount);
+
+        var totalEmptyCylinderAmount = DSRShopDueList
+            .SelectMany(x => x.CylinderDetails)
+            .Sum(x => x.EmptyCylinderPrice * x.Quantity);
+        var dailyExpenseList = DailyExpenseList.Sum(x => x.Amount);
+
+        var currentlyPaid = OrderPaymentHistoryByOrderList.Sum(x => x.AmountPaid);
+        var extraReturnProductPayment = ExtraReturnProductGroupedList.Sum(x => x.TotalAmount);
+
+        var TotalPaid = totalDamagePrice + dsrShopDueList + dailyExpenseList + currentlyPaid + extraReturnProductPayment + totalEmptyCylinderAmount;
         DueAmount = totalPrice - TotalPaid;
 
     }
@@ -287,7 +297,7 @@ else
         OrderPaymentHistory = new OrderPaymentHistory()
         {
             OrderId = OrderId,
-            DSREmployeeId = CustomerId,
+            DSREmployeeId = EmployeeId,
             Date = m_Lookup.GetOrderDate(OrderId),
         };
 

@@ -1,7 +1,7 @@
 ﻿@page "/Sale"
 @page "/Sale/{Id:int}"
-@page "/Sale/{Id:int}/{EmployeeId:int}"
-@page "/Sale/{Id:int}/{EmployeeId:int}/{OrderId:int}"
+@page "/Sale/{Id:int}/{CustomerId:int}"
+@page "/Sale/{Id:int}/{CustomerId:int}/{OrderId:int}"
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject NotificationService NotificationService
@@ -414,7 +414,7 @@
 
     
     [Parameter]
-    public int EmployeeId { get; set; }
+    public int CustomerId { get; set; }
 
     [Parameter]
     public int? OrderId { get; set; }

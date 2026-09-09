@@ -22,5 +22,9 @@
         //bool UpdateDSRShopDueInOrderTime(DSRShopDue DSRShopDue);
         //bool DeleteShopDueInOrderTime(int id);
         IList<DSRShopDueForOrderDTO> GetAllDSRShopDueByOrderId(int orderId);
+
+        // New methods
+        Task<IEnumerable<ShopDueWithCylinderDto>> GetShopDueWithCylindersAsync(int orderId);
+        Task<IEnumerable<ShopCylinderGroupDto>> GetShopCylindersGroupedBySupplierAsync(int orderId);
     }
 }

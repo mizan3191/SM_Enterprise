@@ -584,33 +584,32 @@ namespace DEALER.DataAccess
         {
             try
             {
-                // ✅ FIX 1: আগে DB থেকে data fetch করো
-                //    কারণ: DisplayNameSize একটা computed property,
-                //    EF Core এটাকে SQL-এ translate করতে পারে না।
                 var orderDetails = await _dbContext.OrderDetails
                     .Include(od => od.Product)
                         .ThenInclude(p => p.ProductsSize)
                     .Where(od => od.OrderId == orderId)
-                    .ToListAsync();
-                // ✅ FIX 2: In-memory projection — UnitPrice নেই, তাই CylinderUnitPrice + GasUnitPrice
-                return orderDetails.Select(od =>
-                {
-                    var unitPrice = od.CylinderUnitPrice + od.GasUnitPrice;
-                    var returnQty = od.ReturnQuantity ?? 0;
-                    var sellingQty = od.Quantity - returnQty;
-                    return new OrderDetailsDTO
+                    .Select(od => new OrderDetailsDTO
                     {
-                        ProductName = od.Product?.DisplayNameSize ?? string.Empty,
+                        ProductId = od.ProductId,
+                        ProductName = od.Product.DisplayNameSize ?? od.Product.Name,
                         Quantity = od.Quantity,
-                        ReturnQuantity = returnQty,
-                        SellingQuantity = sellingQty,
-                        ProductPrice = unitPrice,
-                        TotalProductPrice = od.Quantity * unitPrice,
-                        ReturnPrice = returnQty * unitPrice,
+                        ReturnQuantity = od.ReturnQuantity ?? 0,
+                        SellingQuantity = od.Quantity - (od.ReturnQuantity ?? 0),
+                        ProductPrice = od.CylinderUnitPrice + od.GasUnitPrice,
+                        TotalProductPrice = od.Quantity * (od.CylinderUnitPrice + od.GasUnitPrice),
+                        ReturnPrice = (od.ReturnQuantity ?? 0) * (od.CylinderUnitPrice + od.GasUnitPrice),
                         Discount = od.Discount,
-                        TotalPrice = sellingQty * unitPrice - od.Discount
-                    };
-                });
+                        TotalPrice = (od.Quantity - (od.ReturnQuantity ?? 0)) * (od.CylinderUnitPrice + od.GasUnitPrice) - od.Discount,
+
+                        // New fields
+                        CylinderUnitPrice = od.CylinderUnitPrice,
+                        GasUnitPrice = od.GasUnitPrice,
+                        TotalCylinderPrice = od.Quantity * od.CylinderUnitPrice,
+                        TotalGasPrice = od.Quantity * od.GasUnitPrice
+                    })
+                    .ToListAsync();
+
+                return orderDetails;
             }
             catch (Exception ex)
             {
@@ -621,30 +620,7 @@ namespace DEALER.DataAccess
 
         public IEnumerable<CustomerDueDTO> GetCustomerDueHistory()
         {
-            try
-            {
-                var query = from employee in _dbContext.Employees
-                            join payment in _dbContext.CustomerPaymentHistories.Where(p => !p.IsDeleted)
-                                on employee.Id equals payment.EmployeeId into paymentsGroup
-                            select new CustomerDueDTO
-                            {
-                                Id = employee.Id,
-                                Name = employee.Name,
-                                Phone = employee.Phone,
-                                HouseName = employee.Address,
-                                TotalDue = paymentsGroup.OrderByDescending(p => p.Id)
-                                                        .Select(p => (double?)p.TotalDueAfterPayment)
-                                                        .FirstOrDefault() ?? 0
-                            };
-
-                return query.Where(c => c.TotalDue != 0)
-                            .OrderByDescending(c => c.TotalDue)
-                            .ToList();
-            }
-            catch (Exception ex)
-            {
-                return Enumerable.Empty<CustomerDueDTO>();
-            }
+            throw new NotImplementedException();
         }
     }
 }

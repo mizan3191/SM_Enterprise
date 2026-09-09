@@ -370,7 +370,7 @@
                             Date = g.Key.Date,
                             ShopId = g.Key.ShopId,
                             OrderId = g.Key.OrderId.Value,
-                            EmployeeId = g.Key.EmployeeId.Value,
+                            CustomerId = g.Key.EmployeeId.Value,
                             ShopName = g.First().Name,
                             OwnerName = g.First().ShopOwner,
                             Area = g.First().Area,
@@ -390,7 +390,7 @@
                         {
                             Date = g.Key.Date,
                             ShopId = g.Key.ShopId,
-                            EmployeeId = g.Key.EmployeeId,
+                            CustomerId = g.Key.EmployeeId,
                             ShopName = g.First().Name,
                             OwnerName = g.First().ShopOwner,
                             Area = g.First().Area,
@@ -404,12 +404,12 @@
 
                 // Combine both lists and group
                 var combined = dueSummaries.Concat(paymentSummaries)
-                    .GroupBy(x => new { x.Data.Date, x.Data.ShopId, x.Data.EmployeeId })
+                    .GroupBy(x => new { x.Data.Date, x.Data.ShopId, x.Data.CustomerId })
                     .Select(g => new TempShopDuePaymentListSummary
                     {
                         Date = g.Key.Date,
                         ShopId = g.Key.ShopId,
-                        EmployeeId = g.Key.EmployeeId,
+                        CustomerId = g.Key.CustomerId,
                         // For OrderId, take the first non-null one (if any)
                         OrderId = g.FirstOrDefault(x => x.Data.OrderId != null)?.Data.OrderId ?? 0,
                         ShopName = g.First().Data.ShopName,
@@ -433,7 +433,7 @@
                         ShopId = x.ShopId,
                         ShopName = x.ShopName,
                         OrderId = x.OrderId,
-                        EmployeeId = x.EmployeeId,
+                        CustomerId = x.CustomerId,
                         OwnerName = x.OwnerName,
                         Area = x.Area,
                         ReferredBy = x.ReferredBy,

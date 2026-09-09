@@ -71,11 +71,11 @@
                     // You can add a field to track extra returns if needed
                 }
 
-                // Add to Customer Payment History (if customer exists)
-                if (extraReturnProduct.CustomerId.HasValue && extraReturnProduct.CustomerId.Value > 0)
+                // Add to Customer Payment History (if employee exists)
+                if (extraReturnProduct.EmployeeId > 0)
                 {
                     var lastPayment = _dbContext.CustomerPaymentHistories
-                        .Where(p => p.CustomerId == extraReturnProduct.CustomerId.Value && !p.IsDeleted)
+                        .Where(p => p.EmployeeId == extraReturnProduct.EmployeeId && !p.IsDeleted)
                         .OrderByDescending(p => p.Id)
                         .FirstOrDefault();
 
@@ -84,7 +84,7 @@
 
                     var payment = new CustomerPaymentHistory
                     {
-                        CustomerId = extraReturnProduct.CustomerId.Value,
+                        EmployeeId = extraReturnProduct.EmployeeId,
                         OrderId = extraReturnProduct.OrderId,
                         ExtraReturnProductId = extraReturnProduct.Id,
                         PaymentDate = extraReturnProduct.Date,
@@ -185,13 +185,13 @@
                 _dbContext.SaveChanges();
 
                 // Update payment history
-                if (extraReturnProduct.CustomerId.HasValue && extraReturnProduct.CustomerId.Value > 0)
+                if (extraReturnProduct.EmployeeId > 0)
                 {
                     var payment = _dbContext.CustomerPaymentHistories
                         .FirstOrDefault(p => p.ExtraReturnProductId == extraReturnProduct.Id && !p.IsDeleted);
 
                     var lastPayment = _dbContext.CustomerPaymentHistories
-                        .Where(p => p.CustomerId == extraReturnProduct.CustomerId.Value && !p.IsDeleted
+                        .Where(p => p.EmployeeId == extraReturnProduct.EmployeeId && !p.IsDeleted
                                     && (payment == null || p.Id != payment.Id))
                         .OrderByDescending(p => p.Id)
                         .FirstOrDefault();
@@ -210,7 +210,7 @@
                     {
                         var newPayment = new CustomerPaymentHistory
                         {
-                            CustomerId = extraReturnProduct.CustomerId.Value,
+                            EmployeeId = extraReturnProduct.EmployeeId,
                             OrderId = extraReturnProduct.OrderId,
                             ExtraReturnProductId = extraReturnProduct.Id,
                             PaymentDate = extraReturnProduct.Date,
@@ -314,7 +314,6 @@
                 var extraReturn = new ExtraReturnProduct
                 {
                     OrderId = orderId,
-                    CustomerId = order.CustomerId,
                     EmployeeId = order.EmployeeId ?? 0,
                     Date = DateTime.UtcNow,
                     TotalAmount = 0,
@@ -349,7 +348,48 @@
             }
         }
 
-     
+        public async Task<IEnumerable<ExtraReturnProductDetailsDto>> GetExtraReturnProductDetailsByOrderIdAsync(int orderId)
+        {
+            var query = from erp in _dbContext.ExtraReturnProducts
+                        join erpd in _dbContext.ExtraReturnProductDetails on erp.Id equals erpd.ExtraReturnProductId
+                        join p in _dbContext.Products on erpd.ProductId equals p.Id
+                        join s in _dbContext.Suppliers on p.SupplierId equals s.Id
+                        where erp.OrderId == orderId && !erp.IsDeleted
+                        select new ExtraReturnProductDetailsDto
+                        {
+                            ExtraReturnProductId = erp.Id,
+                            ProductId = erpd.ProductId,
+                            ProductName = p.DisplayNameSize,
+                            SupplierId = s.Id,
+                            SupplierName = s.Name,
+                            Quantity = erpd.Quantity,
+                            EmptyCylinderPrice = erpd.EmptyCylinderPrice,
+                            TotalAmount = erpd.Price,
+                            ReturnDate = erp.Date,
+                            Remarks = erp.Remarks
+                        };
+
+            return await query.ToListAsync();
+        }
+
+        public async Task<IEnumerable<ExtraReturnProductGroupDto>> GetExtraReturnProductGroupedByCompanyAsync(int orderId)
+        {
+            var details = await GetExtraReturnProductDetailsByOrderIdAsync(orderId);
+
+            var grouped = details
+                .GroupBy(d => new { d.SupplierId, d.SupplierName })
+                .Select(g => new ExtraReturnProductGroupDto
+                {
+                    SupplierName = g.Key.SupplierName,
+                    TotalQuantity = g.Sum(x => x.Quantity),
+                    TotalAmount = g.Sum(x => x.TotalAmount),
+                    Details = g.ToList()
+                })
+                .OrderBy(g => g.SupplierName)
+                .ToList();
+
+            return grouped;
+        }
 
     }
 }

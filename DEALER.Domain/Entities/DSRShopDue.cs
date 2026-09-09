@@ -28,14 +28,6 @@ namespace DEALER.Domain
         public string DateFormatted => Date.ToString("dd-MMM-yyyy (ddd)");
 
         [NotMapped]
-        public double TotalCylinderDueAmount =>
-                                            Products?.Sum(p =>
-                                                p.CylinderQty * (p.Product?.CurrentPrice?.CylinderBuyingPrice ?? 0)
-                                            ) ?? 0;
-        [NotMapped]
-        public double GrandTotal => DueAmount + TotalCylinderDueAmount;
-
-        [NotMapped]
         public bool IsSaved { get; set; } = false;
 
         public string DueHistory
@@ -62,5 +54,40 @@ namespace DEALER.Domain
         public virtual Product Product { get; set; }
 
         public int CylinderQty { get; set; }
+    }
+
+
+    // Shop Due with Cylinder Details
+    public class ShopDueWithCylinderDto
+    {
+        public int ShopId { get; set; }
+        public string ShopName { get; set; }
+        public string ShopArea { get; set; }
+        public string CustomerName { get; set; }
+        public double DueAmount { get; set; }
+        public DateTime Date { get; set; }
+        public List<ShopCylinderDetailDto> CylinderDetails { get; set; } = new();
+        public int TotalCylinders => CylinderDetails.Sum(c => c.Quantity);
+    }
+
+    // Individual Cylinder Detail for a Shop
+    public class ShopCylinderDetailDto
+    {
+        public int ProductId { get; set; }
+        public string ProductName { get; set; }
+        public int SupplierId { get; set; }
+        public string SupplierName { get; set; }
+        public int Quantity { get; set; }
+        public double EmptyCylinderPrice { get; set; }
+        public double TotalValue => Quantity * EmptyCylinderPrice;
+    }
+
+    // Grouped by Supplier (Company)
+    public class ShopCylinderGroupDto
+    {
+        public int SupplierId { get; set; }
+        public string SupplierName { get; set; }
+        public int TotalQuantity { get; set; }
+        public List<ShopCylinderDetailDto> Details { get; set; } = new();
     }
 }

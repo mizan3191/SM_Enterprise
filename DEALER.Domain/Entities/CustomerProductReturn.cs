@@ -20,8 +20,8 @@ namespace DEALER.Domain
         public int OrderId { get; set; }
         public virtual Order Order { get; set; }
 
-        public int? CustomerId { get; set; }
-        public virtual Customer Customer { get; set; }
+       // public int? CustomerId { get; set; }
+       // public virtual Customer Customer { get; set; }
 
         public int? PaymentMethodId { get; set; }
         public virtual PaymentMethod PaymentMethod { get; set; }

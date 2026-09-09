@@ -1,4 +1,4 @@
-﻿@page "/ExpenseOrderTime/{EmployeeId:int}/{OrderId:int}"
+﻿@page "/ExpenseOrderTime/{DSREmployeeId:int}/{OrderId:int}"
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject DialogService DialogService
@@ -108,7 +108,7 @@ else
 
 @code {
     [Parameter]
-    public int EmployeeId { get; set; }
+    public int DSREmployeeId { get; set; }
 
     [Parameter]
     public int OrderId { get; set; }
@@ -196,7 +196,7 @@ else
         {
             DailyExpense = new DailyExpense()
             {
-                EmployeeId = EmployeeId,
+                EmployeeId = DSREmployeeId,
                 OrderId = OrderId,
                 Date = m_Lookup.GetOrderDate(OrderId),
             };
@@ -208,7 +208,7 @@ else
         DailyExpense = new DailyExpense()
         {
 
-            EmployeeId = EmployeeId,
+            EmployeeId = DSREmployeeId,
             OrderId = OrderId,
             Date = m_Lookup.GetOrderDate(OrderId),
         };
