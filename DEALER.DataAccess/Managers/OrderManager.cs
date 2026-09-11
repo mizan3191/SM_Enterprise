@@ -620,7 +620,30 @@ namespace DEALER.DataAccess
 
         public IEnumerable<CustomerDueDTO> GetCustomerDueHistory()
         {
-            throw new NotImplementedException();
+            try
+            {
+                var query = from customer in _dbContext.Employees
+                            join payment in _dbContext.CustomerPaymentHistories.Where(p => !p.IsDeleted)
+                                on customer.Id equals payment.EmployeeId into paymentsGroup
+                            select new CustomerDueDTO
+                            {
+                                Id = customer.Id,
+                                Name = customer.Name,
+                                Phone = customer.Phone,
+                                District = customer.Address,
+                                TotalDue = paymentsGroup.OrderByDescending(p => p.Id)
+                                                        .Select(p => (double?)p.TotalDueAfterPayment)
+                                                        .FirstOrDefault() ?? 0
+                            };
+
+                return query.Where(c => c.TotalDue != 0)
+                            .OrderByDescending(c => c.TotalDue)
+                            .ToList();
+            }
+            catch (Exception ex)
+            {
+                return Enumerable.Empty<CustomerDueDTO>();
+            }
         }
     }
 }

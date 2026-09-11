@@ -1,0 +1,245 @@
+﻿@page "/CylinderExchangeDetails/{ExchangeId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<style>
+    .rz-datatable-footer {
+        font-weight: bold;
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+    }
+
+    .badge-give { background: #dc3545; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+    .badge-receive { background: #198754; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+</style>
+
+@if (ExchangeDetails is null || !ExchangeDetails.Any())
+{
+    <p><em>No exchange details found for Exchange #@ExchangeId.</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <h4>Exchange #@ExchangeId</h4>
+        <h4>Dealer: @ExchangeDetails.First().SupplierName</h4>
+        <h4>
+            Type:
+            @if (ExchangeDetails.First().ExchangeType == "Give")
+            {
+                <span class="badge-give">Give</span>
+            }
+            else
+            {
+                <span class="badge-receive">Receive</span>
+            }
+        </h4>
+        <h4>Date: @ExchangeDetails.First().DateFormatted</h4>
+        <h4>Total Due: @ExchangeDetails.First().TotalDue.ToString("0.00")</h4>
+
+        <RadzenButton Text="Export To PDF" Icon="picture_as_pdf"
+                      Click="@(args => ExportExchangeDetailsToPdf())"
+                      Style="margin-bottom: 1rem;" />
+
+        <RadzenDataGrid Data="@ExchangeDetails" TItem="CylinderExchangeDetailsDTO"
+                        PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="CylinderExchangeDetailsDTO"
+                                      Property="@nameof(CylinderExchangeDetailsDTO.ProductName)"
+                                      Title="Product Name" Width="150px" />
+
+                <RadzenDataGridColumn TItem="CylinderExchangeDetailsDTO"
+                                      Property="@nameof(CylinderExchangeDetailsDTO.CompanyName)"
+                                      Title="Company" Width="120px" />
+
+                <RadzenDataGridColumn TItem="CylinderExchangeDetailsDTO" Title="Unit Price"
+                                      Width="110px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.CylinderUnitPrice.ToString("N2")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CylinderExchangeDetailsDTO"
+                                      Property="@nameof(CylinderExchangeDetailsDTO.Quantity)"
+                                      Title="Quantity" Width="100px">
+                    <FooterTemplate>
+                        <div><strong>Sub Total:</strong></div>
+                        <div><strong>Product Discount:</strong></div>
+                        <div><strong>Exchange Discount:</strong></div>
+                        <div><strong>Final Total:</strong></div>
+                        <div><strong>Total Pay:</strong></div>
+                        <div><strong>Total Due:</strong></div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CylinderExchangeDetailsDTO" Title="Disc %"
+                                      Width="90px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.DiscountPercent.ToString("N2")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CylinderExchangeDetailsDTO" Title="Disc Amt"
+                                      Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.DiscountAmount.ToString("N2")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CylinderExchangeDetailsDTO"
+                                      Property="@nameof(CylinderExchangeDetailsDTO.TotalPrice)"
+                                      TextAlign="TextAlign.Right" Title="Total Price" Width="110px">
+                    <Template Context="item">
+                        <div>@item.TotalPrice.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end"><strong>@GrandTotal.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@ProductDiscount.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@ExchangeDiscount.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@TotalAmount.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@TotalPay.ToString("N2")</strong></div>
+                        <div class="text-end"><strong>@TotalDue.ToString("N2")</strong></div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Parameter] public int ExchangeId { get; set; }
+
+    [Inject] private ICylinderExchange m_CylinderExchange { get; set; }
+    [Inject] private ILookup m_Lookup { get; set; }
+    [Inject] private IJSRuntime JSRuntime { get; set; }
+
+    private IEnumerable<CylinderExchangeDetailsDTO> ExchangeDetails { get; set; } = new List<CylinderExchangeDetailsDTO>();
+
+    private double GrandTotal { get; set; }
+    private double ProductDiscount { get; set; }
+    private double ExchangeDiscount { get; set; }
+    private double TotalAmount { get; set; }
+    private double TotalPay { get; set; }
+    private double TotalDue { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ExchangeDetails = await m_CylinderExchange.GetCylinderExchangeDetailsByIdAsync(ExchangeId);
+
+        if (ExchangeDetails.Any())
+        {
+            var first = ExchangeDetails.First();
+
+            GrandTotal = ExchangeDetails.Sum(d => d.Quantity * d.CylinderUnitPrice);
+            ProductDiscount = ExchangeDetails.Sum(d => d.DiscountAmount);
+            ExchangeDiscount = first.ExchangeDiscount;
+            TotalAmount = first.TotalAmount;
+            TotalPay = first.TotalPay;
+            TotalDue = first.TotalDue;
+        }
+    }
+
+    public async Task ExportExchangeDetailsToPdf()
+    {
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(30);
+                page.DefaultTextStyle(x => x.FontSize(9));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content().PaddingVertical(10).Table(table =>
+                {
+                    table.ColumnsDefinition(columns =>
+                    {
+                        columns.RelativeColumn(2); // Product Name
+                        columns.RelativeColumn(2); // Company
+                        columns.RelativeColumn(1); // Unit Price
+                        columns.RelativeColumn(1); // Quantity
+                        columns.RelativeColumn(1); // Disc %
+                        columns.RelativeColumn(1); // Disc Amt
+                        columns.RelativeColumn(1); // Total Price
+                    });
+
+                    // Header row
+                    table.Header(header =>
+                    {
+                        header.Cell().Background("#f0f0f0").Padding(5).Text("Product Name").Bold();
+                        header.Cell().Background("#f0f0f0").Padding(5).Text("Company").Bold();
+                        header.Cell().Background("#f0f0f0").Padding(5).Text("Unit Price").Bold();
+                        header.Cell().Background("#f0f0f0").Padding(5).Text("Qty").Bold();
+                        header.Cell().Background("#f0f0f0").Padding(5).Text("Disc %").Bold();
+                        header.Cell().Background("#f0f0f0").Padding(5).Text("Disc Amt").Bold();
+                        header.Cell().Background("#f0f0f0").Padding(5).AlignRight().Text("Total").Bold();
+                    });
+
+                    // Data rows
+                    foreach (var item in ExchangeDetails)
+                    {
+                        table.Cell().Padding(5).Text(item.ProductName);
+                        table.Cell().Padding(5).Text(item.CompanyName);
+                        table.Cell().Padding(5).Text($"{item.CylinderUnitPrice:N2}");
+                        table.Cell().Padding(5).Text(item.Quantity.ToString());
+                        table.Cell().Padding(5).Text($"{item.DiscountPercent:N2}");
+                        table.Cell().Padding(5).Text($"{item.DiscountAmount:N2}");
+                        table.Cell().Padding(5).AlignRight().Text($"{item.TotalPrice:N2}");
+                    }
+
+                    // Footer rows
+                    table.Cell().ColumnSpan(6).AlignRight().Padding(5).Text("Sub Total").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{GrandTotal:N2}").Bold();
+
+                    table.Cell().ColumnSpan(6).AlignRight().Padding(5).Text("Product Discount").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{ProductDiscount:N2}");
+
+                    table.Cell().ColumnSpan(6).AlignRight().Padding(5).Text("Exchange Discount").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{ExchangeDiscount:N2}");
+
+                    table.Cell().ColumnSpan(6).AlignRight().Padding(5).Text("Final Total").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{TotalAmount:N2}");
+
+                    table.Cell().ColumnSpan(6).AlignRight().Padding(5).Text("Total Pay").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{TotalPay:N2}");
+
+                    table.Cell().ColumnSpan(6).AlignRight().Padding(5).Text("Total Due").Bold();
+                    table.Cell().Padding(5).AlignRight().Text($"{TotalDue:N2}").Bold();
+                });
+
+                page.Footer().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignCenter().Text(text =>
+                    {
+                        text.CurrentPageNumber();
+                        text.Span(" / ");
+                        text.TotalPages();
+                    });
+                    row.RelativeItem();
+                });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"CylinderExchangeDetails_{ExchangeId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Cylinder Exchange Details for #{ExchangeId}").Bold().FontSize(10);
+            });
+        });
+    }
+}

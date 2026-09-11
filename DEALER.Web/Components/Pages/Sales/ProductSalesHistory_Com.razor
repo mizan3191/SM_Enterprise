@@ -59,12 +59,11 @@ else
             AllowFiltering="true">
             <Columns>
                 <RadzenDataGridColumn TItem="SalesHistoryDTO" Property="@nameof(SalesHistoryDTO.SupplierName)" Title="Company Name" Width="80px" />
-                <RadzenDataGridColumn TItem="SalesHistoryDTO" Property="@nameof(SalesHistoryDTO.ProductCategory)" Title="Category" Width="150px" />
                 <RadzenDataGridColumn TItem="SalesHistoryDTO" Property="@nameof(SalesHistoryDTO.ProductName)" Title="Product Name" Width="150px" />
                
                 <RadzenDataGridColumn TItem="SalesHistoryDTO" Title="Product Qty" Width="70px">
                     <Template Context="item">
-                        <div>@item.QuentityFormattd</div>
+                        <div>@item.Quentity</div>
                     </Template>
                     <FooterTemplate>
                         <div class=" fw-bold">@FilterSalesHistoryList.Sum(o => o.Quentity)</div>
@@ -73,7 +72,7 @@ else
 
                 <RadzenDataGridColumn TItem="SalesHistoryDTO" Title="Return Qty" Width="70px">
                     <Template Context="item">
-                        <div>@item.ReturnQuentityFormattd</div>
+                        <div>@item.ReturnQuentity</div>
                     </Template>
                     <FooterTemplate>
                         <div class=" fw-bold">@FilterSalesHistoryList.Sum(o => o.ReturnQuentity)</div>
@@ -82,7 +81,7 @@ else
 
                 <RadzenDataGridColumn TItem="SalesHistoryDTO" Title="Selling Qty" Width="70px">
                     <Template Context="item">
-                        <div>@item.SellQuentityFormattd</div>
+                        <div>@item.SellQuentity</div>
                     </Template>
                     <FooterTemplate>
                         <div class=" fw-bold">@FilterSalesHistoryList.Sum(o => o.SellQuentity)</div>
@@ -198,7 +197,6 @@ else
             FilterSalesHistoryList = SalesHistoryList.Where(c =>               
                 (!string.IsNullOrEmpty(c.SupplierWithCategory) && c.SupplierWithCategory.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.SupplierName) && c.SupplierName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.ProductCategory) && c.ProductCategory.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.Quentity.ToString()) && c.Quentity.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.SellQuentity.ToString()) && c.SellQuentity.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.ReturnQuentity.ToString()) && c.ReturnQuentity.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||

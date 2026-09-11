@@ -1,0 +1,406 @@
+﻿@page "/CylinderExchangeList"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<Message @ref="notificationComponent" />
+
+<h3>Cylinder Exchange History</h3>
+
+@if (ExchangeList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <!-- Add New Button -->
+            <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success" class="me-3" />
+
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i>
+                </span>
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+
+            <!-- Spacer -->
+            <div class="flex-grow-1"></div>
+
+            <!-- Date Filter -->
+            <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center me-3">
+                    <RadzenDatePicker @bind-Value="fromDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date"
+                                      Style="width: 180px;" />
+                </div>
+                <div class="d-flex align-items-center">
+                    <RadzenDatePicker @bind-Value="toDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date"
+                                      Style="width: 180px;" />
+                </div>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@FilteredList" TItem="CylinderExchange" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="CylinderExchange" Property="@nameof(CylinderExchange.Id)" Title="Id" Width="50px" />
+
+                <RadzenDataGridColumn TItem="CylinderExchange" Property="Supplier.Name" Title="Dealer / Company" Width="180px" />
+
+                <RadzenDataGridColumn TItem="CylinderExchange" Property="@nameof(CylinderExchange.ExchangeType)" Title="Direction" Width="110px" TextAlign="TextAlign.Center">
+                    <Template Context="item">
+                        @if (item.ExchangeType == "Give")
+                        {
+                            <span class="badge-give">Give</span>
+                        }
+                        else
+                        {
+                            <span class="badge-receive">Receive</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CylinderExchange" Title="Give" TextAlign="TextAlign.Right" Width="100px" Sortable="false" Filterable="false">
+                    <Template Context="item">
+                        <div>@(item.ExchangeType == "Give" ? item.TotalAmount.ToString("N2") : "0.00")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilteredList.Where(x => x.ExchangeType == "Give").Sum(x => x.TotalAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CylinderExchange" Title="Receive" TextAlign="TextAlign.Right" Width="100px" Sortable="false" Filterable="false">
+                    <Template Context="item">
+                        <div>@(item.ExchangeType == "Receive" ? item.TotalAmount.ToString("N2") : "0.00")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilteredList.Where(x => x.ExchangeType == "Receive").Sum(x => x.TotalAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CylinderExchange" Property="@nameof(CylinderExchange.TotalPay)" Title="Total Pay" TextAlign="TextAlign.Right" Width="100px" FormatString="{0:N2}">
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilteredList.Sum(x => x.TotalPay).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CylinderExchange" Property="@nameof(CylinderExchange.TotalDue)" Title="Due" TextAlign="TextAlign.Right" Width="100px" FormatString="{0:N2}">
+                    <Template Context="item">
+                        @if (item.TotalDue > 0)
+                        {
+                            <span class="text-success fw-bold">@item.TotalDue.ToString("N2")</span>
+                        }
+                        else if (item.TotalDue < 0)
+                        {
+                            <span class="text-danger fw-bold">@item.TotalDue.ToString("N2")</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">0.00</span>
+                        }
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilteredList.Sum(x => x.TotalDue).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CylinderExchange" Property="PaymentMethod.Name" Title="Payment" Width="120px" />
+
+                <RadzenDataGridColumn TItem="CylinderExchange" Property="@nameof(CylinderExchange.Comments)" Title="Comments" Width="150px" />
+
+                <RadzenDataGridColumn TItem="CylinderExchange" Title="Date" Width="120px" Sortable="true" Filterable="false">
+                    <Template Context="item">
+                        @item.Date.ToString("dd-MMM-yyyy")
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="CylinderExchange" Title="Actions" Width="130px" Sortable="false" Filterable="false">
+                    <Template Context="item">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                      Click="() => Edit(item.Id, item.SupplierId ?? 0)" style="margin-right: 5px;" title="Edit" />
+                        <RadzenButton Icon="info" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small"
+                                      Click="() => ExchangeDetails(item.Id)" style="margin-right: 5px;" title="Details" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="() => ConfirmDelete(item.Id)" title="Delete" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+<style>
+    .badge-receive { background: #198754; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+    .badge-give { background: #dc3545; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+</style>
+
+@code {
+    [Inject] private ICylinderExchange m_CylinderExchange { get; set; }
+    [Inject] private ILookup m_Lookup { get; set; }
+    [Inject] private NavigationManager _navigationManager { get; set; }
+    [Inject] private IJSRuntime JSRuntime { get; set; }
+
+    private Message notificationComponent;
+
+    private IEnumerable<CylinderExchange> ExchangeList { get; set; } = new List<CylinderExchange>();
+    private IEnumerable<CylinderExchange> FilteredList { get; set; } = new List<CylinderExchange>();
+
+    private string search = string.Empty;
+
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    // ================= DATE FILTER =================
+    public DateTime? fromDate
+    {
+        get => _fromDate;
+        set
+        {
+            if (_fromDate != value)
+            {
+                _fromDate = value;
+                LoadExchangeHistory();
+            }
+        }
+    }
+
+    public DateTime? toDate
+    {
+        get => _toDate;
+        set
+        {
+            if (_toDate != value)
+            {
+                _toDate = value;
+                LoadExchangeHistory();
+            }
+        }
+    }
+
+    // ================= LOAD =================
+    private async Task LoadData()
+    {
+        ExchangeList = m_CylinderExchange.GetAllCylinderExchange().ToList();
+        FilteredList = ExchangeList;
+        FilterData();
+        StateHasChanged();
+    }
+
+    private async void LoadExchangeHistory()
+    {
+        ExchangeList = m_CylinderExchange.GetAllCylinderExchange().ToList();
+        FilteredList = ExchangeList;
+        FilterData();
+        StateHasChanged();
+    }
+
+    // ================= SEARCH =================
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilteredList = ExchangeList;
+        }
+        else
+        {
+            FilteredList = ExchangeList.Where(c =>
+                (!string.IsNullOrEmpty(c.Supplier?.Name) && c.Supplier.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.ExchangeType) && c.ExchangeType.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Comments) && c.Comments.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                c.TotalPay.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                c.TotalDue.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                c.Id.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+        }
+
+        // Date filter
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            var filterFrom = fromDate?.Date ?? DateTime.MinValue;
+            var filterTo = toDate?.Date.AddDays(1) ?? DateTime.MaxValue;
+
+            FilteredList = FilteredList.Where(x =>
+                x.Date.Date >= filterFrom &&
+                x.Date.Date < filterTo
+            ).ToList();
+        }
+    }
+
+    // ================= NAVIGATION =================
+    private void AddNew()
+    {
+        _navigationManager.NavigateTo("/CylinderExchange");
+    }
+
+    private void Edit(int id, int supplierId)
+    {
+        _navigationManager.NavigateTo($"/CylinderExchange/{supplierId}/{id}");
+    }
+
+    private void ExchangeDetails(int id)
+    {
+        _navigationManager.NavigateTo($"/CylinderExchangeDetails/{id}");
+    }
+
+    // ================= DELETE =================
+    async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+        {
+            OkButtonText = "Yes, Delete",
+            CancelButtonText = "No, Keep",
+            ShowClose = true,
+        };
+
+        bool? confirmed = await DialogService.Confirm(
+            "Are you absolutely sure you want to delete this exchange?",
+            "Delete Confirmation",
+            options);
+
+        if (confirmed == true)
+        {
+            await Delete(id);
+        }
+    }
+
+    async Task Delete(int id)
+    {
+        try
+        {
+            m_CylinderExchange.DeleteCylinderExchange(id);
+            notificationComponent.Show("Delete Summary",
+                "Exchange has been Deleted successfully",
+                NotificationSeverity.Success);
+
+            await LoadData();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error",
+                $"Failed to delete: {ex.Message}",
+                NotificationSeverity.Error);
+        }
+    }
+
+    // ================= EXPORT TO PDF =================
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilteredList, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.MarginTop(20);
+                page.MarginBottom(20);
+                page.MarginLeft(40);
+                page.MarginRight(40);
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(2);  // Dealer
+                            columns.RelativeColumn(2);  // Direction
+                            columns.RelativeColumn(2);  // Amount
+                            columns.RelativeColumn(2);  // Pay
+                            columns.RelativeColumn(2);  // Due
+                            columns.RelativeColumn(3);  // Date
+                        });
+
+                        // Header
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Dealer").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Direction").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Pay").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Due").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                        });
+
+                        // Data rows
+                        foreach (var item in FilteredList)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.Supplier?.Name ?? "");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.ExchangeType ?? "");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{item.TotalAmount:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{item.TotalPay:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{item.TotalDue:N2}");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.Date.ToString("dd-MMM-yyyy"));
+                        }
+
+                        // Total Row
+                        table.Cell().ColumnSpan(2).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilteredList.Sum(x => x.TotalAmount):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilteredList.Sum(x => x.TotalPay):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilteredList.Sum(x => x.TotalDue):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold();
+                    });
+
+                page.Footer().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignCenter().Text(text =>
+                    {
+                        text.CurrentPageNumber();
+                        text.Span(" / ");
+                        text.TotalPages();
+                    });
+                    row.RelativeItem();
+                });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"CylinderExchange_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Cylinder Exchange Report").Bold().FontSize(10);
+            });
+        });
+    }
+}

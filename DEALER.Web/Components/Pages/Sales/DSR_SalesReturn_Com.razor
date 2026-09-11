@@ -59,7 +59,7 @@ else
                 <RadzenDataGridColumn TItem="DSRSalesReturnDTO" Property="@nameof(DSRSalesReturnDTO.Area)" Title="Area" Width="150px" />
                 <RadzenDataGridColumn TItem="DSRSalesReturnDTO" Title="Quentity" Width="80px">
                     <Template Context="item">
-                        <div>@item.QuentityFormattd</div>
+                        <div>@item.Quentity</div>
                     </Template>
                     <FooterTemplate>
                         <div class=" fw-bold">@FilterSalesReturnList.Sum(o => o.Quentity)</div>
@@ -68,7 +68,7 @@ else
 
                 <RadzenDataGridColumn TItem="DSRSalesReturnDTO" Title="Return Qty" Width="80px">
                     <Template Context="item">
-                        <div>@item.ReturnQuentityFormattd</div>
+                        <div>@item.ReturnQuentity</div>
                     </Template>
                     <FooterTemplate>
                         <div class=" fw-bold">@FilterSalesReturnList.Sum(o => o.ReturnQuentity)</div>
@@ -77,7 +77,7 @@ else
 
                 <RadzenDataGridColumn TItem="DSRSalesReturnDTO" Title="Selling Qty" Width="80px">
                     <Template Context="item">
-                        <div>@item.SellQuentityFormattd</div>
+                        <div>@item.SellQuentity</div>
                     </Template>
                     <FooterTemplate>
                         <div class=" fw-bold">@FilterSalesReturnList.Sum(o => o.SellQuentity)</div>

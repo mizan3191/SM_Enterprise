@@ -153,40 +153,13 @@ else
                                 <ValidationMessage For="@(() => Expense.PaymentMethodId)" />
                             </div>
 
-                            @* <div class="col-md-4 mb-3">
-                                <label>Reference Number</label>
-                                <InputText @bind-Value="Expense.ReferenceNumber" class="form-control" />
-                                <ValidationMessage For="@(() => Expense.ReferenceNumber)" />
-                            </div>
-
                             <div class="col-md-4 mb-3">
-                                <label>Paid To</label>
-                                <InputText @bind-Value="Expense.PaidTo" class="form-control" />
-                                <ValidationMessage For="@(() => Expense.PaidTo)" />
-                            </div> *@
-                            @* </div>
-
-                        <div class="row m-3"> *@
-                            @* <div class="col-md-4 mb-3">
-                                <label class="Asterisk">Issued By</label>
-                                <RadzenDropDown @bind-Value="Expense.CustomerId"
-                                                Data="@CustomerList"
-                                                TextProperty="Name"
-                                                ValueProperty="Id"
-                                                Placeholder="Select Customer"
-                                                Class="w-100"
-                                                AllowFiltering="false"
-                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
-                                <ValidationMessage For="@(() => Expense.CustomerId)" />
-                            </div> *@
-
-                            <div class="col-md-4 mb-3">
-                                <label class="Asterisk">Given By</label>
+                                <label class="Asterisk">Employee</label>
                                 <RadzenDropDown @bind-Value="Expense.EmployeeId"
-                                                Data="@CustomerList"
+                                                Data="@EmployeeList"
                                                 TextProperty="Name"
                                                 ValueProperty="Id"
-                                                Placeholder="Select Customer"
+                                                Placeholder="Select Employee"
                                                 Class="w-100"
                                                 AllowFiltering="false"
                                                 FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
@@ -226,7 +199,7 @@ else
     public IEnumerable<Expense> Expenses { get; set; } = new List<Expense>();
     public IEnumerable<Lov> PaymentMethods { get; set; } = new List<Lov>();
     public IEnumerable<Lov> ExpenseTypes { get; set; } = new List<Lov>();
-    public IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
+    public IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
 
     private bool showModal = false;
 
@@ -249,7 +222,7 @@ else
     {
         PaymentMethods = await m_Lookup.GetAllPaymentMethodList();
         ExpenseTypes = await m_Lookup.GetAllExpenseTypeList();
-        CustomerList = await m_Lookup.GetAllCustomerList();
+        EmployeeList = await m_Lookup.GetAllEmployeeList();
 
         //CustomerList = CustomerList.Where(c => !c.IsDeleted);
         //PaymentMethods = PaymentMethods.Where(c => !c.IsDeleted);
@@ -281,11 +254,15 @@ else
                 return;
             }
 
-            // if (Expense.CustomerId == 0)
-            // {
-            //     notificationComponent.Show("Missing Summary", "Issued By Need to select", NotificationSeverity.Warning);
-            //     return;
-            // }
+            if (Expense.EmployeeId == 0)
+            {
+                notificationComponent.Show(
+                    "পেমেন্ট পদ্ধতি নির্বাচন করুন",
+                    "অনুগ্রহ করে একটি পেমেন্ট পদ্ধতি নির্বাচন করুন।",
+                    NotificationSeverity.Warning);
+                return;
+            }
+
 
             if (Expense.ExpenseTypeId == 0)
             {
@@ -339,7 +316,7 @@ else
                 ExpenseDate = DateTime.Now,
                 ExpenseTypeId = ExpenseTypes.FirstOrDefault()?.Id ?? 0,
                 PaymentMethodId = PaymentMethods.FirstOrDefault()?.Id ?? 0,
-                EmployeeId = CustomerList.FirstOrDefault()?.Id ?? 0,
+                EmployeeId = EmployeeList.FirstOrDefault()?.Id ?? 0,
             };
         }
     }

@@ -1301,19 +1301,259 @@ namespace DEALER.DataAccess
             }
         }
 
-        public Task<IList<SalesReturnDTO>> GetAllSalesReturn(DateTime? startDate, DateTime? endDate)
+        public async Task<IList<SalesReturnDTO>> GetAllSalesReturn(DateTime? startDate, DateTime? endDate)
         {
-            throw new NotImplementedException();
+            try
+            {
+                DateTime fromDate = startDate.HasValue
+                    ? new DateTime(startDate.Value.Year, startDate.Value.Month, startDate.Value.Day, 0, 0, 0)
+                    : DateTime.Today.AddDays(-30);
+
+                DateTime toDate = endDate.HasValue
+                    ? new DateTime(endDate.Value.Year, endDate.Value.Month, endDate.Value.Day, 23, 59, 59)
+                    : DateTime.Today.AddDays(1).AddSeconds(-1);
+
+                var result = await _dbContext.OrderDetails
+                    .Include(od => od.Order)
+                    .Include(od => od.Product.Supplier)
+                    .Where(od => !od.Order.IsDeleted
+                        && od.Order.Date.Date >= fromDate
+                        && od.Order.Date.Date <= toDate)
+                    .GroupBy(od => new
+                    {
+                        od.OrderId,
+                        od.Product.Supplier.Id,
+                        od.Product.Supplier.Name,
+                        od.Order.Date,
+                        Area = od.Order.SelectedRoad
+                    })
+                    .Select(g => new SalesReturnDTO
+                    {
+                        OrderId = g.Key.OrderId,
+                        SupplierId = g.Key.Id,
+                        SupplierName = g.Key.Name,
+                        Date = g.Key.Date,
+                        Area = g.Key.Area,
+
+                        SellQuentity = g.Sum(x => x.Quantity - (x.ReturnQuantity ?? 0)),
+                        ReturnQuentity = g.Sum(x => x.ReturnQuantity ?? 0),
+                        Quentity = g.Sum(x => x.Quantity),
+
+                    })
+                    .OrderByDescending(x => x.Date)
+                    .ToListAsync();
+
+                return result;
+            }
+            catch
+            {
+                return new List<SalesReturnDTO>();
+            }
         }
 
-        public Task<IList<SalesHistoryDTO>> GetAllProductSalesHistory(DateTime? startDate, DateTime? endDate)
+
+
+        public async Task<IList<SalesHistoryDTO>> GetAllProductSalesHistory(DateTime? startDate, DateTime? endDate)
         {
-            throw new NotImplementedException();
+            try
+            {
+                DateTime fromDate = startDate?.Date ?? DateTime.Today.AddDays(-30);
+                DateTime toDate = endDate?.Date.AddDays(1).AddSeconds(-1)
+                                    ?? DateTime.Today.AddDays(1).AddSeconds(-1);
+
+                // Step 1: Single query — OrderDetail + Order + Product + Supplier + ProductsSize
+                var orderDetails = await _dbContext.OrderDetails
+                    .Include(od => od.Order)
+                    .Include(od => od.Product)
+                        .ThenInclude(p => p.Supplier)
+                    .Include(od => od.Product)
+                        .ThenInclude(p => p.ProductsSize)
+                    .Where(od => !od.Order.IsDeleted
+                              && od.Order.Date >= fromDate
+                              && od.Order.Date <= toDate)
+                    .Select(od => new
+                    {
+                        od.Id,
+                        od.OrderId,
+                        OrderDate = od.Order.Date,
+                        od.ProductId,
+                        ProductName = od.Product.Name,
+                        ProductSize = od.Product.ProductsSize != null ? od.Product.ProductsSize.Name : null,
+                        SupplierName = od.Product.Supplier != null ? od.Product.Supplier.Name : "",
+                        od.Quantity,
+                        od.ReturnQuantity,
+                        od.CylinderUnitPrice,
+                        od.GasUnitPrice,
+                        od.Discount,
+                        od.Price
+                    })
+                    .ToListAsync();
+
+                if (!orderDetails.Any())
+                    return new List<SalesHistoryDTO>();
+
+                // Step 2: Group + calculate
+                var result = orderDetails
+                    .GroupBy(x => new
+                    {
+                        Date = x.OrderDate.Date,
+                        x.ProductId,
+                        x.ProductName,
+                        x.ProductSize,
+                        x.SupplierName
+                    })
+                    .Select(g =>
+                    {
+                        // Total quantity
+                        var totalQuantity = g.Sum(x => x.Quantity);
+                        var returnQuantity = g.Sum(x => x.ReturnQuantity ?? 0);
+                        var sellQuantity = totalQuantity - returnQuantity;
+
+                        // Unit selling price = (CylinderUnitPrice + GasUnitPrice) per unit
+                        // (prothom row theke nao, sob same product+date e same price)
+                        var first = g.First();
+                        var unitSellingPrice = first.CylinderUnitPrice + first.GasUnitPrice;
+
+                        // Total amount (discount er age)
+                        var totalAmount = g.Sum(x => x.Price);
+
+                        // Total discount
+                        var totalDiscount = g.Sum(x => x.Discount);
+
+                        // Final amount (discount er por)
+                        var finalAmount = totalAmount - totalDiscount;
+
+                        // Return amount (return quantity × unit price)
+                        var returnAmount = returnQuantity * unitSellingPrice;
+
+                        return new SalesHistoryDTO
+                        {
+                            Date = g.Key.Date,
+                            SupplierName = g.Key.SupplierName,
+                            ProductName = string.IsNullOrEmpty(g.Key.ProductSize)
+                                ? g.Key.ProductName
+                                : $"{g.Key.ProductName}-{g.Key.ProductSize}",
+
+                            Quentity = totalQuantity,
+                            SellQuentity = sellQuantity,
+                            ReturnQuentity = returnQuantity,
+
+                            Amount = finalAmount,
+                            ReturnAmount = returnAmount
+                        };
+                    })
+                    .OrderByDescending(x => x.Date)
+                    .ToList();
+
+                return result;
+            }
+            catch
+            {
+                return new List<SalesHistoryDTO>();
+            }
         }
 
-        public Task<IList<DSRSalesReturnDTO>> GetDSRAllSalesReturn(DateTime? startDate, DateTime? endDate)
+
+        public async Task<IList<DSRSalesReturnDTO>> GetDSRAllSalesReturn(DateTime? startDate, DateTime? endDate)
         {
-            throw new NotImplementedException();
+            try
+            {
+                DateTime fromDate = startDate.HasValue
+                    ? new DateTime(startDate.Value.Year, startDate.Value.Month, startDate.Value.Day, 0, 0, 0)
+                    : DateTime.Today.AddDays(-30);
+
+                DateTime toDate = endDate.HasValue
+                    ? new DateTime(endDate.Value.Year, endDate.Value.Month, endDate.Value.Day, 23, 59, 59)
+                    : DateTime.Today.AddDays(1).AddSeconds(-1);
+
+                var rawData = await _dbContext.OrderDetails
+                    .Include(od => od.Order)
+                        .ThenInclude(o => o.Employee)
+                    .Include(od => od.Product)
+                        .ThenInclude(p => p.Supplier)
+                    .Where(od => !od.Order.IsDeleted
+                              && od.Order.Date >= fromDate
+                              && od.Order.Date <= toDate)
+                    .Select(od => new
+                    {
+                        od.OrderId,
+                        SupplierId = od.Product.SupplierId,
+                        SupplierName = od.Product.Supplier != null ? od.Product.Supplier.Name : "",
+                        OrderDate = od.Order.Date,
+                        Area = od.Order.SelectedRoad,
+                        DSRName = od.Order.Employee != null ? od.Order.Employee.Name : "",
+
+                        od.Quantity,
+                        od.ReturnQuantity,
+                        od.CylinderUnitPrice,
+                        od.GasUnitPrice,
+                        od.Discount,
+                        od.Price,
+
+                        // Piece (cartun/box unit er bodole)
+                        od.Product.Piece
+                    })
+                    .ToListAsync();
+
+                if (!rawData.Any())
+                    return new List<DSRSalesReturnDTO>();
+
+                var result = rawData
+                    .GroupBy(x => new
+                    {
+                        x.OrderId,
+                        x.SupplierId,
+                        x.SupplierName,
+                        x.OrderDate,
+                        x.Area,
+                        x.DSRName
+                    })
+                    .Select(g =>
+                    {
+                        // Unit selling price = cylinder + gas (per unit)
+                        var first = g.First();
+                        var unitSellingPrice = first.CylinderUnitPrice + first.GasUnitPrice;
+
+                        var totalQuantity = g.Sum(x => x.Quantity);
+                        var returnQuantity = g.Sum(x => x.ReturnQuantity ?? 0);
+                        var sellQuantity = totalQuantity - returnQuantity;
+
+                        // Total amount (discount er age)
+                        var totalAmount = g.Sum(x => x.Price);
+
+                        // Total discount
+                        var totalDiscount = g.Sum(x => x.Discount);
+
+                        // Return amount = return quantity × unit price
+                        var returnAmount = returnQuantity * unitSellingPrice;
+
+                        return new DSRSalesReturnDTO
+                        {
+                            OrderId = g.Key.OrderId,
+                            SupplierId = g.Key.SupplierId,
+                            SupplierName = g.Key.SupplierName,
+                            Date = g.Key.OrderDate,
+                            Area = g.Key.Area,
+                            DSRName = g.Key.DSRName,
+
+                            Quentity = totalQuantity,
+                            SellQuentity = sellQuantity,
+                            ReturnQuentity = returnQuantity,
+
+                            TotalAmount = totalAmount - totalDiscount,   // discount er por
+                            ReturnAmount = returnAmount,
+
+                        };
+                    })
+                    .OrderByDescending(x => x.Date)
+                    .ToList();
+
+                return result;
+            }
+            catch
+            {
+                return new List<DSRSalesReturnDTO>();
+            }
         }
 
         public Task<IList<OrderExportToPdfDTO>> OrderExportToPdfList(int orderId)

@@ -116,6 +116,7 @@ else
                                                 AllowFiltering="true"
                                                 FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
                             </div>
+
                         </div>
 
                         <div class="row m-3">
@@ -124,12 +125,12 @@ else
                                 <InputNumber @bind-Value="DailyExpense.Amount" class="form-control"></InputNumber>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="Asterisk form-label">Issued By</label>
+                                <label class="Asterisk form-label">Employee</label>
                                 <RadzenDropDown @bind-Value="DailyExpense.EmployeeId"
-                                                Data="@CustomerList"
+                                                Data="@EmployeeList"
                                                 TextProperty="Name"
                                                 ValueProperty="Id"
-                                                Placeholder="Name"
+                                                Placeholder="Name Employee"
                                                 Class="w-100"
                                                 AllowClear="true"
                                                 AllowFiltering="true"
@@ -160,7 +161,7 @@ else
     public IEnumerable<DailyExpense> DailyExpenseList { get; set; } = new List<DailyExpense>();
 
     public IEnumerable<Lov> DailyExpenseTypeList { get; set; } = new List<Lov>();
-    private IEnumerable<Lovd> CustomerList { get; set; } = new List<Lovd>();
+    private IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
 
     private bool showModal = false;
 
@@ -180,7 +181,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        CustomerList = await m_Lookup.GetAllCustomerList();
+        EmployeeList = await m_Lookup.GetAllEmployeeList();
         DailyExpenseTypeList = await m_Lookup.GetAllDailyExpenseTypeList();
 
         await LoadData();

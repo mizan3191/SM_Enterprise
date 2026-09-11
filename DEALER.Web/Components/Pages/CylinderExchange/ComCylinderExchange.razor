@@ -1,0 +1,476 @@
+﻿@page "/CylinderExchange"
+@page "/CylinderExchange/{SupplierId:int}"
+@page "/CylinderExchange/{SupplierId:int}/{Id:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject NotificationService NotificationService
+
+<Message @ref="notificationComponent" />
+
+<style>
+    .dataForm .table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .dataForm .table th, .dataForm .table td {
+        padding: 6px;
+    }
+
+    .dataForm .table input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .dataForm .table td.text-end { text-align: right; }
+    .dataForm .table td.text-center { text-align: center; }
+</style>
+
+<h3>@(CylinderExchange.Id > 0 ? "Edit Cylinder Exchange" : "Cylinder Exchange")</h3>
+
+@* ================= TOP: EXCHANGE TYPE + DEALER + PRODUCT ================= *@
+<div class="card dataForm">
+    <div class="row mt-3">
+
+        @* Exchange Type — Give / Receive *@
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Exchange Type <span class="text-danger">*</span></label>
+            <RadzenDropDown TValue="string"
+                            @bind-Value="CylinderExchange.ExchangeType"
+                            Data="@ExchangeTypeList"
+                            TextProperty="Text"
+                            ValueProperty="Value"
+                            Placeholder="Select Type"
+                            Style="width:100%"
+                            Disabled="@(CylinderExchange.Id > 0)"
+                            Change="@OnExchangeTypeChanged">
+            </RadzenDropDown>
+        </div>
+
+        @* Dealer *@
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Dealer / Company <span class="text-danger">*</span></label>
+            <RadzenDropDown TValue="int?"
+                            @bind-Value="SelectedSupplierId"
+                            Data="@SupplierList"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Placeholder="Select Dealer"
+                            AllowClear="true"
+                            AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            Change="@OnSupplierChanged"
+                            Disabled="@(string.IsNullOrEmpty(CylinderExchange.ExchangeType))"
+                            Style="width:100%">
+            </RadzenDropDown>
+        </div>
+
+        @* Product *@
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Product (Cylinder)</label>
+            <RadzenDropDown TValue="int?"
+                            @bind-Value="SelectedProductId"
+                            Data="@AllProducts"
+                            TextProperty="DisplayNameSize"
+                            ValueProperty="Id"
+                            Placeholder="Select Cylinder"
+                            AllowClear="true"
+                            AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            Disabled="@(SelectedSupplierId == null)"
+                            Style="width:100%">
+                <Template Context="product">
+                    <div>
+                        <div>@product.DisplayNameSize</div>
+                        <small style="color: #888;">
+                            Price: @product.CurrentPrice?.CylinderBuyingPrice?.ToString("N2")
+                        </small>
+                    </div>
+                </Template>
+            </RadzenDropDown>
+        </div>
+
+        <div class="col-md-2 mb-3 d-flex align-items-end">
+            <RadzenButton Disabled="@(SelectedProductId == null)"
+                          Text="Add"
+                          Style="width:100%"
+                          ButtonStyle="ButtonStyle.Secondary"
+                          Click="AddDetail" />
+        </div>
+    </div>
+</div>
+
+@* ================= DETAILS TABLE ================= *@
+<div class="card dataForm mt-3">
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="width:28%">Product</th>
+                <th class="text-center" style="width:10%">Type</th>
+                <th class="text-end" style="width:12%">Unit Price</th>
+                <th class="text-center" style="width:10%">Qty</th>
+                <th class="text-end" style="width:12%">SubTotal</th>
+                <th class="text-center" style="width:10%">Disc %</th>
+                <th class="text-end" style="width:12%">Total</th>
+                <th style="width:6%"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var detail in Details)
+            {
+                <tr>
+                    <td>
+                        <RadzenDropDown TValue="int"
+                                        @bind-Value="detail.ProductId"
+                                        Data="@AllProducts"
+                                        TextProperty="DisplayNameSize"
+                                        ValueProperty="Id"
+                                        Placeholder="Select Cylinder"
+                                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        Change="@(args => OnProductChanged(detail, args))" />
+                    </td>
+                    <td class="text-center">
+                        @if (CylinderExchange.ExchangeType == "Give")
+                        {
+                            <span class="badge bg-danger">Give</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Receive</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <input type="number" step="0.01" min="0"
+                               value="@detail.CylinderUnitPrice"
+                               @oninput="(e) => OnPriceChanged(detail, e)"
+                               class="form-control text-end" />
+                    </td>
+                    <td>
+                        <input type="number" min="1"
+                               value="@detail.Quantity"
+                               @oninput="(e) => OnQuantityChanged(detail, e)"
+                               class="form-control text-center" />
+                    </td>
+                    <td class="text-end">@detail.SubTotal.ToString("N2")</td>
+                    <td>
+                        <input type="number" step="0.01" min="0" max="100"
+                               value="@detail.DiscountPercent"
+                               @oninput="(e) => OnDiscountChanged(detail, e)"
+                               class="form-control text-center" />
+                    </td>
+                    <td class="text-end"><strong>@detail.TotalPrice.ToString("N2")</strong></td>
+                    <td class="text-end">
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger"
+                                      Click="() => RemoveDetail(detail)" />
+                    </td>
+                </tr>
+            }
+            @if (!Details.Any())
+            {
+                <tr>
+                    <td colspan="8" class="text-center text-muted">No items added yet.</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4" class="text-end"><strong>Sub Total:</strong></td>
+                <td class="text-end"><strong>@SubTotal.ToString("N2")</strong></td>
+                <td class="text-end"><strong>Product Disc:</strong></td>
+                <td class="text-end"><strong>@ProductDiscount.ToString("N2")</strong></td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+@* ================= PAYMENT / FINAL ================= *@
+<div class="card mt-3">
+    <div class="row m-3">
+        <div class="col-md-3">
+            <label class="form-label">Exchange Date</label>
+            <RadzenDatePicker @bind-Value="CylinderExchange.Date"
+                              DateFormat="yyyy-MM-dd" Class="w-100" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Payment Method</label>
+            <RadzenDropDown TValue="int?"
+                            @bind-Value="CylinderExchange.PaymentMethodId"
+                            Data="@PaymentMethods"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Placeholder="Select Payment Method"
+                            AllowClear="true"
+                            Style="width:100%" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Exchange Discount (Amount)</label>
+            <input type="number" step="0.01" min="0"
+                   class="form-control text-end"
+                   value="@CylinderExchange.ExchangeDiscount"
+                   @oninput="OnExchangeDiscountChanged" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Total Pay</label>
+            <input type="number" step="0.01" min="0"
+                   class="form-control text-end"
+                   value="@CylinderExchange.TotalPay"
+                   @oninput="OnTotalPayChanged" />
+        </div>
+
+        <div class="col-md-12 mt-3">
+            <label class="form-label">Comments</label>
+            <input type="text" class="form-control"
+                   @bind="CylinderExchange.Comments"
+                   placeholder="Optional remarks" />
+        </div>
+    </div>
+
+    <div class="row m-3">
+        <div class="col-md-3 offset-md-6 text-end">
+            <strong>Final Total:</strong>
+        </div>
+        <div class="col-md-3 text-end">
+            <strong>@TotalAmount.ToString("N2")</strong>
+        </div>
+        <div class="col-md-3 offset-md-6 text-end">
+            <strong>Due:</strong>
+        </div>
+        <div class="col-md-3 text-end">
+            <strong class="@(TotalDue > 0 ? "text-success" : TotalDue < 0 ? "text-danger" : "")">
+                @TotalDue.ToString("N2")
+            </strong>
+        </div>
+    </div>
+</div>
+
+<RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Click="SaveExchange" class="mt-2 mb-2" />
+<RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+
+@code {
+    [Parameter] public int? SupplierId { get; set; }
+    [Parameter] public int? Id { get; set; }
+
+    [Inject] private ICylinderExchange m_CylinderExchange { get; set; }
+    [Inject] private IProduct m_Product { get; set; }
+    [Inject] private ILookup m_Lookup { get; set; }
+    [Inject] private NavigationManager _navigationManager { get; set; }
+
+    private Message notificationComponent;
+
+    public List<CylinderExchangeDetailViewModel> Details { get; set; } = new();
+    public IEnumerable<Product> AllProducts { get; set; } = new List<Product>();
+    public IEnumerable<Lov> SupplierList { get; set; } = new List<Lov>();
+    public IEnumerable<Lov> PaymentMethods { get; set; } = new List<Lov>();
+
+    public int? SelectedSupplierId { get; set; }
+    public int? SelectedProductId { get; set; }
+
+    public CylinderExchange CylinderExchange { get; set; } = new();
+
+    // ================= HARD-CODED DROPDOWN =================
+    public List<DropdownItem> ExchangeTypeList { get; set; } = new()
+    {
+        new() { Text = "Give", Value = "Give" },
+        new() { Text = "Receive", Value = "Receive" }
+    };
+
+    // ================= CALCULATIONS =================
+    public double SubTotal => Details.Sum(d => d.SubTotal);
+    public double ProductDiscount => Details.Sum(d => d.DiscountAmount);
+    public double TotalAmount => SubTotal - ProductDiscount - CylinderExchange.ExchangeDiscount;
+    public double TotalDue => TotalAmount - CylinderExchange.TotalPay;
+
+    // ================= INIT =================
+    protected override async Task OnInitializedAsync()
+    {
+        SupplierList = await m_Lookup.GetAllSupplierList();
+        PaymentMethods = await m_Lookup.GetAllPaymentMethodList();
+        AllProducts = await m_Product.GetAllProduct();
+
+        if (Id.HasValue && Id.Value > 0)
+        {
+            var existing = m_CylinderExchange.GetCylinderExchangeById(Id.Value);
+            if (existing != null)
+            {
+                CylinderExchange = existing;
+                SelectedSupplierId = existing.SupplierId;
+
+                Details = existing.ExchangeDetails.Select(d =>
+                {
+                    var product = AllProducts.FirstOrDefault(p => p.Id == d.ProductId);
+                    return new CylinderExchangeDetailViewModel
+                    {
+                        Id = d.Id,
+                        ProductId = d.ProductId,
+                        ProductName = product?.DisplayNameSize ?? "",
+                        Quantity = d.Quantity,
+                        CylinderUnitPrice = d.CylinderUnitPrice,
+                        DiscountPercent = d.DiscountPercent
+                    };
+                }).ToList();
+            }
+        }
+        else
+        {
+            CylinderExchange = new()
+            {
+                Date = DateTime.Now,
+                SupplierId = SupplierId
+            };
+
+            if (SupplierId.HasValue)
+                SelectedSupplierId = SupplierId.Value;
+        }
+    }
+
+    // ================= HANDLERS =================
+    private void OnExchangeTypeChanged()
+    {
+        // Create mode e type change hole details clear
+        if (CylinderExchange.Id == 0)
+        {
+            Details.Clear();
+            SelectedProductId = null;
+            StateHasChanged();
+        }
+    }
+
+    private void OnSupplierChanged()
+    {
+        if (SelectedSupplierId.HasValue)
+            CylinderExchange.SupplierId = SelectedSupplierId.Value;
+    }
+
+    private void AddDetail()
+    {
+        if (SelectedProductId == null) return;
+        var product = AllProducts.FirstOrDefault(p => p.Id == SelectedProductId.Value);
+        if (product == null) return;
+
+        Details.Add(new CylinderExchangeDetailViewModel
+        {
+            ProductId = product.Id,
+            ProductName = product.DisplayNameSize,
+            Quantity = 1,
+            CylinderUnitPrice = product.CurrentPrice?.CylinderBuyingPrice ?? 0,
+            DiscountPercent = 0
+        });
+
+        SelectedProductId = null;
+        StateHasChanged();
+    }
+
+    private void RemoveDetail(CylinderExchangeDetailViewModel d)
+    {
+        Details.Remove(d);
+        StateHasChanged();
+    }
+
+    private void OnProductChanged(CylinderExchangeDetailViewModel d, object value)
+    {
+        if (value is int pid)
+        {
+            var p = AllProducts.FirstOrDefault(x => x.Id == pid);
+            if (p != null)
+            {
+                d.ProductId = pid;
+                d.ProductName = p.DisplayNameSize;
+                d.CylinderUnitPrice = p.CurrentPrice?.CylinderBuyingPrice ?? 0;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void OnPriceChanged(CylinderExchangeDetailViewModel d, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double v))
+        { d.CylinderUnitPrice = v < 0 ? 0 : v; StateHasChanged(); }
+    }
+
+    private void OnQuantityChanged(CylinderExchangeDetailViewModel d, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+        { d.Quantity = v < 1 ? 1 : v; StateHasChanged(); }
+    }
+
+    private void OnDiscountChanged(CylinderExchangeDetailViewModel d, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double v))
+        { d.DiscountPercent = v < 0 ? 0 : (v > 100 ? 100 : v); StateHasChanged(); }
+    }
+
+    private void OnExchangeDiscountChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double v))
+        { CylinderExchange.ExchangeDiscount = v < 0 ? 0 : v; StateHasChanged(); }
+    }
+
+    private void OnTotalPayChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double v))
+        { CylinderExchange.TotalPay = v < 0 ? 0 : v; StateHasChanged(); }
+    }
+
+    // ================= SAVE =================
+    private void SaveExchange()
+    {
+        if (string.IsNullOrEmpty(CylinderExchange.ExchangeType))
+        {
+            notificationComponent.Show("Validation Error", "Please select exchange type.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (!SelectedSupplierId.HasValue)
+        {
+            notificationComponent.Show("Validation Error", "Please select a dealer.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (!Details.Any())
+        {
+            notificationComponent.Show("Validation Error", "Please add at least one item.", NotificationSeverity.Warning);
+            return;
+        }
+
+        try
+        {
+            CylinderExchange.SupplierId = SelectedSupplierId.Value;
+            CylinderExchange.SubTotal = SubTotal;
+            CylinderExchange.TotalAmount = TotalAmount;
+            CylinderExchange.TotalDue = TotalDue;
+
+            CylinderExchange.ExchangeDetails = Details.Select(d => new CylinderExchangeDetail
+            {
+                Id = d.Id,
+                ProductId = d.ProductId,
+                Quantity = d.Quantity,
+                CylinderUnitPrice = d.CylinderUnitPrice,
+                DiscountPercent = d.DiscountPercent,
+                DiscountAmount = d.DiscountAmount
+            }).ToList();
+
+            if (CylinderExchange.Id > 0)
+            {
+                m_CylinderExchange.UpdateCylinderExchange(CylinderExchange);
+                notificationComponent.Show("Success", "Exchange updated.", NotificationSeverity.Success);
+            }
+            else
+            {
+                m_CylinderExchange.CreateCylinderExchange(CylinderExchange);
+                notificationComponent.Show("Success", "Exchange created.", NotificationSeverity.Success);
+            }
+
+            _navigationManager.NavigateTo("/CylinderExchangeList");
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", $"Failed: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private void Cancel() => _navigationManager.NavigateTo("/CylinderExchangeList");
+}

@@ -55,14 +55,10 @@ else
             <Columns>
                 <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.OrderId)" Title="ID" Width="50px" />
                 <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.SupplierName)" Title="Company Name" Width="150px" />
-                <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.Area)" Title="Area" Width="150px" />
-                @* <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.Quentity)" Title="Quentity" Width="80px" />
-                <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.SellQuentity)" Title="Selling Qty" Width="80px" />
-                <RadzenDataGridColumn TItem="SalesReturnDTO" Property="@nameof(SalesReturnDTO.ReturnQuentity)" Title="Return Qty" Width="80px" />
- *@
+              
                 <RadzenDataGridColumn TItem="SalesReturnDTO" Title="Quentity" Width="80px">
                     <Template Context="item">
-                        <div>@item.QuentityFormattd</div>
+                        <div>@item.Quentity</div>
                     </Template>
                     <FooterTemplate>
                         <div class=" fw-bold">@FilterSalesReturnList.Sum(o => o.Quentity)</div>
@@ -71,7 +67,7 @@ else
 
                 <RadzenDataGridColumn TItem="SalesReturnDTO" Title="Return Qty" Width="80px">
                     <Template Context="item">
-                        <div>@item.ReturnQuentityFormattd</div>
+                        <div>@item.ReturnQuentity</div>
                     </Template>
                     <FooterTemplate>
                         <div class=" fw-bold">@FilterSalesReturnList.Sum(o => o.ReturnQuentity)</div>
@@ -80,7 +76,7 @@ else
 
                 <RadzenDataGridColumn TItem="SalesReturnDTO" Title="Selling Qty" Width="80px">
                     <Template Context="item">
-                        <div>@item.SellQuentityFormattd</div>
+                        <div>@item.SellQuentity</div>
                     </Template>
                     <FooterTemplate>
                         <div class=" fw-bold">@FilterSalesReturnList.Sum(o => o.SellQuentity)</div>

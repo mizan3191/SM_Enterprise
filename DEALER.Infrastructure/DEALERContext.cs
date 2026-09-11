@@ -48,6 +48,10 @@ namespace DEALER.Infrastructure
         public virtual DbSet<ProductStock> ProductStocks { get; set; }
         public virtual DbSet<ProductPrice> ProductPrices { get; set; }
 
+        public virtual DbSet<CylinderExchange> CylinderExchanges { get; set; }
+        public virtual DbSet<CylinderExchangeDetail> CylinderExchangeDetails { get; set; }
+        public virtual DbSet<ExchangePaymentHistory> ExchangePaymentHistories { get; set; }
+
         #region Lookup Tables        
         public virtual DbSet<UnitOfMeasurement> UnitOfMeasurement { get; set; }
         public virtual DbSet<ReasonofAdjustment> ReasonofAdjustment { get; set; }

@@ -61,6 +61,7 @@ builder.Services.AddScoped<IOrderPaymentHistory, OrderPaymentHistoryManager>();
 //builder.Services.AddScoped<IDamageProductHandover, DamageProductHandoverManager>();
 //builder.Services.AddScoped<IDamageProductHandoverPaymentHistory, DamageProductHandoverPaymentHistoryManager>();
 builder.Services.AddScoped<IExtraReturnProduct, ExtraReturnProductManager>();
+builder.Services.AddScoped<ICylinderExchange, CylinderExchangeManager>();
 
 
 
