@@ -12,5 +12,9 @@
         int CreateDSRShopPaymentHistory(DSRShopPaymentHistory DSRShopPaymentHistory);
         bool UpdateDSRShopPaymentHistory(DSRShopPaymentHistory DSRShopPaymentHistory);
         bool DeleteDSRShopPaymentHistory(int id);
+
+        // ✅ NEW
+        void AddEmptyCylinderPaymentHistory(EmptyCylinderPaymentHistory product);
+        void DeleteEmptyCylinderPaymentHistory(int id);
     }
 }

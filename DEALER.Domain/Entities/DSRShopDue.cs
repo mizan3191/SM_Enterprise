@@ -29,18 +29,6 @@ namespace DEALER.Domain
 
         [NotMapped]
         public bool IsSaved { get; set; } = false;
-
-        public string DueHistory
-        {
-            get
-            {
-                string shopName = Shop?.Name ?? "";
-                string area = Shop?.Area ?? "";
-                string customerName = Employee?.Name ?? "";
-
-                return $"{shopName}({area})({customerName})";
-            }
-        }
     }
 
     // নতুন ক্লাস: পণ্যের বিবরণ
@@ -54,6 +42,7 @@ namespace DEALER.Domain
         public virtual Product Product { get; set; }
 
         public int CylinderQty { get; set; }
+        public double DueAmount { get; set; } // here will be the due amount for this specific product Product.CurrentPrice.EmptyCylinderPrice * CylinderQty
     }
 
 

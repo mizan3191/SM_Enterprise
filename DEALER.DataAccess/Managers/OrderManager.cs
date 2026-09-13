@@ -302,7 +302,7 @@ namespace DEALER.DataAccess
         {
             try
             {
-                return _dbContext.Customers
+                return _dbContext.Employees
                   .Where(o => o.Id == personId)
                       .Select(o => new PersonInfoDTO
                       {
@@ -429,14 +429,14 @@ namespace DEALER.DataAccess
             try
             {
                 OrderInfoDTO invoice = _dbContext.Orders
-               .Include(o => o.Customer)
+               .Include(o => o.Employee)
                .Where(o => o.Id == orderId)
                .Select(o => new OrderInfoDTO
                {
                    Id = o.Id,
-                   Name = o.Customer.Name,
-                   Email = o.Customer.Email,
-                   Phone = o.Customer.Phone,
+                   Name = o.Employee.Name,
+                   Email = o.Employee.Email,
+                   Phone = o.Employee.Phone,
 
                    OrderDate = o.Date,
                    OrderId = o.Id,
@@ -459,14 +459,14 @@ namespace DEALER.DataAccess
             try
             {
                 InvoiceDTO invoice = _dbContext.Orders
-               .Include(o => o.Customer)
+               .Include(o => o.Employee)
                .Where(o => o.Id == orderId)
                .Select(o => new InvoiceDTO
                {
                    Id = o.Id,
-                   Name = o.Customer.Name,
-                   Email = o.Customer.Email,
-                   Phone = o.Customer.Phone,
+                   Name = o.Employee.Name,
+                   Email = o.Employee.Email,
+                   Phone = o.Employee.Phone,
                   
 
                }).FirstOrDefault();
@@ -479,12 +479,12 @@ namespace DEALER.DataAccess
             }
         }
 
-        public async Task<IList<CustomerPaymentHistoryDTO>> GetCustomerPaymentHistoryById(int customerId)
+        public async Task<IList<CustomerPaymentHistoryDTO>> GetCustomerPaymentHistoryById(int employeeId)
         {
             try
             {
                 var customerPaymentHistory = await _dbContext.CustomerPaymentHistories
-                  .Where(x => x.CustomerId == customerId && !x.IsDeleted)
+                  .Where(x => x.EmployeeId == employeeId && !x.IsDeleted)
                   .Select(x => new CustomerPaymentHistoryDTO
                   {
                       Id = x.Id,
@@ -622,15 +622,15 @@ namespace DEALER.DataAccess
         {
             try
             {
-                var query = from customer in _dbContext.Employees
+                var query = from employee in _dbContext.Employees
                             join payment in _dbContext.CustomerPaymentHistories.Where(p => !p.IsDeleted)
-                                on customer.Id equals payment.EmployeeId into paymentsGroup
+                                on employee.Id equals payment.EmployeeId into paymentsGroup
                             select new CustomerDueDTO
                             {
-                                Id = customer.Id,
-                                Name = customer.Name,
-                                Phone = customer.Phone,
-                                District = customer.Address,
+                                Id = employee.Id,
+                                Name = employee.Name,
+                                Phone = employee.Phone,
+                                Address = employee.Address,
                                 TotalDue = paymentsGroup.OrderByDescending(p => p.Id)
                                                         .Select(p => (double?)p.TotalDueAfterPayment)
                                                         .FirstOrDefault() ?? 0

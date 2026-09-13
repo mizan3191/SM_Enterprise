@@ -1,5 +1,5 @@
 ﻿@page "/PaymentHistory"
-@page "/PaymentHistory/{CustomerId:int}"
+@page "/PaymentHistory/{EmployeeId:int}"
 @using DEALER.Domain
 
  @rendermode @(new InteractiveServerRenderMode(prerender: false))
@@ -42,9 +42,9 @@
 </div>
 
 
-@if (CustomerId > 0)
+@if (EmployeeId > 0)
 {
-    <ComPersonHeaderInfo Id="@CustomerId"></ComPersonHeaderInfo>
+    <ComPersonHeaderInfo Id="@EmployeeId"></ComPersonHeaderInfo>
 
     @if (FilterPaymentHistoryList == null)
     {
@@ -214,7 +214,7 @@
 
 @code {
     [Parameter]
-    public int CustomerId { get; set; }
+    public int EmployeeId { get; set; }
 
     [Inject]
     private IOrder m_Order { get; set; }
@@ -254,15 +254,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        ClientList = await m_Lookup.GetAllCustomerList();
+        ClientList = await m_Lookup.GetAllEmployeeList();
         PaymentMethodList = await m_Lookup.GetAllPaymentMethodList();
 
         //ClientList = ClientList.Where(c => !c.IsDeleted);
         //PaymentMethodList = PaymentMethodList.Where(c => !c.IsDeleted);
 
-        if (CustomerId > 0)
+        if (EmployeeId > 0)
         {
-            await OnClientChange(CustomerId);
+            await OnClientChange(EmployeeId);
         }
     }
 
@@ -297,11 +297,11 @@
     {
         showpPopup = true;
 
-        if (CustomerId > 0)
+        if (EmployeeId > 0)
         {
             CustomerPaymentHistory = new()
                 {
-                    CustomerId = CustomerId,
+                EmployeeId = EmployeeId,
                 };
         }
         else
@@ -316,8 +316,8 @@
     {
         if (clientId > 0)
         {
-            ClientName = m_Customer.GetCustomer(clientId).Name;
-            PaymentHistoryList = await m_Order.GetCustomerPaymentHistoryById(CustomerId);
+            ClientName = m_Customer.GetEmployee(clientId).Name;
+            PaymentHistoryList = await m_Order.GetCustomerPaymentHistoryById(EmployeeId);
             TotalDue = 0;
             if (PaymentHistoryList.Count() > 0)
             {
@@ -340,8 +340,8 @@
         if (int.TryParse(value?.ToString(), out var id))
         {
             SelectedClientId = id;
-            CustomerId = id;
-            await OnClientChange(CustomerId);            
+            EmployeeId = id;
+            await OnClientChange(EmployeeId);
             StateHasChanged();
         }
     }
@@ -389,7 +389,7 @@
             }
         }
 
-        await OnClientChange(CustomerId);
+        await OnClientChange(EmployeeId);
         StateHasChanged();
     }
 
@@ -424,7 +424,7 @@
     {
         m_Customer.DeleteCustomerPayment(id);
         notificationComponent.Show("Deleted Summary", "Payment has been Deleted successfully", NotificationSeverity.Error);
-        await OnClientChange(CustomerId);
+        await OnClientChange(EmployeeId);
         StateHasChanged();
     }
 

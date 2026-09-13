@@ -24,6 +24,7 @@ namespace DEALER.Domain
     public class EmployeeType : BaseLookup { }
 
     public class PaymentMethod : BaseLookup { } 
+    public class PaymentType : BaseLookup { } 
     public class ShippingMethod : BaseLookup { }
 
     public class Shop : BaseLookup 

@@ -17,6 +17,7 @@
         IList<DSRShopDueDTO> GetAllDSRShopDueList(int shopId, DateTime? startDate, DateTime? endDate);
         Task<IList<DSRShopDue>> GetAllDSRShopDue(int orderId);
         Task<double> LoadShopDueCustomerWise(int shopId, int customerId);
+        Task<double> LoadShopCylinderDueCustomerWise(int shopId, int customerId);
 
         //int CreateDSRShopDueInOrderTime(DSRShopDue DSRShopDue);
         //bool UpdateDSRShopDueInOrderTime(DSRShopDue DSRShopDue);

@@ -122,16 +122,27 @@
             }
         }
 
+        //public DSRShopPaymentHistory GetDSRShopPaymentHistory(int id)
+        //{
+        //    try
+        //    {
+        //        return _dbContext.DSRShopPaymentHistories.FirstOrDefault(c => c.Id == id);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return null;
+        //    }
+        //}
+
         public DSRShopPaymentHistory GetDSRShopPaymentHistory(int id)
         {
-            try
-            {
-                return _dbContext.DSRShopPaymentHistories.FirstOrDefault(c => c.Id == id);
-            }
-            catch (Exception ex)
-            {
-                return null;
-            }
+            return _dbContext.DSRShopPaymentHistories
+                .Include(x => x.Products)
+                    .ThenInclude(p => p.Product)   // ← ✅ Navigation load
+                .Include(x => x.Shop)
+                .Include(x => x.Employee)
+                .Include(x => x.PaymentMethod)
+                .FirstOrDefault(x => x.Id == id);
         }
 
         public async Task<IList<DSRShopPaymentHistory>> GetAllDSRShopPaymentHistory(int shopId)
@@ -139,6 +150,7 @@
             try
             {
                 return await _dbContext.DSRShopPaymentHistories
+                    .Include(x => x.Products)
                     .Include(x => x.Employee)
                     .Include(x => x.Shop)
                     .Include(x => x.PaymentMethod)
@@ -170,10 +182,12 @@
             }
         }
 
+
         public async Task<IList<DSRDueSummary>> GetTotalDuePerShop()
         {
             try
             {
+                // 1️⃣ Shop-level due (DSRShopDue.DueAmount)
                 var discounts = await _dbContext.DSRShopDues
                     .Include(x => x.Shop)
                     .Where(x => !x.IsDeleted && !x.Shop.IsDeleted)
@@ -192,11 +206,12 @@
                         g.Key.ShopOwner,
                         g.Key.Area,
                         g.Key.Number,
-                        TotalDiscount = g.Sum(x => x.DueAmount)
+                        TotalDueAmount = g.Sum(x => x.DueAmount)
                     })
                     .ToListAsync();
 
-                var payments = await _dbContext.DSRShopPaymentHistories
+                // 2️⃣ Shop-level payments (DSRShopPaymentHistory.AmountPaid)
+                var shopPayments = await _dbContext.DSRShopPaymentHistories
                     .Where(x => !x.IsDeleted)
                     .GroupBy(x => new { x.ShopId })
                     .Select(g => new
@@ -206,17 +221,58 @@
                     })
                     .ToListAsync();
 
-                var result = discounts.Select(d => new DSRDueSummary
+                // 3️⃣ Cylinder-level due (ShopEmptyCylinderProduct.DueAmount)
+                var cylinderDues = await _dbContext.Set<ShopEmptyCylinderProduct>()
+                    .Include(p => p.DSRShopDue)
+                        .ThenInclude(d => d.Shop)
+                    .Where(p => !p.DSRShopDue.IsDeleted && !p.DSRShopDue.Shop.IsDeleted)
+                    .GroupBy(p => new { p.DSRShopDue.ShopId })
+                    .Select(g => new
+                    {
+                        ShopId = g.Key.ShopId,
+                        TotalCylinderDue = g.Sum(p => p.DueAmount)
+                    })
+                    .ToListAsync();
+
+                // 4️⃣ ✅ NEW: Cylinder-level payments (EmptyCylinderPaymentHistory.PaidAmount)
+                var cylinderPayments = await _dbContext.Set<EmptyCylinderPaymentHistory>()
+                    .Include(p => p.DSRShopPaymentHistory)
+                        .ThenInclude(h => h.Shop)
+                    .Where(p => p.DSRShopPaymentHistory != null
+                                && !p.DSRShopPaymentHistory.IsDeleted
+                                && !p.DSRShopPaymentHistory.Shop.IsDeleted)
+                    .GroupBy(p => new { p.DSRShopPaymentHistory.ShopId })
+                    .Select(g => new
+                    {
+                        ShopId = g.Key.ShopId,
+                        TotalCylinderPaid = g.Sum(p => p.PaidAmount)
+                    })
+                    .ToListAsync();
+
+                // 5️⃣ Combine all
+                var result = discounts.Select(d =>
                 {
-                    ShopId = d.ShopId,
-                    ShopName = d.Name,
-                    OwnerName = d.ShopOwner,
-                    Area = d.Area,
-                    Number = d.Number,
-                    TotalShopDueAmount = d.TotalDiscount - (payments.FirstOrDefault(p => p.ShopId == d.ShopId)?.TotalPaid ?? 0)
+                    var shopPaid = shopPayments.FirstOrDefault(p => p.ShopId == d.ShopId)?.TotalPaid ?? 0;
+                    var cylinderDue = cylinderDues.FirstOrDefault(c => c.ShopId == d.ShopId)?.TotalCylinderDue ?? 0;
+                    var cylinderPaid = cylinderPayments.FirstOrDefault(c => c.ShopId == d.ShopId)?.TotalCylinderPaid ?? 0;
+
+                    return new DSRDueSummary
+                    {
+                        ShopId = d.ShopId,
+                        ShopName = d.Name,
+                        OwnerName = d.ShopOwner,
+                        Area = d.Area,
+                        Number = d.Number,
+
+                        // Shop-level: due − paid
+                        TotalShopDueAmount = d.TotalDueAmount - shopPaid,
+
+                        // ✅ Cylinder-level: due − paid
+                        TotalCylinderDueAmount = cylinderDue - cylinderPaid
+                    };
                 })
-                    .OrderBy(x => x.ShopName)
-                    .ToList();
+                .OrderBy(x => x.ShopName)
+                .ToList();
 
                 return result;
             }
@@ -226,11 +282,12 @@
             }
         }
 
+
         public async Task<IList<ShopDuePaymentSummary>> GetShopDuePaymentSummary(int shopId)
         {
             try
             {
-                // Get due entries
+                // 1️⃣ Shop-level due entries
                 var dues = await _dbContext.DSRShopDues
                     .Where(x => !x.IsDeleted && x.ShopId == shopId)
                     .Select(x => new
@@ -244,7 +301,24 @@
                     })
                     .ToListAsync();
 
-                // Get payment entries
+                // 2️⃣ Cylinder-level due entries (ShopEmptyCylinderProduct)
+                var cylinderDues = await _dbContext.Set<ShopEmptyCylinderProduct>()
+                    .Include(p => p.DSRShopDue)
+                        .ThenInclude(d => d.Shop)
+                    .Where(p => !p.DSRShopDue.IsDeleted
+                                && p.DSRShopDue.ShopId == shopId)
+                    .Select(p => new
+                    {
+                        p.DSRShopDue.ShopId,
+                        Name = p.DSRShopDue.Shop.Name,
+                        ShopOwner = p.DSRShopDue.Shop.ShopOwner,
+                        Area = p.DSRShopDue.Shop.Area,
+                        Date = p.DSRShopDue.Date.Date,
+                        CylinderDueAmount = p.DueAmount
+                    })
+                    .ToListAsync();
+
+                // 3️⃣ Shop-level payment entries
                 var payments = await _dbContext.DSRShopPaymentHistories
                     .Where(x => x.ShopId == shopId && !x.IsDeleted)
                     .Select(x => new
@@ -258,21 +332,68 @@
                     })
                     .ToListAsync();
 
-                // Union dates from both dues and payments
-                var allData = dues
-                        .GroupBy(x => x.Date)
-                        .Select(g => new TempShopSummary
-                        {
-                            Date = g.Key,
-                            ShopId = g.First().ShopId,
-                            ShopName = g.First().Name,
-                            OwnerName = g.First().ShopOwner,
-                            Area = g.First().Area,
-                            DueAmount = g.Sum(x => x.DueAmount),
-                            PaidAmount = 0
-                        })
-                        .ToList();
+                // 4️⃣ Cylinder-level payment entries
+                // ✅ FIX: ShopEmptyCylinderProduct নেই, তাই DSRShopPaymentHistory থেকে Shop এ যেতে হবে
+                var cylinderPayments = await _dbContext.EmptyCylinderPaymentHistories
+                    .Include(p => p.DSRShopPaymentHistory)
+                        .ThenInclude(h => h.Shop)
+                    .Where(p => p.DSRShopPaymentHistory != null
+                                && !p.DSRShopPaymentHistory.IsDeleted
+                                && p.DSRShopPaymentHistory.ShopId == shopId)
+                    .Select(p => new
+                    {
+                        ShopId = p.DSRShopPaymentHistory.ShopId,
+                        Name = p.DSRShopPaymentHistory.Shop.Name,
+                        ShopOwner = p.DSRShopPaymentHistory.Shop.ShopOwner,
+                        Area = p.DSRShopPaymentHistory.Shop.Area,
+                        Date = p.DSRShopPaymentHistory.PaymentDate.Date,
+                        CylinderPaidAmount = p.PaidAmount
+                    })
+                    .ToListAsync();
 
+                // 5️⃣ Seed allData from shop dues
+                var allData = dues
+                    .GroupBy(x => x.Date)
+                    .Select(g => new TempShopSummary
+                    {
+                        Date = g.Key,
+                        ShopId = g.First().ShopId,
+                        ShopName = g.First().Name,
+                        OwnerName = g.First().ShopOwner,
+                        Area = g.First().Area,
+                        DueAmount = g.Sum(x => x.DueAmount),
+                        PaidAmount = 0,
+                        CylinderDueAmount = 0,
+                        CylinderPaidAmount = 0
+                    })
+                    .ToList();
+
+                // 6️⃣ Merge cylinder dues
+                foreach (var cylGroup in cylinderDues.GroupBy(x => x.Date))
+                {
+                    var existing = allData.FirstOrDefault(x => x.Date == cylGroup.Key);
+                    if (existing != null)
+                    {
+                        existing.CylinderDueAmount = cylGroup.Sum(x => x.CylinderDueAmount);
+                    }
+                    else
+                    {
+                        allData.Add(new TempShopSummary
+                        {
+                            Date = cylGroup.Key,
+                            ShopId = cylGroup.First().ShopId,
+                            ShopName = cylGroup.First().Name,
+                            OwnerName = cylGroup.First().ShopOwner,
+                            Area = cylGroup.First().Area,
+                            DueAmount = 0,
+                            PaidAmount = 0,
+                            CylinderDueAmount = cylGroup.Sum(x => x.CylinderDueAmount),
+                            CylinderPaidAmount = 0
+                        });
+                    }
+                }
+
+                // 7️⃣ Merge shop payments
                 foreach (var paymentGroup in payments.GroupBy(x => x.Date))
                 {
                     var existing = allData.FirstOrDefault(x => x.Date == paymentGroup.Key);
@@ -290,12 +411,39 @@
                             OwnerName = paymentGroup.First().ShopOwner,
                             Area = paymentGroup.First().Area,
                             DueAmount = 0,
-                            PaidAmount = paymentGroup.Sum(x => x.PaidAmount)
+                            PaidAmount = paymentGroup.Sum(x => x.PaidAmount),
+                            CylinderDueAmount = 0,
+                            CylinderPaidAmount = 0
                         });
                     }
                 }
 
-                // Map to your final model
+                // 8️⃣ Merge cylinder payments
+                foreach (var cylPayGroup in cylinderPayments.GroupBy(x => x.Date))
+                {
+                    var existing = allData.FirstOrDefault(x => x.Date == cylPayGroup.Key);
+                    if (existing != null)
+                    {
+                        existing.CylinderPaidAmount = cylPayGroup.Sum(x => x.CylinderPaidAmount);
+                    }
+                    else
+                    {
+                        allData.Add(new TempShopSummary
+                        {
+                            Date = cylPayGroup.Key,
+                            ShopId = cylPayGroup.First().ShopId,
+                            ShopName = cylPayGroup.First().Name,
+                            OwnerName = cylPayGroup.First().ShopOwner,
+                            Area = cylPayGroup.First().Area,
+                            DueAmount = 0,
+                            PaidAmount = 0,
+                            CylinderDueAmount = 0,
+                            CylinderPaidAmount = cylPayGroup.Sum(x => x.CylinderPaidAmount)
+                        });
+                    }
+                }
+
+                // 9️⃣ Map to final model
                 var result = allData
                     .OrderByDescending(x => x.Date)
                     .Select(x => new ShopDuePaymentSummary
@@ -306,7 +454,9 @@
                         Area = x.Area,
                         Date = x.Date,
                         ShopDueAmount = x.DueAmount,
-                        ShopPaidAmount = x.PaidAmount
+                        CylinderDueAmount = x.CylinderDueAmount,
+                        ShopPaidAmount = x.PaidAmount,
+                        CylinderPaidAmount = x.CylinderPaidAmount
                     })
                     .ToList();
 
@@ -317,17 +467,16 @@
                 return new List<ShopDuePaymentSummary>();
             }
         }
-
         public async Task<IList<ShopDuePaymentListSummary>> GetAllShopDuePaymentListSummary()
         {
             try
             {
-                // Get due entries with customer name
+                // 1️⃣ Shop-level due entries with customer name
                 var dues = await _dbContext.DSRShopDues
                     .Include(x => x.Shop)
-                    .Where(x => !x.IsDeleted && !x.Shop.IsDeleted)
                     .Include(x => x.Employee)
-                    .Select(x => new 
+                    .Where(x => !x.IsDeleted && !x.Shop.IsDeleted)
+                    .Select(x => new
                     {
                         x.ShopId,
                         x.OrderId,
@@ -338,14 +487,36 @@
                         CustomerName = x.Employee != null ? x.Employee.Name : string.Empty,
                         Date = x.Date.Date,
                         DueAmount = x.DueAmount,
-                        IsPayment = false // Mark as due entry
+                        IsPayment = false
                     })
                     .ToListAsync();
 
-                // Get payment entries with customer name
+                // 2️⃣ ✅ NEW: Cylinder-level due entries
+                var cylinderDues = await _dbContext.Set<ShopEmptyCylinderProduct>()
+                    .Include(p => p.DSRShopDue)
+                        .ThenInclude(d => d.Shop)
+                    .Include(p => p.DSRShopDue)
+                        .ThenInclude(d => d.Employee)
+                    .Where(p => !p.DSRShopDue.IsDeleted && !p.DSRShopDue.Shop.IsDeleted)
+                    .Select(p => new
+                    {
+                        p.DSRShopDue.ShopId,
+                        p.DSRShopDue.OrderId,
+                        p.DSRShopDue.EmployeeId,
+                        Name = p.DSRShopDue.Shop.Name,
+                        ShopOwner = p.DSRShopDue.Shop.ShopOwner,
+                        Area = p.DSRShopDue.Shop.Area,
+                        CustomerName = p.DSRShopDue.Employee != null ? p.DSRShopDue.Employee.Name : string.Empty,
+                        Date = p.DSRShopDue.Date.Date,
+                        CylinderDueAmount = p.DueAmount
+                    })
+                    .ToListAsync();
+
+                // 3️⃣ Shop-level payment entries with customer name
                 var payments = await _dbContext.DSRShopPaymentHistories
-                    .Where(x => !x.IsDeleted)
+                    .Include(x => x.Shop)
                     .Include(x => x.Employee)
+                    .Where(x => !x.IsDeleted)
                     .Select(x => new
                     {
                         x.ShopId,
@@ -356,11 +527,34 @@
                         CustomerName = x.Employee != null ? x.Employee.Name : string.Empty,
                         Date = x.PaymentDate.Date,
                         PaidAmount = x.AmountPaid,
-                        IsPayment = true // Mark as payment entry
+                        IsPayment = true
                     })
                     .ToListAsync();
 
-                // Create separate lists that maintain the IsPayment flag
+                // 4️⃣ ✅ NEW: Cylinder-level payment entries
+                var cylinderPayments = await _dbContext.EmptyCylinderPaymentHistories
+                    .Include(p => p.DSRShopPaymentHistory)
+                        .ThenInclude(h => h.Shop)
+                    .Include(p => p.DSRShopPaymentHistory)
+                        .ThenInclude(h => h.Employee)
+                    .Where(p => p.DSRShopPaymentHistory != null
+                                && !p.DSRShopPaymentHistory.IsDeleted)
+                    .Select(p => new
+                    {
+                        ShopId = p.DSRShopPaymentHistory.ShopId,
+                        Name = p.DSRShopPaymentHistory.Shop.Name,
+                        EmployeeId = p.DSRShopPaymentHistory.EmployeeId,
+                        ShopOwner = p.DSRShopPaymentHistory.Shop.ShopOwner,
+                        Area = p.DSRShopPaymentHistory.Shop.Area,
+                        CustomerName = p.DSRShopPaymentHistory.Employee != null
+                                        ? p.DSRShopPaymentHistory.Employee.Name
+                                        : string.Empty,
+                        Date = p.DSRShopPaymentHistory.PaymentDate.Date,
+                        CylinderPaidAmount = p.PaidAmount
+                    })
+                    .ToListAsync();
+
+                // 5️⃣ Build dueSummaries (shop-level dues)
                 var dueSummaries = dues
                     .GroupBy(x => new { x.Date, x.ShopId, x.OrderId, x.EmployeeId })
                     .Select(g => new
@@ -369,19 +563,46 @@
                         {
                             Date = g.Key.Date,
                             ShopId = g.Key.ShopId,
-                            OrderId = g.Key.OrderId.Value,
-                            CustomerId = g.Key.EmployeeId.Value,
+                            OrderId = g.Key.OrderId ?? 0,
+                            EmployeeId = g.Key.EmployeeId ?? 0,
                             ShopName = g.First().Name,
                             OwnerName = g.First().ShopOwner,
                             Area = g.First().Area,
                             ReferredBy = g.First().CustomerName,
                             DueAmount = g.Sum(x => x.DueAmount),
-                            PaidAmount = 0
+                            PaidAmount = 0,
+                            CylinderDueAmount = 0,
+                            CylinderPaidAmount = 0
                         },
                         IsPayment = false
                     })
                     .ToList();
 
+                // 6️⃣ ✅ NEW: Build cylinderDueSummaries
+                var cylinderDueSummaries = cylinderDues
+                    .GroupBy(x => new { x.Date, x.ShopId, x.OrderId, x.EmployeeId })
+                    .Select(g => new
+                    {
+                        Data = new TempShopDuePaymentListSummary
+                        {
+                            Date = g.Key.Date,
+                            ShopId = g.Key.ShopId,
+                            OrderId = g.Key.OrderId ?? 0,
+                            EmployeeId = g.Key.EmployeeId ?? 0,
+                            ShopName = g.First().Name,
+                            OwnerName = g.First().ShopOwner,
+                            Area = g.First().Area,
+                            ReferredBy = g.First().CustomerName,
+                            DueAmount = 0,
+                            PaidAmount = 0,
+                            CylinderDueAmount = g.Sum(x => x.CylinderDueAmount),
+                            CylinderPaidAmount = 0
+                        },
+                        IsPayment = false
+                    })
+                    .ToList();
+
+                // 7️⃣ Build paymentSummaries (shop-level payments)
                 var paymentSummaries = payments
                     .GroupBy(x => new { x.Date, x.ShopId, x.EmployeeId })
                     .Select(g => new
@@ -390,41 +611,73 @@
                         {
                             Date = g.Key.Date,
                             ShopId = g.Key.ShopId,
-                            CustomerId = g.Key.EmployeeId,
+                            OrderId = 0,
+                            EmployeeId = g.Key.EmployeeId,
                             ShopName = g.First().Name,
                             OwnerName = g.First().ShopOwner,
                             Area = g.First().Area,
                             ReferredBy = g.First().CustomerName,
                             DueAmount = 0,
-                            PaidAmount = g.Sum(x => x.PaidAmount)
+                            PaidAmount = g.Sum(x => x.PaidAmount),
+                            CylinderDueAmount = 0,
+                            CylinderPaidAmount = 0
                         },
                         IsPayment = true
                     })
                     .ToList();
 
-                // Combine both lists and group
-                var combined = dueSummaries.Concat(paymentSummaries)
-                    .GroupBy(x => new { x.Data.Date, x.Data.ShopId, x.Data.CustomerId })
+                // 8️⃣ ✅ NEW: Build cylinderPaymentSummaries
+                var cylinderPaymentSummaries = cylinderPayments
+                    .GroupBy(x => new { x.Date, x.ShopId, x.EmployeeId })
+                    .Select(g => new
+                    {
+                        Data = new TempShopDuePaymentListSummary
+                        {
+                            Date = g.Key.Date,
+                            ShopId = g.Key.ShopId,
+                            OrderId = 0,
+                            EmployeeId = g.Key.EmployeeId,
+                            ShopName = g.First().Name,
+                            OwnerName = g.First().ShopOwner,
+                            Area = g.First().Area,
+                            ReferredBy = g.First().CustomerName,
+                            DueAmount = 0,
+                            PaidAmount = 0,
+                            CylinderDueAmount = 0,
+                            CylinderPaidAmount = g.Sum(x => x.CylinderPaidAmount)
+                        },
+                        IsPayment = true
+                    })
+                    .ToList();
+
+                // 9️⃣ Combine all four lists and group
+                var combined = dueSummaries
+                    .Concat(cylinderDueSummaries)
+                    .Concat(paymentSummaries)
+                    .Concat(cylinderPaymentSummaries)
+                    .GroupBy(x => new { x.Data.Date, x.Data.ShopId, x.Data.EmployeeId })
                     .Select(g => new TempShopDuePaymentListSummary
                     {
                         Date = g.Key.Date,
                         ShopId = g.Key.ShopId,
-                        CustomerId = g.Key.CustomerId,
-                        // For OrderId, take the first non-null one (if any)
-                        OrderId = g.FirstOrDefault(x => x.Data.OrderId != null)?.Data.OrderId ?? 0,
+                        EmployeeId = g.Key.EmployeeId,
+                        // For OrderId, take the first non-zero one
+                        OrderId = g.FirstOrDefault(x => x.Data.OrderId != 0)?.Data.OrderId ?? 0,
                         ShopName = g.First().Data.ShopName,
                         OwnerName = g.First().Data.OwnerName,
                         Area = g.First().Data.Area,
-                        // For IssuedBy, prioritize payment customer if available, otherwise use due customer
+                        // For ReferredBy, prioritize payment customer if available
                         ReferredBy = g.FirstOrDefault(x => x.IsPayment && !string.IsNullOrEmpty(x.Data.ReferredBy))?.Data.ReferredBy
                                     ?? g.FirstOrDefault(x => !string.IsNullOrEmpty(x.Data.ReferredBy))?.Data.ReferredBy
                                     ?? string.Empty,
                         DueAmount = g.Sum(x => x.Data.DueAmount),
-                        PaidAmount = g.Sum(x => x.Data.PaidAmount)
+                        PaidAmount = g.Sum(x => x.Data.PaidAmount),
+                        CylinderDueAmount = g.Sum(x => x.Data.CylinderDueAmount),
+                        CylinderPaidAmount = g.Sum(x => x.Data.CylinderPaidAmount)
                     })
                     .ToList();
 
-                // Map to final model
+                // 🔟 Map to final model
                 var result = combined
                     .OrderByDescending(x => x.Date)
                     .ThenBy(x => x.ShopName)
@@ -433,13 +686,15 @@
                         ShopId = x.ShopId,
                         ShopName = x.ShopName,
                         OrderId = x.OrderId,
-                        CustomerId = x.CustomerId,
+                        EmployeeId = x.EmployeeId,
                         OwnerName = x.OwnerName,
                         Area = x.Area,
                         ReferredBy = x.ReferredBy,
                         Date = x.Date,
                         ShopDueAmount = x.DueAmount,
-                        ShopPaidAmount = x.PaidAmount
+                        ShopPaidAmount = x.PaidAmount,
+                        CylinderDueAmount = x.CylinderDueAmount,
+                        CylinderPaidAmount = x.CylinderPaidAmount
                     })
                     .ToList();
 
@@ -451,126 +706,21 @@
             }
         }
 
-        //public async Task<IList<ShopDuePaymentListSummary>> GetAllShopDuePaymentListSummary()
-        //{
-        //    try
-        //    {
-        //        // Get due entries with customer name
-        //        var dues = await _dbContext.DSRShopDues
-        //            .Include( x => x.Shop)
-        //            .Where(x => !x.IsDeleted && !x.Shop.IsDeleted)
-        //            .Include(x => x.Customer)
-        //            .Select(x => new
-        //            {
-        //                x.ShopId,
-        //                x.OrderId,
-        //                x.CustomerId,
-        //                x.Shop.Name,
-        //                x.Shop.ShopOwner,
-        //                x.Shop.Area,
-        //                CustomerName = x.Customer != null ? x.Customer.Name : string.Empty,
-        //                Date = x.Date.Date,
-        //                DueAmount = x.DueAmount
-        //            })
-        //            .ToListAsync();
+        public void AddEmptyCylinderPaymentHistory(EmptyCylinderPaymentHistory product)
+        {
+            _dbContext.EmptyCylinderPaymentHistories.Add(product);
+            _dbContext.SaveChanges();
+        }
 
-        //        // Get payment entries
-        //        var payments = await _dbContext.DSRShopPaymentHistories
-        //            .Where(x => !x.IsDeleted)
-        //            .Select(x => new
-        //            {
-        //                x.ShopId,
-        //                x.Shop.Name,
-        //                x.CustomerId,
-        //                x.Shop.ShopOwner,
-        //                x.Shop.Area,
-        //                Date = x.PaymentDate.Date,
-        //                PaidAmount = x.AmountPaid
-        //            })
-        //            .ToListAsync();
-
-        //        // Group dues by Date, ShopId, OrderId, CustomerId
-        //        var dueGroups = dues
-        //            .GroupBy(x => new { x.Date, x.ShopId, x.OrderId, x.CustomerId })
-        //            .Select(g => new TempShopDuePaymentListSummary
-        //            {
-        //                Date = g.Key.Date,
-        //                ShopId = g.Key.ShopId,
-        //                OrderId = g.Key.OrderId.Value,
-        //                CustomerId = g.Key.CustomerId.Value,
-        //                ShopName = g.First().Name,
-        //                OwnerName = g.First().ShopOwner,
-        //                Area = g.First().Area,
-        //                IssuedBy = g.First().CustomerName,
-        //                DueAmount = g.Sum(x => x.DueAmount),
-        //                PaidAmount = 0
-        //            })
-        //            .ToList();
-
-        //        // Group payments by Date, ShopId, CustomerId
-        //        var paymentGroups = payments
-        //            .GroupBy(x => new { x.Date, x.ShopId, x.CustomerId })
-        //            .Select(g => new TempShopDuePaymentListSummary
-        //            {
-        //                Date = g.Key.Date,
-        //                ShopId = g.Key.ShopId,
-        //                CustomerId = g.Key.CustomerId,
-        //                ShopName = g.First().Name,
-        //                OwnerName = g.First().ShopOwner,
-        //                Area = g.First().Area,
-        //                IssuedBy = string.Empty,
-        //                DueAmount = 0,
-        //                PaidAmount = g.Sum(x => x.PaidAmount)
-        //            })
-        //            .ToList();
-
-        //        // Combine both lists - first group by Date, ShopId, CustomerId (without OrderId)
-        //        var combined = dueGroups.Concat(paymentGroups)
-        //            .GroupBy(x => new { x.Date, x.ShopId, x.CustomerId })
-        //            .Select(g => new TempShopDuePaymentListSummary
-        //            {
-        //                Date = g.Key.Date,
-        //                ShopId = g.Key.ShopId,
-        //                CustomerId = g.Key.CustomerId,
-        //                // For OrderId, take the first non-null one (if any)
-        //                OrderId = (int)(g.FirstOrDefault(x => x.OrderId != null)?.OrderId),
-        //                ShopName = g.First().ShopName,
-        //                OwnerName = g.First().OwnerName,
-        //                Area = g.First().Area,
-        //                // For IssuedBy, take the first non-empty one
-        //                IssuedBy = g.FirstOrDefault(x => !string.IsNullOrEmpty(x.IssuedBy))?.IssuedBy ?? string.Empty,
-        //                DueAmount = g.Sum(x => x.DueAmount),
-        //                PaidAmount = g.Sum(x => x.PaidAmount)
-        //            })
-        //            .ToList();
-
-        //        // Map to final model
-        //        var result = combined
-        //            .OrderByDescending(x => x.Date)
-        //            .ThenBy(x => x.ShopName)
-        //            .Select(x => new ShopDuePaymentListSummary
-        //            {
-        //                ShopId = x.ShopId,
-        //                ShopName = x.ShopName,
-        //                OrderId = x.OrderId,
-        //                CustomerId = x.CustomerId,
-        //                OwnerName = x.OwnerName,
-        //                Area = x.Area,
-        //                IssuedBy = x.IssuedBy,
-        //                Date = x.Date,
-        //                ShopDueAmount = x.DueAmount,
-        //                ShopPaidAmount = x.PaidAmount
-        //            })
-        //            .ToList();
-
-        //        return result;
-        //    }
-        //    catch (Exception)
-        //    {
-        //        return new List<ShopDuePaymentListSummary>();
-        //    }
-        //}
-
+        public void DeleteEmptyCylinderPaymentHistory(int id)
+        {
+            var entity = _dbContext.EmptyCylinderPaymentHistories.Find(id);
+            if (entity != null)
+            {
+                _dbContext.EmptyCylinderPaymentHistories.Remove(entity);
+                _dbContext.SaveChanges();
+            }
+        }
 
     }
 }

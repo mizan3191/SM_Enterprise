@@ -51,8 +51,8 @@ namespace DEALER.Domain
         public int? CustomerPaymentHistoryId { get; set; }
         public CustomerPaymentHistory CustomerPaymentHistory { get; set; }
 
-       // public int? DamageProductHandoverPaymentHistoryId { get; set; }
-       // public DamageProductHandoverPaymentHistory DamageProductHandoverPaymentHistory { get; set; }
+        public int? StaffSalaryId { get; set; }
+        public StaffSalary StaffSalary { get; set; }
     }
 
     public enum BalanceTypeEnum

@@ -1,0 +1,526 @@
+﻿@page "/StaffSalaries"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DialogService DialogService
+@inject ILookup m_Lookup
+@inject IStaffSalary m_StaffSalary
+@inject IJSRuntime JSRuntime
+
+<Message @ref="notificationComponent" />
+
+<h3>Staff Salary</h3>
+
+@if (Salaries == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+
+            <!-- Add New Button -->
+            <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success" class="me-3" />
+
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i>
+                </span>
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..."
+                               @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                             Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf"
+                                  Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+
+            <div class="flex-grow-1"></div>
+
+            <!-- Date Filter -->
+            <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center me-3">
+                    <RadzenDatePicker @bind-Value="fromDate" DateFormat="yyyy-MM-dd"
+                                      Placeholder="Select Start Date" Style="width: 180px;" />
+                </div>
+                <div class="d-flex align-items-center">
+                    <RadzenDatePicker @bind-Value="toDate" DateFormat="yyyy-MM-dd"
+                                      Placeholder="Select End Date" Style="width: 180px;" />
+                </div>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@FilteredSalaries" TItem="StaffSalary"
+                        PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="StaffSalary" Property="@nameof(StaffSalary.SalaryDateFormatted)"
+                                      Title="Date" Width="150px" />
+
+                <RadzenDataGridColumn TItem="StaffSalary" Title="Staff" Width="150px">
+                    <Template Context="context">
+                        @context.Employee?.Name
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="StaffSalary" Title="Payment Method" Width="150px">
+                    <Template Context="context">
+                        @context.PaymentMethod?.Name
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="StaffSalary" Title="Payment Type" Width="150px">
+                    <Template Context="context">
+                        @context.PaymentType?.Name
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="StaffSalary" Title="Amount" Width="150px"
+                                      TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.Amount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">
+                            @FilteredSalaries.Sum(o => o.Amount).ToString("N2")
+                        </div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="StaffSalary" Title="Description" Width="120px">
+                    <Template Context="context">
+                        @context.Description
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="StaffSalary" Title="Actions" Width="80px">
+                    <Template Context="context">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary"
+                                      Size="ButtonSize.Small"
+                                      Click="() => Edit(context.Id)"
+                                      title="Edit" style="margin-right: 5px;" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger"
+                                      Size="ButtonSize.Small"
+                                      Click="() => ConfirmDelete(context.Id)"
+                                      title="Delete" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+<!-- ================= MODAL ================= -->
+@if (showModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>@(StaffSalary.Id > 0 ? "Edit Staff Salary" : "Add Staff Salary")</h3>
+                </div>
+
+                <EditForm Model="@StaffSalary" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="card dataForm">
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Salary Date</label>
+                                <RadzenDatePicker @bind-Value="StaffSalary.SalaryDate"
+                                                  DateFormat="yyyy-MM-dd" Class="w-100" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Employee</label>
+                                <RadzenDropDown @bind-Value="StaffSalary.EmployeeId"
+                                                Data="@EmployeeList"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Select Employee"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                                <ValidationMessage For="@(() => StaffSalary.EmployeeId)" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Amount</label>
+                                <InputNumber @bind-Value="StaffSalary.Amount" class="form-control" />
+                                <ValidationMessage For="@(() => StaffSalary.Amount)" />
+                            </div>
+                        </div>
+
+                        <div class="row m-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Payment Method</label>
+                                <RadzenDropDown @bind-Value="StaffSalary.PaymentMethodId"
+                                                Data="@PaymentMethods"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Select Payment Method"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                                <ValidationMessage For="@(() => StaffSalary.PaymentMethodId)" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="Asterisk form-label">Payment Type</label>
+                                <RadzenDropDown @bind-Value="StaffSalary.PaymentTypeId"
+                                                Data="@PaymentTypes"
+                                                TextProperty="Name"
+                                                ValueProperty="Id"
+                                                Placeholder="Select Payment Type"
+                                                Class="w-100"
+                                                AllowClear="true"
+                                                AllowFiltering="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+                                <ValidationMessage For="@(() => StaffSalary.PaymentTypeId)" />
+                            </div>
+                        </div>
+
+                        <div class="row m-3">
+                            <div class="col-md-12 mb-3">
+                                <label>Description</label>
+                                <RadzenTextArea @bind-Value="StaffSalary.Description" class="form-control" />
+                                <ValidationMessage For="@(() => StaffSalary.Description)" />
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary"
+                                          Type="submit" Class="m-2" />
+                            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary"
+                                          Click="CloseModal" Class="m-2" />
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] private IStaffSalary StaffSalaryService { get; set; }
+
+    public IEnumerable<StaffSalary> Salaries { get; set; } = new List<StaffSalary>();
+    private IEnumerable<StaffSalary> FilteredSalaries { get; set; } = new List<StaffSalary>();
+
+    public IEnumerable<Lov> PaymentMethods { get; set; } = new List<Lov>();
+    public IEnumerable<Lov> PaymentTypes { get; set; } = new List<Lov>();
+    public IEnumerable<Lovd> EmployeeList { get; set; } = new List<Lovd>();
+
+    public StaffSalary StaffSalary { get; set; }
+    private Message notificationComponent;
+    private bool showModal = false;
+
+    private string search = string.Empty;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+
+    // ================= INIT =================
+    protected override async Task OnInitializedAsync()
+    {
+        PaymentMethods = await m_Lookup.GetAllPaymentMethodList();
+        PaymentTypes = await m_Lookup.GetAllPaymentTypeList();
+        EmployeeList = await m_Lookup.GetAllEmployeeList();
+
+        await LoadData();
+    }
+
+    // ================= SUBMIT =================
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (StaffSalary.Amount <= 0)
+            {
+                notificationComponent.Show("পরিমাণ সঠিক নয়",
+                    "পরিমাণ ০ হতে পারবে না।", NotificationSeverity.Warning);
+                return;
+            }
+
+            if (StaffSalary.EmployeeId == 0)
+            {
+                notificationComponent.Show("কর্মী নির্বাচন করুন",
+                    "অনুগ্রহ করে একজন কর্মী নির্বাচন করুন।", NotificationSeverity.Warning);
+                return;
+            }
+
+            if (StaffSalary.PaymentMethodId == 0)
+            {
+                notificationComponent.Show("পেমেন্ট পদ্ধতি নির্বাচন করুন",
+                    "অনুগ্রহ করে একটি পেমেন্ট পদ্ধতি নির্বাচন করুন।", NotificationSeverity.Warning);
+                return;
+            }
+
+            if (StaffSalary.PaymentTypeId == 0)
+            {
+                notificationComponent.Show("পেমেন্টের ধরন নির্বাচন করুন",
+                    "অনুগ্রহ করে একটি পেমেন্টের ধরন নির্বাচন করুন।", NotificationSeverity.Warning);
+                return;
+            }
+
+            if (StaffSalary.Id > 0)
+            {
+                StaffSalaryService.UpdateStaffSalary(StaffSalary);
+                notificationComponent.Show("বেতন আপডেট হয়েছে",
+                    "কর্মীর বেতনের তথ্য সফলভাবে আপডেট করা হয়েছে।", NotificationSeverity.Success);
+            }
+            else
+            {
+                StaffSalaryService.CreateStaffSalary(StaffSalary);
+                notificationComponent.Show("বেতন যোগ করা হয়েছে",
+                    "কর্মীর বেতনের তথ্য সফলভাবে যোগ করা হয়েছে।", NotificationSeverity.Success);
+            }
+
+            await LoadData();
+            CloseModal();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Submit Error: " + ex.Message);
+        }
+    }
+
+    // ================= EDIT =================
+    private void Edit(int id)
+    {
+        showModal = true;
+
+        if (id > 0)
+        {
+            StaffSalary = StaffSalaryService.GetStaffSalary(id);
+        }
+        else
+        {
+            StaffSalary = new StaffSalary()
+            {
+                Amount = 0,
+                SalaryDate = DateTime.Now,
+                EmployeeId = EmployeeList.FirstOrDefault()?.Id ?? 0,
+                PaymentMethodId = PaymentMethods.FirstOrDefault()?.Id ?? 0,
+                PaymentTypeId = PaymentTypes.FirstOrDefault()?.Id ?? 0,
+            };
+        }
+    }
+
+    // ================= ADD =================
+    private void AddNew()
+    {
+        StaffSalary = new StaffSalary()
+        {
+            Amount = 0,
+            SalaryDate = DateTime.Now,
+        };
+        showModal = true;
+    }
+
+    // ================= DELETE =================
+    private async Task ConfirmDelete(int id)
+    {
+        var options = new ConfirmOptions()
+        {
+            OkButtonText = "Yes, Delete",
+            CancelButtonText = "No, Keep",
+            ShowClose = true,
+        };
+
+        bool? confirmed = await DialogService.Confirm(
+            "Are you absolutely sure you want to delete this item?",
+            "Delete Confirmation", options);
+
+        if (confirmed == true)
+        {
+            StaffSalaryService.DeleteStaffSalary(id);
+            notificationComponent.Show("বেতন মুছে ফেলা হয়েছে",
+                "কর্মীর বেতনের তথ্য সফলভাবে মুছে ফেলা হয়েছে।", NotificationSeverity.Success);
+
+            await LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private void CloseModal() => showModal = false;
+
+    // ================= LOAD =================
+    private async Task LoadData()
+    {
+        Salaries = await StaffSalaryService.GetAllStaffSalaries(null, null);
+        FilteredSalaries = Salaries;
+    }
+
+    private async void LoadSalesHistory()
+    {
+        Salaries = await StaffSalaryService.GetAllStaffSalaries(fromDate, toDate);
+        FilteredSalaries = Salaries;
+        FilterData();
+        StateHasChanged();
+    }
+
+    // ================= DATE FILTER =================
+    public DateTime? fromDate
+    {
+        get => _fromDate;
+        set
+        {
+            if (_fromDate != value) { _fromDate = value; LoadSalesHistory(); }
+        }
+    }
+
+    public DateTime? toDate
+    {
+        get => _toDate;
+        set
+        {
+            if (_toDate != value) { _toDate = value; LoadSalesHistory(); }
+        }
+    }
+
+    // ================= SEARCH =================
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilteredSalaries = Salaries;
+        }
+        else
+        {
+            FilteredSalaries = Salaries.Where(c =>
+                (!string.IsNullOrEmpty(c.Employee?.Name) &&
+                    c.Employee.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.PaymentMethod?.Name) &&
+                    c.PaymentMethod.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.PaymentType?.Name) &&
+                    c.PaymentType.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Description) &&
+                    c.Description.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                c.Amount.ToString().Contains(search) ||
+                (!string.IsNullOrEmpty(c.SalaryDateFormatted) &&
+                    c.SalaryDateFormatted.Contains(search))
+            ).ToList();
+        }
+
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            var filterFrom = fromDate?.Date ?? DateTime.MinValue;
+            var filterTo = toDate?.Date.AddDays(1) ?? DateTime.MaxValue;
+
+            FilteredSalaries = FilteredSalaries.Where(x =>
+                x.SalaryDate.Date >= filterFrom &&
+                x.SalaryDate.Date < filterTo
+            ).ToList();
+        }
+    }
+
+    // ================= PDF EXPORT =================
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilteredSalaries, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.MarginTop(20);
+                page.MarginBottom(20);
+                page.MarginLeft(40);
+                page.MarginRight(40);
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(3); // Staff
+                            columns.RelativeColumn(2); // Date
+                            columns.RelativeColumn(2); // Payment Method
+                            columns.RelativeColumn(2); // Payment Type
+                            columns.RelativeColumn(2); // Amount
+                            columns.RelativeColumn(3); // Description
+                        });
+
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Staff").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Payment Method").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Payment Type").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Amount").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Description").Bold();
+                        });
+
+                        foreach (var item in FilteredSalaries)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.Employee?.Name ?? "");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.SalaryDateFormatted);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.PaymentMethod?.Name ?? "");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.PaymentType?.Name ?? "");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.Amount.ToString("N2"));
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.Description ?? "");
+                        }
+
+                        table.Cell().ColumnSpan(4).PaddingVertical(5).PaddingHorizontal(5)
+                             .AlignRight().Text("Total").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                             .Text($"{FilteredSalaries.Sum(x => x.Amount):N2}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text("").Bold();
+                    });
+
+                page.Footer().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignCenter().Text(text =>
+                    {
+                        text.CurrentPageNumber();
+                        text.Span(" / ");
+                        text.TotalPages();
+                    });
+                    row.RelativeItem();
+                });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"StaffSalary_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Staff Salary Report").Bold().FontSize(10);
+            });
+        });
+    }
+}

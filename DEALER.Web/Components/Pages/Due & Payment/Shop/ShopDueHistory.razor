@@ -73,6 +73,14 @@ else
                         <div>@item.ShopNumber</div>
                     </Template>
                 </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DSRShopDueDTO" Title="Cylinder Due Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.CylinderDueAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterDSRShopDueList.Sum(o => o.CylinderDueAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="DSRShopDueDTO" Title="Due Amount" Width="100px" TextAlign="TextAlign.Right">
                     <Template Context="item">
                         <div>@item.DueAmount.ToString("N2")</div>

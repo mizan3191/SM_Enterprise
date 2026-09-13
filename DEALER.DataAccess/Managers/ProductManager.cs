@@ -17,6 +17,7 @@ namespace DEALER.DataAccess
             {
                 return _dbContext.Products
                     .Include(c => c.ProductsSize)
+                    .Include(c => c.CurrentPrice)
                     .Include(c => c.Supplier)
                     .FirstOrDefault(c => c.Id == id);
             }

@@ -269,6 +269,9 @@ else
     private ILookup m_Lookup { get; set; }
 
     [Inject]
+    private IProduct m_Product { get; set; }
+
+    [Inject]
     private IDSRShopDue m_DSRShopDue { get; set; }
 
     [Inject]
@@ -332,14 +335,14 @@ else
             return;
         }
 
-        if (DSRShopDue.DueAmount <= 0)
-        {
-            notificationComponent.Show(
-                "বকেয়া পরিমাণ সঠিক নয়",
-                "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।",
-                NotificationSeverity.Warning);
-            return;
-        }
+        // if (DSRShopDue.DueAmount <= 0)
+        // {
+        //     notificationComponent.Show(
+        //         "বকেয়া পরিমাণ সঠিক নয়",
+        //         "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।",
+        //         NotificationSeverity.Warning);
+        //     return;
+        // }
 
         try
         {
@@ -389,11 +392,11 @@ else
                 notificationComponent.Show("দোকান নির্বাচন করুন", "চালিয়ে যাওয়ার আগে একটি দোকান নির্বাচন করুন।", NotificationSeverity.Warning);
                 return;
             }
-            if (DSRShopDue.DueAmount <= 0)
-            {
-                notificationComponent.Show("বকেয়া পরিমাণ সঠিক নয়", "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।", NotificationSeverity.Warning);
-                return;
-            }
+            // if (DSRShopDue.DueAmount <= 0)
+            // {
+            //     notificationComponent.Show("বকেয়া পরিমাণ সঠিক নয়", "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।", NotificationSeverity.Warning);
+            //     return;
+            // }
             try
             {
                 DSRShopDue.DSREmployeeId = DSREmployeeId;
@@ -434,6 +437,14 @@ else
                 try
                 {
                     lastProduct.DSRShopDueId = DSRShopDue.Id;
+
+                    // ✅ NEW: Calculate DueAmount before saving
+                    var selectedProduct = m_Product.GetProductPrice(lastProduct.ProductId);
+                    if (selectedProduct != null)
+                    {
+                        lastProduct.DueAmount = selectedProduct.CylinderSellingPrice * lastProduct.CylinderQty;
+                    }
+
                     m_DSRShopDue.AddShopEmptyCylinderProduct(lastProduct);
                     // ✅ EF Core এখন lastProduct.Id set করে দেবে
                     notificationComponent.Show("পণ্য যোগ হয়েছে", "পণ্য সফলভাবে সংরক্ষিত হয়েছে।", NotificationSeverity.Success);
@@ -506,6 +517,13 @@ else
                         {
                             // ভরা আছে → save করো
                             lastProduct.DSRShopDueId = DSRShopDue.Id;
+
+                            // ✅ NEW: Calculate DueAmount before saving
+                            var selectedProduct = m_Product.GetProductPrice(lastProduct.ProductId);
+                            if (selectedProduct != null)
+                            {
+                                lastProduct.DueAmount = selectedProduct.CylinderSellingPrice * lastProduct.CylinderQty;
+                            }
                             m_DSRShopDue.AddShopEmptyCylinderProduct(lastProduct);
                         }
                         else if (lastProduct.ProductId <= 0 && lastProduct.CylinderQty <= 0)

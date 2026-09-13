@@ -81,7 +81,7 @@ namespace DEALER.DataAccess
                 {
                     Id = x.Id,
                     Name = x.Name,
-                })               
+                })
                 .OrderBy(x => x.Name)
                 .ToListAsync();
             }
@@ -101,7 +101,7 @@ namespace DEALER.DataAccess
                      {
                          Id = x.Id,
                          Name = x.Name,
-                         
+
                      })
                 .OrderBy(x => x.Name)
                 .ToListAsync();
@@ -122,7 +122,7 @@ namespace DEALER.DataAccess
                      {
                          Id = x.Id,
                          Name = x.Name,
-                         
+
                      })
                 .OrderBy(x => x.Name)
                 .ToListAsync();
@@ -143,7 +143,7 @@ namespace DEALER.DataAccess
                      {
                          Id = x.Id,
                          Name = x.Name,
-                        
+
                      })
                 .OrderBy(x => x.Name)
                 .ToListAsync();
@@ -186,7 +186,7 @@ namespace DEALER.DataAccess
                      {
                          Id = x.Id,
                          Name = x.Name,
-                        
+
                      })
                 .OrderBy(x => x.Name)
                 .ToListAsync();
@@ -235,7 +235,7 @@ namespace DEALER.DataAccess
                      {
                          Id = x.Id,
                          Name = x.Name,
-                         
+
                      })
                 .OrderBy(x => x.Name)
                 .ToListAsync();
@@ -256,7 +256,7 @@ namespace DEALER.DataAccess
                      {
                          Id = x.Id,
                          Name = x.Name,
-                         
+
                      })
                 .OrderBy(x => x.Name)
                 .ToListAsync();
@@ -277,7 +277,7 @@ namespace DEALER.DataAccess
                      {
                          Id = x.Id,
                          Name = x.Name,
-                         
+
                      })
                 .OrderBy(x => x.Name)
                 .ToListAsync();
@@ -318,7 +318,7 @@ namespace DEALER.DataAccess
                      {
                          Id = x.Id,
                          Name = x.Name,
-                         
+
                      })
                 .OrderBy(x => x.Name)
                 .ToListAsync();
@@ -339,7 +339,28 @@ namespace DEALER.DataAccess
                      {
                          Id = x.Id,
                          Name = x.Name + " (" + x.Area + ")",
-                         
+
+                     })
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                return new List<Lov>();
+            }
+        }
+
+        public async Task<IList<Lov>> GetAllPaymentTypeList()
+        {
+            try
+            {
+                return await _dbContext.PaymentType
+                    .Where(x => !x.IsDeleted)
+                     .Select(x => new Lov
+                     {
+                         Id = x.Id,
+                         Name = x.Name,
+
                      })
                 .OrderBy(x => x.Name)
                 .ToListAsync();
@@ -377,7 +398,7 @@ namespace DEALER.DataAccess
         //                 ? x.ReturnQuantity.Value / x.Product.CartunToPiece.Value : 0,
         //                 R_PD = (x.ReturnQuantity.HasValue && x.Product.BoxToPiece.HasValue && x.Product.BoxToPiece.Value != 0)
         //                 ? (x.ReturnQuantity.Value % x.Product.CartunToPiece.Value) / x.Product.BoxToPiece.Value : 0,
-                        
+
         //                 R_PQ = (x.ReturnQuantity.HasValue && x.Product.CartunToPiece.HasValue &&
         //                 x.Product.BoxToPiece.HasValue && x.Product.CartunToPiece.Value != 0 &&
         //                 x.Product.BoxToPiece.Value != 0)
@@ -770,19 +791,19 @@ namespace DEALER.DataAccess
                 bool isDelete = _dbContext.DSRShopDues.Any(c => c.ShopId == id)
                    || _dbContext.DSRShopPaymentHistories.Any(c => c.ShopId == id);
 
-                    if (!isDelete)
-                    {
-                        _dbContext.Remove(Shop);
-                        _dbContext.SaveChanges();
-                    }
-                    else
-                    {
-                        // If no customers are associated, proceed with deletion
-                        Shop.IsDeleted = true;
-                        _dbContext.Update(Shop);
-                        _dbContext.SaveChanges();
-                    }
-                
+                if (!isDelete)
+                {
+                    _dbContext.Remove(Shop);
+                    _dbContext.SaveChanges();
+                }
+                else
+                {
+                    // If no customers are associated, proceed with deletion
+                    Shop.IsDeleted = true;
+                    _dbContext.Update(Shop);
+                    _dbContext.SaveChanges();
+                }
+
                 return true;
             }
             catch (Exception ex)
@@ -793,6 +814,80 @@ namespace DEALER.DataAccess
 
         #endregion Shop
 
+
+        #region PaymentType
+        public bool UpdatePaymentType(PaymentType PaymentType)
+        {
+            return AddUpdateEntity(PaymentType);
+        }
+
+        public int CreatePaymentType(PaymentType PaymentType)
+        {
+            var lastId = _dbContext.PaymentType
+                 .AsNoTracking()
+                 .OrderByDescending(p => p.Id)
+                 .Select(p => p.Id)
+                 .FirstOrDefault();
+
+            PaymentType.Id = lastId + 1;
+            _dbContext.PaymentType.Add(PaymentType);
+            _dbContext.SaveChanges();
+
+            return PaymentType.Id;
+        }
+
+        public PaymentType GetPaymentType(int id)
+        {
+            try
+            {
+                return _dbContext.PaymentType.FirstOrDefault(c => c.Id == id);
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
+        public async Task<IList<PaymentType>> GetAllPaymentType()
+        {
+            try
+            {
+                return await _dbContext.PaymentType
+                    .OrderBy(x => x.Name)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                return new List<PaymentType>();
+            }
+        }
+
+        public bool DeletePaymentType(int id)
+        {
+            try
+            {
+                var PaymentType = _dbContext.PaymentType.FirstOrDefault(c => c.Id == id);
+
+                if (PaymentType is null)
+                {
+                    return false;
+                }
+
+
+                // If no customers are associated, proceed with deletion
+                PaymentType.IsDeleted = true;
+                _dbContext.Update(PaymentType);
+                _dbContext.SaveChanges();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
+
+        #endregion PaymentType
 
         #region CustomerType
         public bool UpdateCustomerType(CustomerType CustomerType)
@@ -866,7 +961,7 @@ namespace DEALER.DataAccess
                     _dbContext.Update(CustomerType);
                     _dbContext.SaveChanges();
                 }
-                                 
+
                 return true;
             }
             catch (Exception ex)
@@ -950,7 +1045,7 @@ namespace DEALER.DataAccess
                     _dbContext.Update(EmployeeType);
                     _dbContext.SaveChanges();
                 }
-                                 
+
                 return true;
             }
             catch (Exception ex)
@@ -1292,7 +1387,7 @@ namespace DEALER.DataAccess
                     _dbContext.Update(ShippingMethod);
                     _dbContext.SaveChanges();
                 }
-                
+
                 return true;
             }
             catch (Exception ex)

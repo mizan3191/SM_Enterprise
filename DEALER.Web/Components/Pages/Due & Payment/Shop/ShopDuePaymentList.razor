@@ -70,6 +70,23 @@ else
                         @context.ReferredBy
                     </Template>
                 </RadzenDataGridColumn>
+                
+                <RadzenDataGridColumn TItem="ShopDuePaymentListSummary" Title="Cylinder Due Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.CylinderDueAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterShopDuePaymentListSummaryList.Sum(o => o.CylinderDueAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ShopDuePaymentListSummary" Title="Cylinder Paid Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.CylinderPaidAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterShopDuePaymentListSummaryList.Sum(o => o.CylinderPaidAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
 
                 <RadzenDataGridColumn TItem="ShopDuePaymentListSummary" Title="Due Amount" Width="100px" TextAlign="TextAlign.Right">
                     <Template Context="item">

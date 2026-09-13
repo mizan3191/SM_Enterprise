@@ -19,7 +19,7 @@
     }
 </style>
 
-<h3>Staffs</h3>
+<h3>Customers</h3>
 
 @if (Customers == null)
 {
@@ -78,10 +78,10 @@ else
                     <Template Context="customer">
                         <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
                                       Click="() => Edit(customer.Id)" style="margin-right: 5px;" title="Edit" />
-                        <RadzenButton Icon="visibility" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                       @*  <RadzenButton Icon="visibility" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
                                       Click="() => ViewOrder(customer.Id)" style="margin-right: 5px;" title="View" />
                         <RadzenButton Icon="payment" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
-                                      Click="() => MakePayment(customer.Id)" title="Payment" />
+                                      Click="() => MakePayment(customer.Id)" title="Payment" /> *@
                     </Template>
                 </RadzenDataGridColumn>
 

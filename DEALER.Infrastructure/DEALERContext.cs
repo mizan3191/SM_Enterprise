@@ -35,6 +35,7 @@ namespace DEALER.Infrastructure
         public virtual DbSet<DSRShopDue> DSRShopDues { get; set; }
         public virtual DbSet<ShopEmptyCylinderProduct> ShopEmptyCylinderProducts { get; set; }
         public virtual DbSet<DSRShopPaymentHistory> DSRShopPaymentHistories { get; set; }
+        public virtual DbSet<EmptyCylinderPaymentHistory> EmptyCylinderPaymentHistories { get; set; }
         //public virtual DbSet<DamageProduct> DamageProducts { get; set; }
         public virtual DbSet<OrderPaymentHistory> OrderPaymentHistories { get; set; }
         public virtual DbSet<DailyExpense> DailyExpenses { get; set; }
@@ -52,12 +53,15 @@ namespace DEALER.Infrastructure
         public virtual DbSet<CylinderExchangeDetail> CylinderExchangeDetails { get; set; }
         public virtual DbSet<ExchangePaymentHistory> ExchangePaymentHistories { get; set; }
 
+        public virtual DbSet<StaffSalary> StaffSalaries { get; set; }
+
         #region Lookup Tables        
         public virtual DbSet<UnitOfMeasurement> UnitOfMeasurement { get; set; }
         public virtual DbSet<ReasonofAdjustment> ReasonofAdjustment { get; set; }
         //public virtual DbSet<Packaging> Packaging { get; set; }
         public virtual DbSet<ProductsSize> ProductsSize { get; set; }
         public virtual DbSet<Road> Road { get; set; }
+        public virtual DbSet<PaymentType> PaymentType { get; set; }
         public virtual DbSet<ExpenseType> ExpenseType { get; set; }
         public virtual DbSet<DailyExpenseType> DailyExpenseType { get; set; }
         public virtual DbSet<CustomerType> CustomerType { get; set; }

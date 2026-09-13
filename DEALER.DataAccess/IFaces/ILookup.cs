@@ -25,6 +25,7 @@
         Task<IList<Lov>> GetAllPaymentMethodList();
         Task<IList<Lov>> GetAllShippingMethodList();
         Task<IList<Lov>> GetAllShopList();
+        Task<IList<Lov>> GetAllPaymentTypeList();
         Task<IList<OrderExportToPdfDTO>> OrderExportToPdfList(int orderId);
 
         #endregion Lookup List
@@ -73,6 +74,14 @@
         Task<IList<Shop>> GetAllShop();
         #endregion Shop
 
+
+        #region PaymentType
+        bool UpdatePaymentType(PaymentType PaymentType);
+        bool DeletePaymentType(int id);
+        int CreatePaymentType(PaymentType PaymentType);
+        PaymentType GetPaymentType(int id);
+        Task<IList<PaymentType>> GetAllPaymentType();
+        #endregion PaymentType
 
         #region CustomerType
         bool UpdateCustomerType(CustomerType customerType);

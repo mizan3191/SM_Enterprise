@@ -21,7 +21,7 @@
         public string ShopArea { get; set; }
         public string ShopNumber { get; set; }
         public int? OrderId { get; set; }
-        
+        public double CylinderDueAmount { get; set; }
     }
 
     public class DSRShopDueForOrderDTO : DSRShopDueDTOBase

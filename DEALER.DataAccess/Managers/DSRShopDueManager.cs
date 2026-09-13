@@ -461,6 +461,7 @@
                         ShopName = x.Shop.Name,
                         OrderId = x.OrderId,
                         DueAmount = x.DueAmount,
+                        CylinderDueAmount = x.Products.Sum(p => p.DueAmount),
                         ShopArea = x.Shop.Area,
                         ShopNumber = x.Shop.Number,
                         ShopShopOwner = x.Shop.ShopOwner,
@@ -522,6 +523,35 @@
             }
         }
 
+        public async Task<double> LoadShopCylinderDueCustomerWise(int shopId, int employeeId)
+        {
+            try
+            {
+                var dueQuery = _dbContext.DSRShopDues
+                    .Where(x => !x.IsDeleted &&
+                               !x.Shop.IsDeleted &&
+                               x.ShopId == shopId &&
+                               x.EmployeeId == employeeId)
+                    .Select(x => x.DueAmount);
+
+                var paymentQuery = _dbContext.DSRShopPaymentHistories
+                    .Where(x => !x.IsDeleted &&
+                               x.ShopId == shopId &&
+                               x.EmployeeId == employeeId)
+                    .Select(x => x.AmountPaid);
+
+                var totalDue = await dueQuery.SumAsync();
+                var totalPaid = await paymentQuery.SumAsync();
+
+                var remainingDue = totalDue - totalPaid;
+                return Math.Max(0, remainingDue);
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
+
         public async Task<IEnumerable<ShopDueWithCylinderDto>> GetShopDueWithCylindersAsync(int orderId)
         {
             var result = await _dbContext.DSRShopDues
@@ -549,7 +579,7 @@
                         SupplierId = p.Product.SupplierId,
                         SupplierName = p.Product.Supplier.Name,
                         Quantity = p.CylinderQty,
-                        EmptyCylinderPrice = p.Product.CurrentPrice != null ? p.Product.CurrentPrice.CylinderBuyingPrice : 0
+                        EmptyCylinderPrice = p.Product.CurrentPrice != null ? p.Product.CurrentPrice.CylinderSellingPrice : 0
                     }).ToList()
                 })
                 .OrderBy(d => d.ShopName)

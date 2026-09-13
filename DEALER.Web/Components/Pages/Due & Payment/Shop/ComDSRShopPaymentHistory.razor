@@ -19,12 +19,9 @@ else
 
             <!-- Search Box -->
             <div class="d-flex align-items-center border rounded me-3 mx-3" style="width: fit-content;">
-                <!-- Search Icon -->
                 <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
-                    <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+                    <i class="fas fa-search"></i>
                 </span>
-
-                <!-- Search Text Box -->
                 <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
                                Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
             </div>
@@ -51,9 +48,16 @@ else
                         <div class="text-end fw-bold">@FilterDSRDueSummaryList.Sum(o => o.TotalShopDueAmount).ToString("N2")</div>
                     </FooterTemplate>
                 </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DSRDueSummary" Title="Cylinder Due Amount" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="item">
+                        <div>@item.TotalCylinderDueAmount.ToString("N2")</div>
+                    </Template>
+                    <FooterTemplate>
+                        <div class="text-end fw-bold">@FilterDSRDueSummaryList.Sum(o => o.TotalCylinderDueAmount).ToString("N2")</div>
+                    </FooterTemplate>
+                </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="DSRDueSummary" Title="Actions" Width="100px">
                     <Template Context="context">
-
                         <RadzenButton Icon="description" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small"
                                       Click="() => ShopPaymentHistory(context.ShopId)" style="margin-right: 5px;" title="Shop Payment History" />
 
@@ -62,7 +66,6 @@ else
 
                         <RadzenButton Icon="receipt_long" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
                                       Click="() => ShopdueList(context.ShopId)" style="margin-right: 5px;" title="Shop Due History" />
-
                     </Template>
                 </RadzenDataGridColumn>
             </Columns>
@@ -82,7 +85,7 @@ else
                 <EditForm Model="@DSRShopPaymentHistory" OnValidSubmit="HandleSubmit">
                     <div class="card dataForm ">
                         <div class="row m-3">
-                           
+
                             <div class="col-md-4 mb-3">
                                 <label class="Asterisk form-label">Shop Name</label>
                                 <RadzenDropDown @bind-Value="DSRShopPaymentHistory.ShopId"
@@ -119,29 +122,169 @@ else
                                                 Class="w-100"
                                                 AllowClear="true"
                                                 AllowFiltering="true"
-                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                                                />
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
                             </div>
-                           
+
                         </div>
                         <div class="row m-3">
                             <div class="col-md-4 mb-3">
                                 <label>Due Amount</label>
-                                <InputNumber @bind-Value="DueAmount" class="form-control " disabled></InputNumber>
+                                <InputNumber @bind-Value="DueAmount" class="form-control" disabled></InputNumber>
                             </div>
+                            
                             <div class="col-md-4 mb-3">
                                 <label class="Asterisk">Amount Paid</label>
                                 <InputNumber @bind-Value="DSRShopPaymentHistory.AmountPaid" class="form-control"></InputNumber>
+                                <small class="text-muted">Shop due থেকে পরিশোধ</small>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Date</label>
                                 <RadzenDatePicker @bind-Value="DSRShopPaymentHistory.PaymentDate" DateFormat="yyyy-MM-dd" Class="w-100" />
                             </div>
                         </div>
-                        <br />
-                        <div class="col-md-12">
-                            <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" />
-                            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" />
+
+                        <!-- Empty Cylinder Payment Section -->
+                        <div class="row m-3">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0">Empty Cylinder Payment Details</h5>
+                                    <div class="d-flex align-items-center">
+                                        <span class="text-muted me-2">Due Amount:</span>
+                                        <span class="badge bg-danger fs-6">@CylinderDueAmount.ToString("N2")</span>
+                                    </div>
+                                </div>
+                                <!-- Add Product Button - Shows only when basic info is not saved yet -->
+                                @if (!DSRShopPaymentHistory.IsSaved)
+                                {
+                                    <div class="mb-3">
+                                        <RadzenButton Text="+ Add Product"
+                                                      ButtonStyle="ButtonStyle.Primary"
+                                                      Click="SaveDraftAndAddProduct"
+                                                      Icon="add" />
+                                        <span class="text-muted ms-2 small">Save basic info first, then add cylinder details</span>
+                                    </div>
+
+                                }
+
+                                <div class="table-responsive">
+                                    @if (DSRShopPaymentHistory.IsSaved)
+                                    {
+                                        <div class="mb-2">
+                                            <RadzenButton Text="+ Add Product"
+                                                          ButtonStyle="ButtonStyle.Primary"
+                                                          Size="ButtonSize.Small"
+                                                          Click="AddProduct"
+                                                          Icon="add" />
+                                        </div>
+                                    }
+
+                                    <div class="table-responsive" style="max-height: 280px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px;">
+                                        <table class="table table-bordered table-striped mb-0">
+                                            <thead class="table-light sticky-top" style="z-index: 1;">
+                                                <tr>
+                                                    <th style="width: 35%;">Product Name</th>
+                                                    <th style="width: 18%;">Cylinder Quantity</th>
+                                                    <th style="width: 18%;">Extra Paid</th>
+                                                    <th style="width: 19%;">Paid Amount</th>
+                                                    <th style="width: 10%;">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (DSRShopPaymentHistory.Products != null && DSRShopPaymentHistory.Products.Any())
+                                                {
+                                                    @for (int i = 0; i < DSRShopPaymentHistory.Products.Count; i++)
+                                                    {
+                                                        var rowIndex = i;
+                                                        var product = DSRShopPaymentHistory.Products[rowIndex];
+                                                        <tr>
+                                                            <td>
+                                                                <RadzenDropDown @bind-Value="product.ProductId"
+                                                                                Data="@ProductList"
+                                                                                TextProperty="Name"
+                                                                                ValueProperty="Id"
+                                                                                Placeholder="Select Product"
+                                                                                Class="w-100"
+                                                                                AllowClear="true"
+                                                                                AllowFiltering="true"
+                                                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                                                                Disabled="@(product.Id > 0)"
+                                                                                Change="@(args => OnProductChanged(product, args))" />
+                                                            </td>
+                                                            <td>
+                                                                <!-- ✅ native input + @oninput = instant update -->
+                                                                <input type="number"
+                                                                       min="0"
+                                                                       value="@product.CylinderQty"
+                                                                       disabled="@(product.Id > 0)"
+                                                                       @oninput="(e) => OnQtyInput(product, e)"
+                                                                       class="form-control" />
+                                                            </td>
+                                                            <td>
+                                                                <!-- ✅ native input + @oninput = instant update -->
+                                                                <input type="number"
+                                                                       min="0"
+                                                                       step="0.01"
+                                                                       value="@product.ExtraPaidAmount"
+                                                                       disabled="@(product.Id > 0)"
+                                                                       @oninput="(e) => OnExtraPaidInput(product, e)"
+                                                                       class="form-control" />
+                                                            </td>
+                                                            <td>
+                                                                <InputNumber @bind-Value="product.PaidAmount"
+                                                                             class="form-control"
+                                                                             disabled />
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <RadzenButton Icon="delete"
+                                                                              ButtonStyle="ButtonStyle.Danger"
+                                                                              Size="ButtonSize.Small"
+                                                                              Click="() => RemoveProduct(rowIndex)"
+                                                                              title="Remove Product" />
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <tr>
+                                                        <td colspan="5" class="text-center text-muted py-3">
+                                                            @if (DSRShopPaymentHistory.IsSaved)
+                                                            {
+                                                                <span>No products added yet. Click "Add Product" to add cylinder payments.</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>Click "Add Product" button above to save basic info and add cylinder payment details.</span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                @if (DSRShopPaymentHistory.Products != null && DSRShopPaymentHistory.Products.Any())
+                                {
+                                    <div class="alert alert-info mt-2">
+                                        <strong>Total Cylinders: </strong>
+                                        <span class="badge bg-primary fs-6">@DSRShopPaymentHistory.Products.Sum(p => p.CylinderQty)</span>
+                                        &nbsp;&nbsp;
+                                        <strong>Total Extra Paid: </strong>
+                                        <span class="badge bg-warning fs-6">@DSRShopPaymentHistory.Products.Sum(p => p.ExtraPaidAmount).ToString("N2")</span>
+                                        &nbsp;&nbsp;
+                                        <strong>Total Product Paid: </strong>
+                                        <span class="badge bg-success fs-6">@DSRShopPaymentHistory.Products.Sum(p => p.PaidAmount).ToString("N2")</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="row m-3">
+                            <div class="col-md-12">
+                                <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Class="m-2" Icon="save" />
+                                <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" Icon="cancel" />
+                            </div>
                         </div>
                     </div>
                 </EditForm>
@@ -161,27 +304,31 @@ else
     private IDSRShopDue m_DSRShopDue { get; set; }
 
     [Inject]
+    private IProduct m_Product { get; set; }
+
+    [Inject]
     private NavigationManager _navigationManager { get; set; }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
 
     public IEnumerable<DSRDueSummary> DSRDueSummaryList { get; set; } = new List<DSRDueSummary>();
     public IEnumerable<DSRShopPaymentHistory> DSRShopPaymentHistoryList { get; set; } = new List<DSRShopPaymentHistory>();
 
-    private IEnumerable<Lov> CustomerList { get; set; } = new List<Lovd>();
+    private IEnumerable<Lov> CustomerList { get; set; } = new List<Lov>();
     private IEnumerable<Lov> ShopList { get; set; } = new List<Lov>();
     private IEnumerable<Lov> PaymentMethodList { get; set; } = new List<Lov>();
+    private IEnumerable<Lov> ProductList { get; set; } = new List<Lov>();
 
     private bool showModal = false;
     private double DueAmount { get; set; } = 0;
+    private double CylinderDueAmount { get; set; } = 0;
     private int ShopId { get; set; }
     private int CustomerId { get; set; }
 
-    public DSRShopPaymentHistory DSRShopPaymentHistory { get; set; }
+    public DSRShopPaymentHistory DSRShopPaymentHistory { get; set; } = new DSRShopPaymentHistory();
 
     private Message notificationComponent;
-
-
-    [Inject]
-    private IJSRuntime JSRuntime { get; set; }
 
     private IEnumerable<DSRDueSummary> FilterDSRDueSummaryList { get; set; } = new List<DSRDueSummary>();
 
@@ -189,65 +336,386 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-
         ShopList = await m_Lookup.GetAllShopList();
-
         PaymentMethodList = await m_Lookup.GetAllPaymentMethodList();
+        ProductList = await m_Lookup.GetAllProductList();
         await LoadData();
     }
 
-    private async Task HandleSubmit()
+    // ---------------------------------------------------------------
+    // Qty input — fires on every keystroke
+    // ---------------------------------------------------------------
+    private void OnQtyInput(EmptyCylinderPaymentHistory product, ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out int qty))
+        {
+            product.CylinderQty = qty;
+        }
+        else
+        {
+            product.CylinderQty = 0;
+        }
+        RecalculateProductPaidAmount(product);
+        StateHasChanged();   // ✅ UI instantly update
+    }
+
+    // ---------------------------------------------------------------
+    // ExtraPaid input — fires on every keystroke
+    // ---------------------------------------------------------------
+    private void OnExtraPaidInput(EmptyCylinderPaymentHistory product, ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), out double extra))
+        {
+            product.ExtraPaidAmount = extra;
+        }
+        else
+        {
+            product.ExtraPaidAmount = 0;
+        }
+        RecalculateProductPaidAmount(product);
+        StateHasChanged();   // ✅ UI instantly update
+    }
+
+    // ---------------------------------------------------------------
+    // PaidAmount = (ProductPrice × Qty) + ExtraPaidAmount
+    // ---------------------------------------------------------------
+    private void RecalculateProductPaidAmount(EmptyCylinderPaymentHistory product)
+    {
+        double baseAmount = 0;
+
+        if (product.ProductId > 0 && product.CylinderQty > 0)
+        {
+            var priceInfo = m_Product.GetProductPrice(product.ProductId);
+            if (priceInfo != null)
+            {
+                baseAmount = priceInfo.CylinderSellingPrice * product.CylinderQty;
+            }
+        }
+
+        product.PaidAmount = baseAmount + (product.ExtraPaidAmount > 0 ? product.ExtraPaidAmount : 0);
+    }
+
+    // ---------------------------------------------------------------
+    // Product price calculation
+    // ---------------------------------------------------------------
+    private void OnProductChanged(EmptyCylinderPaymentHistory product, object value)
+    {
+        if (value is int productId && productId > 0)
+        {
+            product.ProductId = productId;
+            RecalculateProductPaidAmount(product);
+        }
+        else
+        {
+            product.ProductId = 0;
+            product.PaidAmount = 0;
+        }
+    }
+
+    // private void OnQtyChanged(EmptyCylinderPaymentHistory product, ChangeEventArgs args)
+    // {
+    //     if (int.TryParse(args.Value?.ToString(), out int qty))
+    //     {
+    //         product.CylinderQty = qty;
+    //         RecalculateProductPaidAmount(product);
+    //     }
+    // }
+
+    // // ✅ NEW: ExtraPaidAmount change → recalculate
+    // private void OnExtraPaidChanged(EmptyCylinderPaymentHistory product, ChangeEventArgs args)
+    // {
+    //     if (double.TryParse(args.Value?.ToString(), out double extra))
+    //     {
+    //         product.ExtraPaidAmount = extra;
+    //     }
+    //     else
+    //     {
+    //         product.ExtraPaidAmount = 0;
+    //     }
+    //     RecalculateProductPaidAmount(product);
+    // }
+
+    
+
+    // ---------------------------------------------------------------
+    // First click on "+ Add Product" (before basic info saved)
+    // ---------------------------------------------------------------
+    private async Task SaveDraftAndAddProduct()
     {
         if (DSRShopPaymentHistory.EmployeeId <= 0)
         {
             notificationComponent.Show("Validation Error", "Please select an Issued By before proceeding.", NotificationSeverity.Warning);
             return;
         }
-
         if (DSRShopPaymentHistory.ShopId <= 0)
         {
-            notificationComponent.Show("Validation Error", "Please select an shop before proceeding.", NotificationSeverity.Warning);
+            notificationComponent.Show("Validation Error", "Please select a shop before proceeding.", NotificationSeverity.Warning);
             return;
         }
-
         if (DSRShopPaymentHistory.PaymentMethodId <= 0 || DSRShopPaymentHistory.PaymentMethodId is null)
         {
-            notificationComponent.Show("Validation Error", "Please select an Payment Method before proceeding.", NotificationSeverity.Warning);
+            notificationComponent.Show("Validation Error", "Please select a Payment Method before proceeding.", NotificationSeverity.Warning);
             return;
         }
 
-        if (DSRShopPaymentHistory.AmountPaid <= 0)
+        try
+        {
+            DSRShopPaymentHistory.Products = new List<EmptyCylinderPaymentHistory>();
+            var savedId = m_DSRShopPaymentHistory.CreateDSRShopPaymentHistory(DSRShopPaymentHistory);
+            DSRShopPaymentHistory.Id = savedId;
+            DSRShopPaymentHistory.IsSaved = true;
+
+            DSRShopPaymentHistory.Products.Add(new EmptyCylinderPaymentHistory());
+
+            notificationComponent.Show("Saved", "Now you can add cylinder payment details.", NotificationSeverity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", $"An error occurred: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Add Product button
+    // ---------------------------------------------------------------
+    private async Task AddProduct()
+    {
+        // --- Step 1: Main entity not saved yet → save first ---
+        if (!DSRShopPaymentHistory.IsSaved)
+        {
+            if (DSRShopPaymentHistory.EmployeeId <= 0)
+            {
+                notificationComponent.Show("Validation Error", "Please select an Issued By.", NotificationSeverity.Warning);
+                return;
+            }
+            if (DSRShopPaymentHistory.ShopId <= 0)
+            {
+                notificationComponent.Show("Validation Error", "Please select a shop.", NotificationSeverity.Warning);
+                return;
+            }
+            if (DSRShopPaymentHistory.PaymentMethodId <= 0 || DSRShopPaymentHistory.PaymentMethodId is null)
+            {
+                notificationComponent.Show("Validation Error", "Please select a Payment Method.", NotificationSeverity.Warning);
+                return;
+            }
+            try
+            {
+                DSRShopPaymentHistory.Products = new List<EmptyCylinderPaymentHistory>();
+                var savedId = m_DSRShopPaymentHistory.CreateDSRShopPaymentHistory(DSRShopPaymentHistory);
+                DSRShopPaymentHistory.Id = savedId;
+                DSRShopPaymentHistory.IsSaved = true;
+                DSRShopPaymentHistory.Products.Add(new EmptyCylinderPaymentHistory());
+                notificationComponent.Show("Saved", "Now add cylinder payment details.", NotificationSeverity.Success);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                notificationComponent.Show("Error", $"An error occurred: {ex.Message}", NotificationSeverity.Error);
+            }
+            return;
+        }
+
+        // --- Step 2: Validate and save last unsaved row ---
+        if (DSRShopPaymentHistory.Products == null)
+            DSRShopPaymentHistory.Products = new List<EmptyCylinderPaymentHistory>();
+
+        if (DSRShopPaymentHistory.Products.Any())
+        {
+            var lastProduct = DSRShopPaymentHistory.Products.Last();
+            if (lastProduct.Id <= 0) // not yet saved to DB
+            {
+                if (lastProduct.ProductId <= 0)
+                {
+                    notificationComponent.Show("পণ্য নির্বাচন করুন", "নতুন সারি যোগ করার আগে একটি পণ্য নির্বাচন করুন।", NotificationSeverity.Warning);
+                    return;
+                }
+                if (lastProduct.CylinderQty <= 0)
+                {
+                    notificationComponent.Show("সিলিন্ডার সংখ্যা সঠিক নয়", "সঠিক সিলিন্ডার সংখ্যা দিন।", NotificationSeverity.Warning);
+                    return;
+                }
+                try
+                {
+                    RecalculateProductPaidAmount(lastProduct);
+                    lastProduct.DSRShopPaymentHistoryId = DSRShopPaymentHistory.Id;
+                    m_DSRShopPaymentHistory.AddEmptyCylinderPaymentHistory(lastProduct);
+                    notificationComponent.Show("পণ্য যোগ হয়েছে", "পণ্য সফলভাবে সংরক্ষিত হয়েছে।", NotificationSeverity.Success);
+                }
+                catch (Exception ex)
+                {
+                    notificationComponent.Show("Error", $"An error occurred: {ex.Message}", NotificationSeverity.Error);
+                    return;
+                }
+            }
+        }
+
+        DSRShopPaymentHistory.Products!.Add(new EmptyCylinderPaymentHistory());
+        StateHasChanged();
+    }
+
+
+
+    // ---------------------------------------------------------------
+    // Remove Product
+    // ---------------------------------------------------------------
+    private async Task RemoveProduct(int index)
+    {
+        if (DSRShopPaymentHistory.Products == null) return;
+
+        var product = DSRShopPaymentHistory.Products[index];
+        if (product.Id > 0)
+        {
+            try
+            {
+                m_DSRShopPaymentHistory.DeleteEmptyCylinderPaymentHistory(product.Id);
+                notificationComponent.Show("Product Removed", "Product has been deleted successfully.", NotificationSeverity.Warning);
+            }
+            catch (Exception ex)
+            {
+                notificationComponent.Show("Error", $"An error occurred while deleting: {ex.Message}", NotificationSeverity.Error);
+                return;
+            }
+        }
+        DSRShopPaymentHistory.Products.Remove(product);
+        StateHasChanged();
+    }
+
+    // ---------------------------------------------------------------
+    // HandleSubmit
+    // ---------------------------------------------------------------
+    private async Task HandleSubmit()
+    {
+        if (DSRShopPaymentHistory.EmployeeId <= 0)
+        {
+            notificationComponent.Show("Validation Error", "Please select an Issued By.", NotificationSeverity.Warning);
+            return;
+        }
+        if (DSRShopPaymentHistory.ShopId <= 0)
+        {
+            notificationComponent.Show("Validation Error", "Please select a shop.", NotificationSeverity.Warning);
+            return;
+        }
+        if (DSRShopPaymentHistory.PaymentMethodId <= 0 || DSRShopPaymentHistory.PaymentMethodId is null)
+        {
+            notificationComponent.Show("Validation Error", "Please select a Payment Method.", NotificationSeverity.Warning);
+            return;
+        }
+        if (DSRShopPaymentHistory.AmountPaid <= 0
+            && (DSRShopPaymentHistory.Products == null || !DSRShopPaymentHistory.Products.Any(p => p.PaidAmount > 0)))
         {
             notificationComponent.Show("Validation Error", "Paid amount must be greater than zero.", NotificationSeverity.Warning);
             return;
         }
 
-
-        showModal = false;
-
-        if (DSRShopPaymentHistory.Id > 0)
+        try
         {
-            m_DSRShopPaymentHistory.UpdateDSRShopPaymentHistory(DSRShopPaymentHistory);
-            notificationComponent.Show("Updated Summary", "Shop Payment History has been Updated successfully", NotificationSeverity.Warning);
-        }
-        else
-        {
-            m_DSRShopPaymentHistory.CreateDSRShopPaymentHistory(DSRShopPaymentHistory);
-            notificationComponent.Show("Added Summary", "Shop Payment History has been Added successfully", NotificationSeverity.Success);
-        }
+            if (DSRShopPaymentHistory.Id > 0)
+            {
+                // Handle last unsaved product row
+                if (DSRShopPaymentHistory.Products != null && DSRShopPaymentHistory.Products.Any())
+                {
+                    var lastProduct = DSRShopPaymentHistory.Products.Last();
+                    if (lastProduct.Id <= 0)
+                    {
+                        if (lastProduct.ProductId > 0 && lastProduct.CylinderQty > 0)
+                        {
+                            RecalculateProductPaidAmount(lastProduct);
+                            lastProduct.DSRShopPaymentHistoryId = DSRShopPaymentHistory.Id;
+                            m_DSRShopPaymentHistory.AddEmptyCylinderPaymentHistory(lastProduct);
+                        }
+                        else if (lastProduct.ProductId <= 0 && lastProduct.CylinderQty <= 0)
+                        {
+                            DSRShopPaymentHistory.Products.Remove(lastProduct);
+                        }
+                        else
+                        {
+                            notificationComponent.Show("পণ্যের তথ্য অসম্পূর্ণ", "সব পণ্যের তথ্য সম্পূর্ণ করুন বা খালি row মুছে দিন।", NotificationSeverity.Warning);
+                            return;
+                        }
+                    }
+                }
 
-        await LoadData();
-        StateHasChanged();
+                m_DSRShopPaymentHistory.UpdateDSRShopPaymentHistory(DSRShopPaymentHistory);
+                notificationComponent.Show("Updated", "Shop Payment History has been updated successfully.", NotificationSeverity.Success);
+            }
+            else
+            {
+                m_DSRShopPaymentHistory.CreateDSRShopPaymentHistory(DSRShopPaymentHistory);
+                notificationComponent.Show("Added", "Shop Payment History has been added successfully.", NotificationSeverity.Success);
+            }
+
+            showModal = false;
+            await LoadData();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", $"An error occurred: {ex.Message}", NotificationSeverity.Error);
+        }
     }
 
+    // ---------------------------------------------------------------
+    // Modal open/close
+    // ---------------------------------------------------------------
     private void AddNew()
     {
         DSRShopPaymentHistory = new DSRShopPaymentHistory()
-            {
-                PaymentDate = DateTime.Now,
-            };
-
+        {
+            PaymentDate = DateTime.Now,
+            Products = new List<EmptyCylinderPaymentHistory>(),
+            IsSaved = false
+        };
         showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        DSRShopPaymentHistory = new DSRShopPaymentHistory();
+    }
+
+    private void Edit(int id)
+    {
+        try
+        {
+            DSRShopPaymentHistory = m_DSRShopPaymentHistory.GetDSRShopPaymentHistory(id);
+            if (DSRShopPaymentHistory.Products == null)
+            {
+                DSRShopPaymentHistory.Products = new List<EmptyCylinderPaymentHistory>();
+            }
+            DSRShopPaymentHistory.IsSaved = true;
+            showModal = true;
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", $"An error occurred: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+     
+    // ---------------------------------------------------------------
+    // Shop change → load customer list & due amount
+    // ---------------------------------------------------------------
+    private async Task OnShopChanged(object value)
+    {
+        if (value is int shopId)
+        {
+            ShopId = shopId;
+            DueAmount = DSRDueSummaryList
+                .Where(x => x.ShopId == shopId)
+                .Sum(x => x.TotalShopDueAmount);
+
+            CylinderDueAmount = DSRDueSummaryList
+                .Where(x => x.ShopId == shopId)
+                .Sum(x => x.TotalCylinderDueAmount);
+
+            await LoadCustomer(shopId);
+
+            if (CustomerId > 0 && ShopId > 0)
+            {
+                DueAmount = await m_DSRShopDue.LoadShopDueCustomerWise(ShopId, CustomerId);
+            }
+        }
     }
 
     private async Task LoadCustomer(int shopId)
@@ -259,15 +727,17 @@ else
     {
         if (value is int customerId)
         {
-            CustomerId = customerId;        
+            CustomerId = customerId;
             if (CustomerId > 0 && ShopId > 0)
             {
                 DueAmount = await m_DSRShopDue.LoadShopDueCustomerWise(ShopId, CustomerId);
             }
         }
-        
     }
 
+    // ---------------------------------------------------------------
+    // Load data
+    // ---------------------------------------------------------------
     private async Task LoadData()
     {
         DueAmount = 0;
@@ -276,30 +746,9 @@ else
         FilterDSRDueSummaryList = DSRDueSummaryList;
     }
 
-    private async Task OnShopChanged(object value)
-    {
-        if (value is int shopId)
-        {
-            ShopId = shopId;
-            DueAmount = DSRDueSummaryList
-                .Where(x => x.ShopId == shopId)
-                .Sum(x => x.TotalShopDueAmount);
-
-            await LoadCustomer(shopId);
-
-            if (CustomerId > 0 && ShopId > 0)
-            {
-                DueAmount = await m_DSRShopDue.LoadShopDueCustomerWise(ShopId, CustomerId);
-            }
-        }
-    }
-
-    private void CloseModal()
-    {
-        showModal = false;
-    }
-
-
+    // ---------------------------------------------------------------
+    // Navigation
+    // ---------------------------------------------------------------
     private void Details(int shopId)
     {
         _navigationManager.NavigateTo($"/ShopPaymentDetails/{shopId}");
@@ -315,8 +764,9 @@ else
         _navigationManager.NavigateTo($"/ShopPaymentList/{shopId}");
     }
 
-
-
+    // ---------------------------------------------------------------
+    // Search
+    // ---------------------------------------------------------------
     private void OnSearch(ChangeEventArgs e)
     {
         search = e.Value?.ToString() ?? string.Empty;
@@ -339,10 +789,11 @@ else
                 (!string.IsNullOrEmpty(c.TotalShopDueAmount.ToString()) && c.TotalShopDueAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase))
             ).ToList();
         }
-
-
     }
 
+    // ---------------------------------------------------------------
+    // Export to PDF
+    // ---------------------------------------------------------------
     public async Task ExportToPdf()
     {
         if (!ValidationHelper.ValidateAndNotify(FilterDSRDueSummaryList, notificationComponent))
@@ -352,11 +803,10 @@ else
         {
             container.Page(page =>
             {
-                // Set individual margins
-                page.MarginTop(20);     // Top margin
-                page.MarginBottom(20);  // Bottom margin
-                page.MarginLeft(40);    // Left margin
-                page.MarginRight(40);   // Right margin
+                page.MarginTop(20);
+                page.MarginBottom(20);
+                page.MarginLeft(40);
+                page.MarginRight(40);
 
                 page.Size(PageSizes.A4);
                 page.DefaultTextStyle(style => style.FontSize(10));
@@ -376,7 +826,6 @@ else
                             columns.RelativeColumn(2);
                         });
 
-                        // Header
                         table.Header(header =>
                         {
                             header.Cell().Background("#f5f5f5").Padding(5).Text("Shop Name").Bold();
@@ -386,7 +835,6 @@ else
                             header.Cell().Background("#f5f5f5").Padding(5).Text("Total Due Amount").Bold();
                         });
 
-                        // Data rows
                         foreach (var customer in FilterDSRDueSummaryList)
                         {
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.ShopName);
@@ -396,23 +844,21 @@ else
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.TotalShopDueAmount:N2}");
                         }
 
-                        // Total Row
                         table.Cell().ColumnSpan(4).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total").Bold();
                         table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterDSRDueSummaryList.Sum(x => x.TotalShopDueAmount):N2}").Bold();
-
                     });
 
                 page.Footer().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignCenter().Text(text =>
                     {
-                        row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
-                        row.RelativeItem().AlignCenter().Text(text =>
-                        {
-                            text.CurrentPageNumber();
-                            text.Span(" / ");
-                            text.TotalPages();
-                        });
-                        row.RelativeItem(); // Empty space for right side (optional)
+                        text.CurrentPageNumber();
+                        text.Span(" / ");
+                        text.TotalPages();
                     });
+                    row.RelativeItem();
+                });
             });
         });
 
@@ -422,7 +868,6 @@ else
         var fileName = $"Shops Due Histories_{DateTime.Now:yyyyMMddHHmmss}.pdf";
         await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
     }
-
 
     void ComposeHeader(IContainer container)
     {
@@ -438,5 +883,4 @@ else
             });
         });
     }
-
 }

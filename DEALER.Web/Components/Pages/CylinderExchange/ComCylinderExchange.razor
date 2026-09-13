@@ -83,7 +83,8 @@
                     <div>
                         <div>@product.DisplayNameSize</div>
                         <small style="color: #888;">
-                            Price: @product.CurrentPrice?.CylinderBuyingPrice?.ToString("N2")
+                            Price: @GetCylinderBuyingPrice(product)
+@*                             Price: @product?.CurrentPrice?.CylinderBuyingPrice?.ToString("N2") *@
                         </small>
                     </div>
                 </Template>
@@ -343,6 +344,15 @@
     {
         if (SelectedSupplierId.HasValue)
             CylinderExchange.SupplierId = SelectedSupplierId.Value;
+    }
+
+    private string GetCylinderBuyingPrice(Product product)
+    {
+        var price = product?.CurrentPrice?.CylinderBuyingPrice;
+
+        return price.HasValue
+            ? price.Value.ToString("N2")
+            : "N/A";
     }
 
     private void AddDetail()

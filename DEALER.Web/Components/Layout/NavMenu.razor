@@ -79,6 +79,42 @@
             </Authorized>
         </AuthorizeView>
 
+        <!-- Due Section -->
+        <AuthorizeView Roles="Admin,Manager,Administrator">
+            <Authorized>
+                <div class="nav-group">
+                    <div class="nav-group-title" @onclick="@(() => ToggleSection("cylinder"))">
+                        Cylinder Manage
+                        <span class="toggle-icon">@GetToggleIcon("cylinder")</span>
+                    </div>
+                    <div class="nav-submenu @(IsSectionOpen("cylinder") ? "show" : "")">
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="CylinderExchange">
+                                <span class="nav-menu" aria-hidden="true"></span> Cylinder Exchange
+                            </NavLink>
+                        </div>
+                        @* <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="EmptyCylinderReturn">
+                                <span class="nav-menu" aria-hidden="true"></span>Empty Cylinder Return
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ShopCylinderBalance">
+                                <span class="nav-menu" aria-hidden="true"></span>Shop Cylinder Balance
+                            </NavLink>
+                        </div>
+                   
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="CylinderAdjustmentReport">
+                                <span class="nav-menu" aria-hidden="true"></span>Cylinder Adjustment
+                            </NavLink>
+                        </div> *@
+                       
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
         <!-- PURCHASES Section -->
         <AuthorizeView Roles="Admin,Manager,Administrator">
             <Authorized>
@@ -95,11 +131,7 @@
                             </NavLink>
                         </div>
                         
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="CylinderExchange">
-                                <span class="nav-menu" aria-hidden="true"></span> Cylinder Exchange
-                            </NavLink>
-                        </div>
+
                         <div class="nav-item px-3">
                             <NavLink class="nav-link" href="SupplierDuesHistory">
                                 <span class="nav-menu" aria-hidden="true"></span> Due List
@@ -151,12 +183,6 @@
                         <span class="toggle-icon">@GetToggleIcon("expenses")</span>
                     </div>
                     <div class="nav-submenu @(IsSectionOpen("expenses") ? "show" : "")">
-                        
-                     @*    <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="ProductAdjustment">
-                                <span class="nav-menu" aria-hidden="true"></span> Stock Adjustment
-                            </NavLink>
-                        </div> *@
                         <div class="nav-item px-3">
                             <NavLink class="nav-link" href="Expenses">
                                 <span class="nav-menu" aria-hidden="true"></span> Monthly Expenses
@@ -207,21 +233,7 @@
                         <span class="toggle-icon">@GetToggleIcon("lookup")</span>
                     </div>
                     <div class="nav-submenu @(IsSectionOpen("lookup") ? "show" : "")">
-                        @* <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="ProductCategory">
-                                <span class="nav-menu" aria-hidden="true"></span> Categories
-                            </NavLink>
-                        </div>
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="Packaging">
-                                <span class="nav-menu" aria-hidden="true"></span> Packaging
-                            </NavLink>
-                        </div>
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="UnitOfMeasurement">
-                                <span class="nav-menu" aria-hidden="true"></span> Unit of Measurement
-                            </NavLink>
-                        </div> *@
+                       
                         <div class="nav-item px-3">
                             <NavLink class="nav-link" href="Size">
                                 <span class="nav-menu" aria-hidden="true"></span> Product Size
@@ -256,16 +268,16 @@
                         </div>
 
                         <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="PaymentType">
+                                <span class="nav-menu" aria-hidden="true"></span> Payment Type
+                            </NavLink>
+                        </div>
+
+                        <div class="nav-item px-3">
                             <NavLink class="nav-link" href="ShippingMethod">
                                 <span class="nav-menu" aria-hidden="true"></span> Shipping Method
                             </NavLink>
                         </div>
-@* 
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="ReasonofAdjustment">
-                                <span class="nav-menu" aria-hidden="true"></span> Adjustment
-                            </NavLink>
-                        </div> *@
 
                        @*  <div class="nav-item px-3">
                             <NavLink class="nav-link" href="Road">
@@ -297,7 +309,7 @@
                             </NavLink>
                         </div>
                         <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="StaffSalary">
+                            <NavLink class="nav-link" href="StaffSalaries">
                                 <span class="nav-menu" aria-hidden="true"></span> Staff Salary
                             </NavLink>
                         </div>
@@ -461,6 +473,7 @@
         { "damageProduct", false },
         { "history", false },
         { "due", false },
+        { "cylinder", false },
         { "expenses", false },
         { "lookup", false },
         { "admin", false }

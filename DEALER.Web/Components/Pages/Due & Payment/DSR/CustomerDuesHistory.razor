@@ -39,7 +39,7 @@ else
         <RadzenDataGrid Data="@FilteredCustomerDue" TItem="CustomerDueDTO" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
             <Columns>
                 <RadzenDataGridColumn TItem="CustomerDueDTO" Property="@nameof(CustomerDueDTO.Name)" Title="Name" Width="200px" />
-                <RadzenDataGridColumn TItem="CustomerDueDTO" Property="@nameof(CustomerDueDTO.FullAddress)" Title="Address" Width="200px" />
+                <RadzenDataGridColumn TItem="CustomerDueDTO" Property="@nameof(CustomerDueDTO.Address)" Title="Address" Width="200px" />
                 <RadzenDataGridColumn TItem="CustomerDueDTO" Property="@nameof(CustomerDueDTO.Phone)" Title="Phone" Width="150px" />
                 <RadzenDataGridColumn TItem="CustomerDueDTO" Title="Total Due" TextAlign="TextAlign.Right" Width="150px">
                     <Template Context="item">
@@ -115,7 +115,7 @@ else
         {
             FilteredCustomerDue = CustomerDueHistory.Where(c =>
                 (!string.IsNullOrEmpty(c.Name) && c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.FullAddress) && c.FullAddress.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Address) && c.Address.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.TotalDue.ToString()) && c.TotalDue.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.Phone) && c.Phone.Contains(search, StringComparison.OrdinalIgnoreCase))
             ).ToList();
@@ -169,7 +169,7 @@ else
                         foreach (var customer in FilteredCustomerDue)
                         {
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Name);
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.FullAddress);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Address);
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(customer.Phone);
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{customer.TotalDue:N2}");
                         }
