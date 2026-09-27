@@ -1,0 +1,661 @@
+﻿@page "/CustomerSaleDetail/{OrderId:int}/{CustomerId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject NotificationService NotificationService
+
+<style>
+    /* ===== Summary Cards ===== */
+    .summary-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        text-align: center;
+        border: 1px solid #e9ecef;
+    }
+
+        .summary-card .summary-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-card .summary-value {
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 5px;
+        }
+
+            .summary-card .summary-value.positive { color: #28a745; }
+            .summary-card .summary-value.negative { color: #dc3545; }
+            .summary-card .summary-value.info     { color: #0d6efd; }
+
+    /* ===== Customer Info Card ===== */
+    .customer-info-card {
+        background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+        border-left: 4px solid #0097a7;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+    }
+
+        .customer-info-card .info-row {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .customer-info-card .info-item .info-label {
+            font-size: 11px;
+            color: #00838f;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .customer-info-card .info-item .info-value {
+            font-weight: 600;
+            font-size: 15px;
+            color: #004d40;
+        }
+
+    /* ===== Order Block ===== */
+    .order-block {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+        margin-bottom: 24px;
+    }
+
+    /* ===== Order Header ===== */
+    .order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 14px 20px;
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: #fff;
+    }
+
+    .order-header-left {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+    }
+
+        .order-header-left .order-id {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .order-header-left .order-date {
+            font-size: 12.5px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+    .order-header-right {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .stat-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(4px);
+        font-size: 12.5px;
+        font-weight: 500;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+        .stat-pill .stat-label {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-pill .stat-value {
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .stat-pill.stat-paid {
+            background: rgba(34, 197, 94, 0.28);
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+
+        .stat-pill.stat-due {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: rgba(239, 68, 68, 0.55);
+        }
+
+        .stat-pill.stat-cleared {
+            background: rgba(148, 163, 184, 0.3);
+        }
+
+    /* ===== Product Table ===== */
+    .product-table-wrap {
+        overflow-x: auto;
+    }
+
+    .product-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin: 0;
+    }
+
+        .product-table thead th {
+            background: #f9fafb;
+            color: #4b5563;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.6px;
+            padding: 12px 14px;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap;
+        }
+
+        .product-table tbody td {
+            padding: 11px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1f2937;
+            vertical-align: middle;
+        }
+
+        .product-table tbody tr:hover {
+            background: #fafbfc;
+        }
+
+        .product-table .col-product {
+            text-align: left;
+            font-weight: 500;
+            color: #111827;
+        }
+
+        .product-table .col-num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .product-table .col-price {
+            font-weight: 700;
+            color: #111827;
+        }
+
+        /* ===== Table Footer ===== */
+        .product-table tfoot td {
+            padding: 10px 14px;
+            font-size: 13px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .product-table tfoot .text-end {
+            text-align: right;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .row-subtotal td {
+            background: #f9fafb;
+            font-weight: 700;
+            color: #374151;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .row-adjust td {
+            background: #fff;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .row-total td {
+            background: #eef2ff;
+            font-weight: 700;
+            color: #3730a3;
+            border-top: 1px solid #c7d2fe;
+        }
+
+        .row-paid td {
+            background: #f0fdf4;
+            font-weight: 600;
+            color: #166534;
+        }
+
+        .row-due td {
+            background: #fef2f2;
+            font-weight: 700;
+            color: #991b1b;
+            border-bottom: none;
+        }
+
+            .row-due td:last-child {
+                font-size: 14px;
+            }
+</style>
+
+<Message @ref="notificationComponent" />
+
+@if (CustomerOrderDetails == null || !CustomerOrderDetails.Any())
+{
+    <p><em>No sales details found for Order #@OrderId.</em></p>
+}
+else
+{
+    var firstItem = CustomerOrderDetails.First();
+    var subTotal = CustomerOrderDetails.Sum(x => x.Price);
+    var totalQty = CustomerOrderDetails.Sum(x => x.Quantity);
+    var totalReturn = CustomerOrderDetails.Sum(x => x.ReturnQuantity);
+
+    // ✅ Discount amount calculations (Discount% ধরে)
+    var totalDiscountAmount = CustomerOrderDetails.Sum(x =>
+        (x.GasUnitPrice + x.CylinderUnitPrice) * x.Quantity * x.Discount / 100.0);
+
+    <div class="card-body m-0">
+
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+            <div>
+                <h4 class="mb-0">Customer Sales Details</h4>
+                <small class="text-muted">
+                    Order #@OrderId &nbsp;|&nbsp; Customer ID: #@CustomerId
+                </small>
+            </div>
+            <h4 class="mb-0 text-danger">Total Due: ৳@TotalDue.ToString("N2")</h4>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex align-items-center mb-3 flex-wrap" style="gap: 10px;">
+            <RadzenButton Text="Back" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" />
+            <RadzenButton Text="Export To PDF"
+                          Icon="picture_as_pdf"
+                          Click="@(args => ExportToPdf())"
+                          ButtonStyle="ButtonStyle.Primary" />
+        </div>
+
+        <!-- Customer Info Card -->
+        @if (CustomerInfo != null)
+        {
+            <div class="customer-info-card">
+                <div class="info-row">
+                    <div class="info-item">
+                        <div class="info-label">Customer Name</div>
+                        <div class="info-value">👤 @CustomerInfo.CustomerName</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Phone</div>
+                        <div class="info-value">📞 @CustomerInfo.Phone</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Address</div>
+                        <div class="info-value">📍 @CustomerInfo.Address</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Order Date</div>
+                        <div class="info-value">📅 @firstItem.OrderDate.ToString("dd-MMM-yyyy (ddd)")</div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Summary Cards -->
+        <div class="summary-section">
+            <div class="summary-card">
+                <div class="summary-label">Order Amount</div>
+                <div class="summary-value info">৳@TotalOrderAmount.ToString("N2")</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Payment Received</div>
+                <div class="summary-value positive">৳@TotalPaymentReceived.ToString("N2")</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Due Amount</div>
+                <div class="summary-value negative">৳@TotalDue.ToString("N2")</div>
+            </div>
+        </div>
+
+        <!-- ================= Sales Details ================= -->
+        <div class="order-block">
+
+            <!-- Order Header -->
+            <div class="order-header">
+                <div class="order-header-left">
+                    <span class="order-id">Order #@firstItem.OrderId</span>
+                    <span class="order-date">@firstItem.OrderDate.ToString("dd-MMM-yyyy (ddd)")</span>
+                </div>
+            </div>
+
+            <!-- Product Lines -->
+            <div class="product-table-wrap">
+                <table class="product-table">
+                    <thead>
+                        <tr>
+                            <th class="col-product">Product</th>
+                            <th class="col-num">Gas U/P</th>
+                            <th class="col-num">Cyl U/P</th>
+                            <th class="col-num">Qty</th>
+                            <th class="col-num">Return</th>
+                            <th class="col-num">Dis Amt</th>
+                            <th class="col-num col-price">Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in CustomerOrderDetails)
+                        {
+                            var itemDiscountAmount = (item.GasUnitPrice + item.CylinderUnitPrice)
+                                                     * item.Quantity * item.Discount / 100.0;
+
+                            <tr>
+                                <td class="col-product">@item.ProductName</td>
+                                <td class="col-num">@item.GasUnitPrice.ToString("N2")</td>
+                                <td class="col-num">@item.CylinderUnitPrice.ToString("N2")</td>
+                                <td class="col-num">@item.Quantity</td>
+                                <td class="col-num">@item.ReturnQuantity</td>
+                                <td class="col-num text-danger">
+                                    @if (itemDiscountAmount > 0)
+                                    {
+                                        <text>-৳@itemDiscountAmount.ToString("N2")</text>
+                                    }
+                                    else
+                                    {
+                                        <text>—</text>
+                                    }
+                                </td>
+                                <td class="col-num col-price">৳@item.Price.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="row-subtotal">
+                            <td colspan="3" class="text-end">Sub-Total</td>
+                            <td class="col-num">@totalQty</td>
+                            <td class="col-num">@totalReturn</td>
+                            <td class="col-num text-danger">
+                                @if (totalDiscountAmount > 0)
+                                {
+                                    <text>-৳@totalDiscountAmount.ToString("N2")</text>
+                                }
+                                else
+                                {
+                                    <text>—</text>
+                                }
+                            </td>
+                            <td class="col-num col-price">৳@subTotal.ToString("N2")</td>
+                        </tr>
+
+                        @if (firstItem.OrderDiscount > 0)
+                        {
+                            <tr class="row-adjust">
+                                <td colspan="6" class="text-end">Order Discount</td>
+                                <td class="col-num col-price text-danger">-৳@firstItem.OrderDiscount.ToString("N2")</td>
+                            </tr>
+                        }
+                        @if (firstItem.DeliveryCharge > 0)
+                        {
+                            <tr class="row-adjust">
+                                <td colspan="6" class="text-end">Delivery Charge</td>
+                                <td class="col-num col-price">+৳@firstItem.DeliveryCharge.ToString("N2")</td>
+                            </tr>
+                        }
+                        <tr class="row-total">
+                            <td colspan="6" class="text-end">Order Total</td>
+                            <td class="col-num col-price">৳@firstItem.OrderTotalAmount.ToString("N2")</td>
+                        </tr>
+                        <tr class="row-paid">
+                            <td colspan="6" class="text-end">Paid</td>
+                            <td class="col-num col-price text-success">৳@firstItem.OrderTotalPay.ToString("N2")</td>
+                        </tr>
+                        <tr class="row-due">
+                            <td colspan="6" class="text-end">Due</td>
+                            <td class="col-num col-price @(firstItem.OrderTotalDue > 0 ? "text-danger" : "text-success")">
+                                ৳@firstItem.OrderTotalDue.ToString("N2")
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+    </div>
+}
+
+@code {
+    [Parameter] public int OrderId { get; set; }
+    [Parameter] public int CustomerId { get; set; }
+
+    [Inject] private IOrder m_Order { get; set; }
+    [Inject] private ICustomer m_Customer { get; set; }
+    [Inject] private ILookup m_Lookup { get; set; }
+    [Inject] private IOrderPaymentHistory m_OrderPaymentHistory { get; set; }
+    [Inject] private IJSRuntime JSRuntime { get; set; }
+    [Inject] private NavigationManager _navigationManager { get; set; }
+
+    private Message notificationComponent;
+
+    private CustomerInfo CustomerInfo { get; set; }
+    private IEnumerable<CustomerOrderDetailDTO> CustomerOrderDetails { get; set; } = new List<CustomerOrderDetailDTO>();
+
+    private double TotalOrderAmount { get; set; } = 0;
+    private double TotalPaymentReceived { get; set; } = 0;
+    private double TotalDue { get; set; } = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            CustomerInfo = await m_Customer.GetCustomerInfoById(CustomerId);
+
+            // ✅ শুধু এই Order-এর details
+            CustomerOrderDetails = await m_Order.GetOrderDetailsByCustomerAsync(OrderId)
+                                   ?? new List<CustomerOrderDetailDTO>();
+
+            // ✅ একটি Order-এর সব row-এ Order-level field একই থাকে,
+            // তাই First() থেকেই নেওয়া safest
+            var orderSnapshot = CustomerOrderDetails.FirstOrDefault();
+
+            if (orderSnapshot != null)
+            {
+                TotalOrderAmount = orderSnapshot.OrderTotalAmount;
+                TotalPaymentReceived = orderSnapshot.OrderTotalPay;
+                TotalDue = orderSnapshot.OrderTotalDue;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent?.Show("Error",
+                $"Failed to load order details: {ex.Message}",
+                NotificationSeverity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        _navigationManager.NavigateTo("/Sales");
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(CustomerOrderDetails, notificationComponent))
+            return;
+
+        var order = CustomerOrderDetails.First();
+        var subTotal = CustomerOrderDetails.Sum(x => x.Price);
+        var totalDiscountAmount = CustomerOrderDetails.Sum(x =>
+            (x.GasUnitPrice + x.CylinderUnitPrice) * x.Quantity * x.Discount / 100.0);
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.MarginTop(20);
+                page.MarginBottom(20);
+                page.MarginLeft(40);
+                page.MarginRight(40);
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content().PaddingVertical(10).Column(column =>
+                {
+                    // ==================== Order Info ====================
+                    column.Item().Text($"Sales Details — Order #{order.OrderId}").Bold().FontSize(12);
+                    column.Item().PaddingTop(3).Text($"Order Date: {order.OrderDate:dd-MMM-yyyy (ddd)}").FontSize(10);
+
+                    // ==================== Product Table ====================
+                    column.Item().PaddingTop(8).Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(2.5f);  // Product
+                            columns.RelativeColumn(1f);    // Gas U/P
+                            columns.RelativeColumn(1f);    // Cyl U/P
+                            columns.RelativeColumn(0.7f);  // Qty
+                            columns.RelativeColumn(0.7f);  // Return
+                            columns.RelativeColumn(1f);    // Dis Amt
+                            columns.RelativeColumn(1.2f);  // Price
+                        });
+
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(4).Text("Product").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(4).AlignRight().Text("Gas U/P").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(4).AlignRight().Text("Cyl U/P").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(4).AlignRight().Text("Qty").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(4).AlignRight().Text("Return").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(4).AlignRight().Text("Dis Amt").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(4).AlignRight().Text("Price").Bold();
+                        });
+
+                        foreach (var item in CustomerOrderDetails)
+                        {
+                            var itemDiscountAmount = (item.GasUnitPrice + item.CylinderUnitPrice)
+                                                     * item.Quantity * item.Discount / 100.0;
+
+                            table.Cell().PaddingVertical(2).PaddingHorizontal(4).Text(item.ProductName);
+                            table.Cell().PaddingVertical(2).PaddingHorizontal(4).AlignRight().Text($"{item.GasUnitPrice:N2}");
+                            table.Cell().PaddingVertical(2).PaddingHorizontal(4).AlignRight().Text($"{item.CylinderUnitPrice:N2}");
+                            table.Cell().PaddingVertical(2).PaddingHorizontal(4).AlignRight().Text(item.Quantity.ToString());
+                            table.Cell().PaddingVertical(2).PaddingHorizontal(4).AlignRight().Text(item.ReturnQuantity.ToString());
+                            table.Cell().PaddingVertical(2).PaddingHorizontal(4).AlignRight()
+                                 .Text(itemDiscountAmount > 0 ? $"-{itemDiscountAmount:N2}" : "—")
+                                 .FontColor("#dc3545");
+                            table.Cell().PaddingVertical(2).PaddingHorizontal(4).AlignRight().Text($"{item.Price:N2}");
+                        }
+
+                        // Sub-total
+                        table.Cell().ColumnSpan(5).PaddingVertical(3).PaddingHorizontal(4).AlignRight().Text("Sub-Total:").Bold();
+                        table.Cell().PaddingVertical(3).PaddingHorizontal(4).AlignRight()
+                             .Text(totalDiscountAmount > 0 ? $"-{totalDiscountAmount:N2}" : "—")
+                             .FontColor("#dc3545").Bold();
+                        table.Cell().PaddingVertical(3).PaddingHorizontal(4).AlignRight().Text($"{subTotal:N2}").Bold();
+                    });
+
+                    // ==================== Order Summary ====================
+                    column.Item().PaddingTop(15);
+                    column.Item().BorderTop(1).BorderColor(QuestPDF.Helpers.Colors.Black).PaddingTop(8);
+
+                    if (order.OrderDiscount > 0)
+                        column.Item().AlignRight().Text($"Discount: -৳{order.OrderDiscount:N2}").FontColor("#dc3545").FontSize(11);
+
+                    if (order.DeliveryCharge > 0)
+                        column.Item().PaddingTop(3).AlignRight().Text($"Delivery: +৳{order.DeliveryCharge:N2}").FontColor("#0d6efd").FontSize(11);
+
+                    column.Item().PaddingTop(5).AlignRight()
+                         .Text($"Order Total: ৳{order.OrderTotalAmount:N2}")
+                         .FontSize(12).Bold();
+
+                    column.Item().PaddingTop(3).AlignRight()
+                         .Text($"Paid: ৳{order.OrderTotalPay:N2}")
+                         .FontSize(12).Bold();
+
+                    column.Item().PaddingTop(3).AlignRight()
+                         .Text($"Due: ৳{order.OrderTotalDue:N2}")
+                         .FontSize(13).FontColor("#FF0000").Bold();
+                });
+
+                page.Footer().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignCenter().Text(text =>
+                    {
+                        text.CurrentPageNumber();
+                        text.Span(" / ");
+                        text.TotalPages();
+                    });
+                    row.RelativeItem();
+                });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Order_{OrderId}_Customer_{CustomerId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+        var order = CustomerOrderDetails?.FirstOrDefault();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text("Customer Sales Report").Bold().FontSize(10);
+
+                column.Item().Table(table =>
+                {
+                    table.ColumnsDefinition(columns =>
+                    {
+                        columns.ConstantColumn(90);
+                        columns.RelativeColumn();
+                    });
+
+                    table.Cell().Text("Order #:").Bold().FontSize(10);
+                    table.Cell().Text(order?.OrderId.ToString() ?? "N/A").FontSize(10);
+
+                    table.Cell().Text("Order Date:").Bold().FontSize(10);
+                    table.Cell().Text(order?.OrderDate.ToString("dd-MMM-yyyy") ?? "N/A").FontSize(10);
+
+                    table.Cell().Text("Customer:").Bold().FontSize(10);
+                    table.Cell().Text(CustomerInfo?.CustomerName ?? "N/A").FontSize(10);
+
+                    table.Cell().Text("Phone:").Bold().FontSize(10);
+                    table.Cell().Text(CustomerInfo?.Phone ?? "N/A").FontSize(10);
+
+                    table.Cell().Text("Address:").Bold().FontSize(10);
+                    table.Cell().Text(CustomerInfo?.Address ?? "N/A").FontSize(10);
+
+                    table.Cell().Text("Report Date:").Bold().FontSize(10);
+                    table.Cell().Text(DateTime.Now.ToString("dd-MM-yyyy")).FontSize(10);
+                });
+            });
+        });
+    }
+}

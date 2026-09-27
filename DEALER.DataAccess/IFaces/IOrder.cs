@@ -6,6 +6,7 @@
         bool UpdateOrder(Order order);
         bool DeleteOrder(int id);
         Task<IEnumerable<OrdersDTO>> GetAllOrders(DateTime? startDate, DateTime? endDate);
+        Task<IEnumerable<OrdersDTO>> GetAllCustomerOrders(DateTime? startDate, DateTime? endDate);
         //IList<OrdersDTO> GetAllOrderss();
         Task<Order> GetOrderById(int orderId);
         Task<OrderInfo> GetOrderInfoById(int orderId);
@@ -20,7 +21,12 @@
         OrderInfoDTO OrderInfoById(int id);
         List<(string name, double value)> GetPayment(int id);
         Task<IList<CustomerPaymentHistoryDTO>> GetCustomerPaymentHistoryById(int customerId);
+        Task<IEnumerable<CustomerOrderDetailDTO>> GetOrderDetailsByCustomerAsync(int orderId);
 
         CustomerPaymentHistoryDTO DuePayment(int id);
+
+
+        bool CreateCustomerOrder(Order order);
+        bool UpdateCustomerOrder(Order order);
     }
 }

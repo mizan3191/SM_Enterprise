@@ -337,7 +337,7 @@
                     OrderId = customerProductReturn.OrderId,
                     CustomerProductReturnId = customerProductReturn.Id,
                     PaymentDate = customerProductReturn.Date,
-                    PaymentMethodId = 1, //Product Return
+                    PaymentMethodId = 5, //Product Return
                     TransactionID = string.Empty,
                     Number = string.Empty,
                     TotalAmountThisOrder = customerProductReturn.TotalReturnPrice,

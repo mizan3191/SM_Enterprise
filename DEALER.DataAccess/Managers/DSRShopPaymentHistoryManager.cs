@@ -13,31 +13,79 @@
             try
             {
                 var existingTransaction = _dbContext.TransactionHistories
-                    .FirstOrDefault(x => x.DSRShopPaymentHistoryId == DSRShopPaymentHistory.Id);
-
-                if (existingTransaction == null)
-                    throw new Exception("Transaction history not found.");
-
-                var previousAmountPaid = existingTransaction.BalanceIn ?? 0;
-                var currentBalanceBeforeUpdate = existingTransaction.CurrentBalance ?? 0;
+                    .FirstOrDefault(x => x.DSRShopPaymentHistoryId == DSRShopPaymentHistory.Id
+                                      && !x.IsDeleted);
 
                 // Update main entity
                 _dbContext.Update(DSRShopPaymentHistory);
                 _dbContext.SaveChanges();
 
-                // Calculate new balance
                 double newAmountPaid = DSRShopPaymentHistory.AmountPaid;
-                double difference = newAmountPaid - previousAmountPaid;
 
-                existingTransaction.BalanceIn = newAmountPaid;
-                existingTransaction.CurrentBalance = currentBalanceBeforeUpdate + difference;
-                existingTransaction.Date = DSRShopPaymentHistory.PaymentDate;
+                // Case 1: New amount is 0 → no transaction history needed
+                if (newAmountPaid <= 0)
+                {
+                    // If previously a transaction history existed, soft-delete & reverse balance
+                    if (existingTransaction != null)
+                    {
+                        var previousAmountPaid = existingTransaction.BalanceIn ?? 0;
 
-                _dbContext.Update(existingTransaction);
-                _dbContext.SaveChanges();
+                        existingTransaction.IsDeleted = true;
+                        _dbContext.Update(existingTransaction);
 
-                // Optional: update related transaction history records
-                BalanceInTransactionHistories(existingTransaction.Id, difference);
+                        // Reverse the balance difference
+                        BalanceInTransactionHistories(existingTransaction.Id, -previousAmountPaid);
+                    }
+
+                    _dbContext.SaveChanges();
+                    transaction.Commit();
+                    return true;
+                }
+
+                // Case 2: New amount > 0
+                if (existingTransaction == null)
+                {
+                    // No previous transaction → create a new one
+                    var existCurrentBalance = _dbContext.TransactionHistories
+                        .AsNoTracking()
+                        .Where(x => !x.IsDeleted)
+                        .OrderByDescending(x => x.Id)
+                        .FirstOrDefault()?.CurrentBalance ?? 0;
+
+                    var newTransaction = new TransactionHistory
+                    {
+                        BalanceIn = newAmountPaid,
+                        BalanceOut = 0,
+                        CurrentBalance = existCurrentBalance + newAmountPaid,
+                        Date = DSRShopPaymentHistory.PaymentDate,
+                        DSRShopPaymentHistoryId = DSRShopPaymentHistory.Id,
+                        Resone = DSRShopPaymentHistory.Shop?.Name != null
+                                    ? $"{DSRShopPaymentHistory.Shop.Name} Shop Paid "
+                                    : $"Shop Payment",
+                    };
+
+                    _dbContext.Add(newTransaction);
+                    _dbContext.SaveChanges();
+
+                    BalanceInTransactionHistories(newTransaction.Id, newAmountPaid);
+                }
+                else
+                {
+                    // Existing transaction → update it
+                    var previousAmountPaid = existingTransaction.BalanceIn ?? 0;
+                    var currentBalanceBeforeUpdate = existingTransaction.CurrentBalance ?? 0;
+
+                    double difference = newAmountPaid - previousAmountPaid;
+
+                    existingTransaction.BalanceIn = newAmountPaid;
+                    existingTransaction.CurrentBalance = currentBalanceBeforeUpdate + difference;
+                    existingTransaction.Date = DSRShopPaymentHistory.PaymentDate;
+
+                    _dbContext.Update(existingTransaction);
+                    _dbContext.SaveChanges();
+
+                    BalanceInTransactionHistories(existingTransaction.Id, difference);
+                }
 
                 transaction.Commit();
                 return true;
@@ -48,7 +96,7 @@
                 throw;
             }
         }
-        
+
         public bool DeleteDSRShopPaymentHistory(int id)
         {
             using var transaction = _dbContext.Database.BeginTransaction();
@@ -92,10 +140,10 @@
                 if (DSRShopPaymentHistory.AmountPaid > 0)
                 {
                     var existCurrentBalance = _dbContext.TransactionHistories
-                                               .AsNoTracking()
-                                               .OrderByDescending(x => x.Id)
-                                               .FirstOrDefault()?.CurrentBalance ?? 0;
-
+                        .AsNoTracking()
+                        .Where(x => !x.IsDeleted)
+                        .OrderByDescending(x => x.Id)
+                        .FirstOrDefault()?.CurrentBalance ?? 0;
 
                     TransactionHistory transactionHistory = new()
                     {
@@ -104,7 +152,9 @@
                         CurrentBalance = existCurrentBalance + DSRShopPaymentHistory.AmountPaid,
                         Date = DSRShopPaymentHistory.PaymentDate,
                         DSRShopPaymentHistoryId = DSRShopPaymentHistory.Id,
-                        Resone = DSRShopPaymentHistory.Shop?.Name != null ? $"{DSRShopPaymentHistory.Shop.Name} Shop Paid " : $"Shop Payment",
+                        Resone = DSRShopPaymentHistory.Shop?.Name != null
+                                    ? $"{DSRShopPaymentHistory.Shop.Name} Shop Paid "
+                                    : $"Shop Payment",
                     };
 
                     _dbContext.Add(transactionHistory);
@@ -708,17 +758,69 @@
 
         public void AddEmptyCylinderPaymentHistory(EmptyCylinderPaymentHistory product)
         {
-            _dbContext.EmptyCylinderPaymentHistories.Add(product);
-            _dbContext.SaveChanges();
+            using var transaction = _dbContext.Database.BeginTransaction();
+            try
+            {
+                // Step 1: Add payment history
+                _dbContext.EmptyCylinderPaymentHistories.Add(product);
+                _dbContext.SaveChanges();
+
+                // Step 2: Update stock (EmptyCylinder receive korle EmptyQty barbe)
+                var stock = _dbContext.ProductStocks
+                    .FirstOrDefault(s => s.ProductId == product.ProductId);
+
+                if (stock == null)
+                {
+                    stock = new ProductStock
+                    {
+                        ProductId = product.ProductId,
+                        LoadedQty = 0,
+                        EmptyQty = 0
+                    };
+                    _dbContext.ProductStocks.Add(stock);
+                }
+
+                // Empty cylinder receive korle stock e EmptyQty += Quantity
+                stock.EmptyQty += product.CylinderQty;
+
+                _dbContext.SaveChanges();
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
 
         public void DeleteEmptyCylinderPaymentHistory(int id)
         {
-            var entity = _dbContext.EmptyCylinderPaymentHistories.Find(id);
-            if (entity != null)
+            using var transaction = _dbContext.Database.BeginTransaction();
+            try
             {
+                var entity = _dbContext.EmptyCylinderPaymentHistories.Find(id);
+                if (entity == null)
+                    return;
+
+                // Step 1: Remove payment history
                 _dbContext.EmptyCylinderPaymentHistories.Remove(entity);
+
+                // Step 2: Reverse stock update (Delete korle EmptyQty kombe)
+                var stock = _dbContext.ProductStocks
+                    .FirstOrDefault(s => s.ProductId == entity.ProductId);
+
+                if (stock != null)
+                {
+                    stock.EmptyQty -= entity.CylinderQty;
+                }
+
                 _dbContext.SaveChanges();
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
             }
         }
 

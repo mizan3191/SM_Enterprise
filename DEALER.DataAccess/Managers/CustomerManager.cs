@@ -208,6 +208,21 @@
 
         }
 
+        public async Task<CustomerInfo> GetCustomerInfoById(int customerId)
+        {
+            // Replace _context with your actual DbContext name
+            var customer = await _dbContext.Customers
+                .Where(c => c.Id == customerId)
+                .Select(c => new CustomerInfo
+                {
+                    CustomerId = c.Id,
+                    CustomerName = c.Name,
+                    Phone = c.Phone,
+                    Address = c.Address
+                })
+                .FirstOrDefaultAsync();
+            return customer;
+        }
 
         #region Customer
 

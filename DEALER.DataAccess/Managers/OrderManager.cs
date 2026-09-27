@@ -361,7 +361,7 @@ namespace DEALER.DataAccess
 
 
                 var orders = await _dbContext.Orders
-                    .Where(x => !x.IsDeleted && x.Date.Date >= fromDate && x.Date.Date <= toDate)
+                    .Where(x => !x.IsDeleted && x.Date.Date >= fromDate && x.Date.Date <= toDate && x.CustomerId == null)
                     .Include(o => o.Employee)
                     .Include(o => o.OrderDetails)
                     .Include(o => o.CustomerPaymentHistories)
@@ -514,6 +514,36 @@ namespace DEALER.DataAccess
             }
         }
 
+        public async Task<IEnumerable<CustomerOrderDetailDTO>> GetOrderDetailsByCustomerAsync(int orderId)
+        {
+            var result = await _dbContext.OrderDetails
+                .Include(od => od.Order)
+                .Include(od => od.Product)
+                .Where(od => od.Order.Id == orderId
+                          && !od.Order.IsDeleted)
+                .OrderByDescending(od => od.Order.Date)
+                .Select(od => new CustomerOrderDetailDTO
+                {
+                    OrderId = od.Order.Id,
+                    OrderDate = od.Order.Date,
+                    ProductName = od.Product.Name,
+                    GasUnitPrice = od.GasUnitPrice,
+                    CylinderUnitPrice = od.CylinderUnitPrice,
+                    ReturnQuantity = od.ReturnQuantity ?? 0,
+                    Quantity = od.Quantity,
+                    Discount = od.Discount,
+                    Price = od.Price,
+                    // Order-level snapshot (per row, DistinctBy দিয়ে sum করতে হবে)
+                    OrderTotalAmount = od.Order.TotalAmount,
+                    OrderTotalPay = od.Order.TotalPay,
+                    OrderTotalDue = od.Order.TotalDue,
+                    OrderDiscount = od.Order.Discount,
+                    DeliveryCharge = od.Order.DeliveryCharge
+                })
+                .ToListAsync();
+            return result;
+        }
+
         public List<(string name, double value)> GetPayment(int id)
         {
             var order = _dbContext.Orders.FirstOrDefault(o => o.Id == id);
@@ -643,6 +673,302 @@ namespace DEALER.DataAccess
             catch (Exception ex)
             {
                 return Enumerable.Empty<CustomerDueDTO>();
+            }
+        }
+
+        // ============================================================
+        // OrderManager.cs — নিচের দুটো method যোগ করুন
+        // ============================================================
+
+        public bool CreateCustomerOrder(Order order)
+        {
+            if (order == null || order.OrderDetails == null || !order.OrderDetails.Any())
+                return false;
+
+            using var transaction = _dbContext.Database.BeginTransaction();
+
+            try
+            {
+                // ── Step 1: Order insert ──────────────────────────────
+                _dbContext.Orders.Add(order);
+                _dbContext.SaveChanges();
+
+                // ── Step 2: Order details + Stock ────────────────────
+                foreach (var item in order.OrderDetails)
+                {
+                    item.OrderId = order.Id;
+
+                    var stock = _dbContext.ProductStocks
+                        .FirstOrDefault(x => x.ProductId == item.ProductId);
+
+                    if (stock == null)
+                        throw new Exception($"Stock info not found for product {item.ProductId}");
+
+                    if (stock.LoadedQty < item.Quantity)
+                        throw new Exception($"Insufficient loaded cylinder stock for product {item.ProductId}");
+
+                    ApplyStockForSale(stock, item);
+                }
+
+                _dbContext.SaveChanges();
+
+                // ── Step 3: Customer Payment History ─────────────────
+                // Customer-এর সর্বশেষ due balance বের করো
+                var previousDue = _dbContext.CustomerPaymentHistories
+                    .Where(x => x.CustomerId == order.CustomerId && !x.IsDeleted)
+                    .OrderByDescending(x => x.Id)
+                    .Select(x => (double?)x.TotalDueAfterPayment)
+                    .FirstOrDefault() ?? 0;
+
+                var totalDueAfterPayment = previousDue + order.TotalAmount - order.TotalPay;
+
+                var paymentHistory = new CustomerPaymentHistory
+                {
+                    CustomerId = order.CustomerId ?? 0,          // Customer ID
+                    OrderId = order.Id,
+                    TotalAmountThisOrder = order.TotalAmount,
+                    AmountPaid = order.TotalPay,
+                    TotalDueBeforePayment = previousDue,
+                    TotalDueAfterPayment = totalDueAfterPayment,
+                    PaymentDate = order.Date,
+                    PaymentMethodId = order.PaymentMethodId,
+                };
+
+                _dbContext.CustomerPaymentHistories.Add(paymentHistory);
+                _dbContext.SaveChanges();
+
+                // ── Step 4: Transaction History (cash-in) ────────────
+                if (order.TotalPay > 0)
+                {
+                    var lastBalance = _dbContext.TransactionHistories
+                        .Where(x => !x.IsDeleted)
+                        .OrderByDescending(x => x.Id)
+                        .Select(x => x.CurrentBalance)
+                        .FirstOrDefault() ?? 0;
+
+                    _dbContext.TransactionHistories.Add(new TransactionHistory
+                    {
+                        BalanceIn = order.TotalPay,
+                        BalanceOut = 0,
+                        CurrentBalance = lastBalance + order.TotalPay,
+                        Date = order.Date,
+                        OrderId = order.Id,
+                        Resone = "Customer Sales"
+                    });
+
+                    _dbContext.SaveChanges();
+                }
+
+                transaction.Commit();
+                return true;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+
+        public bool UpdateCustomerOrder(Order order)
+        {
+            using var transaction = _dbContext.Database.BeginTransaction();
+
+            try
+            {
+                // ── Step 1: Snapshot (untracked) ─────────────────────
+                var existingOrderData = _dbContext.Orders
+                    .Include(o => o.OrderDetails)
+                    .AsNoTracking()
+                    .FirstOrDefault(o => o.Id == order.Id);
+
+                // ── Tracked entity ───────────────────────────────────
+                var existingOrder = _dbContext.Orders
+                    .Include(o => o.OrderDetails)
+                    .FirstOrDefault(o => o.Id == order.Id);
+
+                if (existingOrder == null)
+                    return false;
+
+                // ── Step 2: পুরনো stock reverse ──────────────────────
+                var oldDetails = existingOrderData?.OrderDetails ?? new List<OrderDetail>();
+                foreach (var oldDetail in oldDetails)
+                {
+                    var stock = _dbContext.ProductStocks
+                        .FirstOrDefault(x => x.ProductId == oldDetail.ProductId);
+
+                    if (stock != null)
+                        ReverseStockForSale(stock, oldDetail);
+                }
+
+                // ── Step 3: Order header update ───────────────────────
+                existingOrder.Date = order.Date;
+                existingOrder.TotalPay = order.TotalPay;
+                existingOrder.TotalAmount = order.TotalAmount;
+                existingOrder.TotalDue = order.TotalDue;
+                existingOrder.Discount = order.Discount;
+                existingOrder.PaymentMethodId = order.PaymentMethodId;
+                existingOrder.CustomerId = order.CustomerId;
+                existingOrder.EmployeeId = order.EmployeeId;
+                existingOrder.OrderDetails = order.OrderDetails;
+
+                _dbContext.SaveChanges();
+
+                // ── Step 4: নতুন stock apply ─────────────────────────
+                foreach (var newDetail in existingOrder.OrderDetails)
+                {
+                    var stock = _dbContext.ProductStocks
+                        .FirstOrDefault(x => x.ProductId == newDetail.ProductId);
+
+                    if (stock == null)
+                        throw new Exception($"Stock info not found for product {newDetail.ProductId}");
+
+                    if (stock.LoadedQty < newDetail.Quantity)
+                        throw new Exception($"Insufficient loaded cylinder stock for product {newDetail.ProductId}");
+
+                    ApplyStockForSale(stock, newDetail);
+                }
+
+                _dbContext.SaveChanges();
+
+                // ── Step 5: Customer Payment History update ───────────
+                var existingPaymentHistory = _dbContext.CustomerPaymentHistories
+                    .FirstOrDefault(x => x.OrderId == order.Id && !x.IsDeleted);
+
+                // এই order-এর আগের (অন্য order-এর) সর্বশেষ due
+                var previousDue = _dbContext.CustomerPaymentHistories
+                    .Where(x => x.CustomerId == (order.CustomerId ?? 0)
+                             && !x.IsDeleted
+                             && (existingPaymentHistory == null || x.Id != existingPaymentHistory.Id))
+                    .OrderByDescending(x => x.Id)
+                    .Select(x => (double?)x.TotalDueAfterPayment)
+                    .FirstOrDefault() ?? 0;
+
+                var totalDueAfterPayment = previousDue + order.TotalAmount - order.TotalPay;
+
+                if (existingPaymentHistory != null)
+                {
+                    existingPaymentHistory.TotalAmountThisOrder = order.TotalAmount;
+                    existingPaymentHistory.AmountPaid = order.TotalPay;
+                    existingPaymentHistory.TotalDueBeforePayment = previousDue;
+                    existingPaymentHistory.TotalDueAfterPayment = totalDueAfterPayment;
+                    existingPaymentHistory.PaymentDate = order.Date;
+                    existingPaymentHistory.PaymentMethodId = order.PaymentMethodId;
+                }
+                else
+                {
+                    _dbContext.CustomerPaymentHistories.Add(new CustomerPaymentHistory
+                    {
+                        CustomerId = order.CustomerId ?? 0,
+                        OrderId = order.Id,
+                        TotalAmountThisOrder = order.TotalAmount,
+                        AmountPaid = order.TotalPay,
+                        TotalDueBeforePayment = previousDue,
+                        TotalDueAfterPayment = totalDueAfterPayment,
+                        PaymentDate = order.Date,
+                        PaymentMethodId = order.PaymentMethodId,
+                    });
+                }
+
+                _dbContext.SaveChanges();
+
+                // ── Step 6: Transaction History update ───────────────
+                if (order.TotalPay > 0)
+                {
+                    var existingTxHistory = _dbContext.TransactionHistories
+                        .FirstOrDefault(x => x.OrderId == order.Id && !x.IsDeleted);
+
+                    var lastBalance = _dbContext.TransactionHistories
+                        .Where(x => !x.IsDeleted
+                                 && (existingTxHistory == null || x.Id != existingTxHistory.Id))
+                        .OrderByDescending(x => x.Id)
+                        .Select(x => x.CurrentBalance)
+                        .FirstOrDefault() ?? 0;
+
+                    if (existingTxHistory != null)
+                    {
+                        existingTxHistory.BalanceIn = order.TotalPay;
+                        existingTxHistory.BalanceOut = 0;
+                        existingTxHistory.CurrentBalance = lastBalance + order.TotalPay;
+                        existingTxHistory.Date = order.Date;
+                        existingTxHistory.Resone = "Customer Sales Updated";
+                    }
+                    else
+                    {
+                        _dbContext.TransactionHistories.Add(new TransactionHistory
+                        {
+                            BalanceIn = order.TotalPay,
+                            BalanceOut = 0,
+                            CurrentBalance = lastBalance + order.TotalPay,
+                            Date = order.Date,
+                            OrderId = order.Id,
+                            Resone = "Customer Sales"
+                        });
+                    }
+
+                    _dbContext.SaveChanges();
+                }
+                else
+                {
+                    // TotalPay == 0 হলে transaction history সরিয়ে দাও
+                    var existingTxHistory = _dbContext.TransactionHistories
+                        .FirstOrDefault(x => x.OrderId == order.Id && !x.IsDeleted);
+
+                    if (existingTxHistory != null)
+                    {
+                        _dbContext.TransactionHistories.Remove(existingTxHistory);
+                        _dbContext.SaveChanges();
+                    }
+                }
+
+                transaction.Commit();
+                return true;
+            }
+            catch
+            {
+                transaction.Rollback();
+                return false;
+            }
+        }
+
+        // ============================================================
+        // ২. OrderManager.cs-এ এই method যোগ করুন:
+        // ============================================================
+        public async Task<IEnumerable<OrdersDTO>> GetAllCustomerOrders(DateTime? startDate, DateTime? endDate)
+        {
+            try
+            {
+                DateTime fromDate = startDate.HasValue
+                    ? new DateTime(startDate.Value.Year, startDate.Value.Month, startDate.Value.Day, 0, 0, 0)
+                    : DateTime.Today.AddDays(-30);
+                DateTime toDate = endDate.HasValue
+                    ? new DateTime(endDate.Value.Year, endDate.Value.Month, endDate.Value.Day, 23, 59, 59)
+                    : DateTime.Today.AddDays(1).AddSeconds(-1);
+                var orders = await _dbContext.Orders
+                    .Where(x => !x.IsDeleted
+                             && x.CustomerId != null
+                             && x.Date.Date >= fromDate
+                             && x.Date.Date <= toDate)
+                    .Include(o => o.Customer)
+                    .Include(o => o.Employee)
+                    .Select(o => new OrdersDTO
+                    {
+                        Id = o.Id,
+                        Name = o.Customer != null ? o.Customer.Name : "—",   // Customer নাম
+                        EmployeeId = o.CustomerId ?? 0,                             // Edit-এর জন্য CustomerId
+                        Address = o.Employee != null ? o.Employee.Name : "—",   // Staff নাম (Address column-এ)
+                        OrderDate = o.Date,
+                        TotalPrice = o.TotalDue,
+                        IsLock = false   // Customer list-এ lock নেই
+                    })
+                    .OrderByDescending(o => o.OrderDate)
+                    .ToListAsync();
+                return orders;
+            }
+            catch (Exception ex)
+            {
+                return Enumerable.Empty<OrdersDTO>();
             }
         }
     }

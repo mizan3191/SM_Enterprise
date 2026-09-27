@@ -1,0 +1,231 @@
+﻿@page "/EmployeeDailySales"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<Message @ref="notificationComponent" />
+<h3>Employee Daily Sales Summary</h3>
+
+@if (SalesList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <!-- Search -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i>
+                </span>
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search employee..."
+                               @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+
+            <div class="flex-grow-1"></div>
+
+            <!-- Date Filter -->
+            <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center me-3">
+                    <RadzenDatePicker @bind-Value="fromDate" DateFormat="yyyy-MM-dd" Placeholder="Select Start Date"
+                                      Style="width: 180px;" />
+                </div>
+                <div class="d-flex align-items-center">
+                    <RadzenDatePicker @bind-Value="toDate" DateFormat="yyyy-MM-dd" Placeholder="Select End Date"
+                                      Style="width: 180px;" />
+                </div>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@FilterSalesList"
+                        TItem="EmployeeDailySalesSummaryDTO"
+                        PageSize="10"
+                        AllowPaging="true"
+                        AllowSorting="true"
+                        AllowGrouping="true"
+                        AllowFiltering="true">
+            <Columns>
+                <RadzenDataGridColumn TItem="EmployeeDailySalesSummaryDTO" Property="@nameof(EmployeeDailySalesSummaryDTO.DateFormatted)" Title="Date" Width="110px" />
+                <RadzenDataGridColumn TItem="EmployeeDailySalesSummaryDTO" Property="@nameof(EmployeeDailySalesSummaryDTO.EmployeeName)" Title="Employee" Width="180px" />
+
+                <RadzenDataGridColumn TItem="EmployeeDailySalesSummaryDTO" Title="Total Sales (Pcs)" Width="140px">
+                    <Template Context="item"><div>@item.TotalQuantity</div></Template>
+                    <FooterTemplate><div class="fw-bold">@FilterSalesList.Sum(o => o.TotalQuantity)</div></FooterTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="EmployeeDailySalesSummaryDTO" Title="Total Amount" Width="120px" TextAlign="TextAlign.Right">
+                    <Template Context="item"><div>@item.TotalAmount.ToString("N2")</div></Template>
+                    <FooterTemplate><div class="text-end fw-bold">@FilterSalesList.Sum(o => o.TotalAmount).ToString("N2")</div></FooterTemplate>
+                </RadzenDataGridColumn>
+
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Inject] private ILookup m_Lookup { get; set; }
+    [Inject] private IJSRuntime JSRuntime { get; set; }
+
+    public IEnumerable<EmployeeDailySalesSummaryDTO> SalesList { get; set; } = new List<EmployeeDailySalesSummaryDTO>();
+    public IEnumerable<EmployeeDailySalesSummaryDTO> FilterSalesList { get; set; } = new List<EmployeeDailySalesSummaryDTO>();
+
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private string search = string.Empty;
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SalesList = await m_Lookup.GetEmployeeDailySalesSummary(null, null);
+        FilterSalesList = SalesList;
+    }
+
+    public DateTime? fromDate
+    {
+        get => _fromDate;
+        set { if (_fromDate != value) { _fromDate = value; LoadData(); } }
+    }
+
+    public DateTime? toDate
+    {
+        get => _toDate;
+        set { if (_toDate != value) { _toDate = value; LoadData(); } }
+    }
+
+    private async void LoadData()
+    {
+        SalesList = await m_Lookup.GetEmployeeDailySalesSummary(fromDate, toDate);
+        FilterSalesList = SalesList;
+        FilterData();
+        StateHasChanged();
+    }
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterSalesList = SalesList;
+        }
+        else
+        {
+            FilterSalesList = SalesList.Where(c =>
+                (!string.IsNullOrEmpty(c.EmployeeName) && c.EmployeeName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                c.TotalQuantity.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(c.DateFormatted) && c.DateFormatted.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            var filterFrom = fromDate?.Date ?? DateTime.MinValue;
+            var filterTo = toDate?.Date.AddDays(1) ?? DateTime.MaxValue;
+
+            FilterSalesList = FilterSalesList.Where(x =>
+                x.Date.Date >= filterFrom && x.Date.Date < filterTo).ToList();
+        }
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterSalesList, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.MarginTop(20);
+                page.MarginBottom(20);
+                page.MarginLeft(40);
+                page.MarginRight(40);
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(2); // Date
+                            columns.RelativeColumn(3); // Employee
+                            columns.RelativeColumn(2); // Total Sales
+                            columns.RelativeColumn(2); // Total Amount
+                        });
+
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Employee").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Total Sales").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Total Amt").Bold();
+                        });
+
+                        foreach (var item in FilterSalesList)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.DateFormatted);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.EmployeeName);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.TotalQuantity.ToString());
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.TotalAmount.ToString("0.00"));
+                        }
+
+                        // Total Row
+                        table.Cell().ColumnSpan(2).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total:").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSalesList.Sum(x => x.TotalQuantity)}").Bold();
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilterSalesList.Sum(x => x.TotalAmount):N2}").Bold();
+                    });
+
+                page.Footer().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignCenter().Text(text =>
+                    {
+                        text.CurrentPageNumber();
+                        text.Span(" / ");
+                        text.TotalPages();
+                    });
+                    row.RelativeItem();
+                });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"EmployeeDailySales_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text($"Employee Daily Sales Summary").Bold().FontSize(10);
+            });
+        });
+    }
+}

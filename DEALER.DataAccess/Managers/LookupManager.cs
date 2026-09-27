@@ -293,7 +293,7 @@ namespace DEALER.DataAccess
             try
             {
                 return await _dbContext.PaymentMethod
-                    .Where(x => x.Id < 10 || x.Id > 15 && !x.IsDeleted)
+                    .Where(x => x.Id >= 10 && !x.IsDeleted)
                      .Select(x => new Lov
                      {
                          Id = x.Id,
@@ -1262,7 +1262,7 @@ namespace DEALER.DataAccess
             try
             {
                 return await _dbContext.PaymentMethod
-                    .Where(x => x.Id < 10 || x.Id > 15)
+                    .Where(x => x.Id >= 10)
                     .OrderBy(x => x.Name)
                     .ToListAsync();
             }
@@ -1548,6 +1548,66 @@ namespace DEALER.DataAccess
             }
         }
 
+        public async Task<IList<EmployeeDailySalesSummaryDTO>> GetEmployeeDailySalesSummary(
+    DateTime? startDate = null,
+    DateTime? endDate = null)
+        {
+            try
+            {
+                // Date na dile default 30 din
+                DateTime fromDate = startDate?.Date ?? DateTime.Today.AddDays(-30);
+                DateTime toDate = endDate?.Date.AddDays(1).AddSeconds(-1)
+                                    ?? DateTime.Today.AddDays(1).AddSeconds(-1);
+
+                var orderDetails = await _dbContext.OrderDetails
+                    .Include(od => od.Order)
+                        .ThenInclude(o => o.Employee)
+                    .Where(od => !od.Order.IsDeleted
+                              && od.Order.Date >= fromDate
+                              && od.Order.Date <= toDate)
+                    .Select(od => new
+                    {
+                        OrderDate = od.Order.Date,
+                        EmployeeName = od.Order.Employee != null ? od.Order.Employee.Name : "Unknown",
+                        od.Quantity,
+                        od.Price,
+                    })
+                    .ToListAsync();
+
+                if (!orderDetails.Any())
+                    return new List<EmployeeDailySalesSummaryDTO>();
+
+                // Group by Date + Employee
+                var result = orderDetails
+                    .GroupBy(x => new
+                    {
+                        Date = x.OrderDate.Date,
+                        x.EmployeeName
+                    })
+                    .Select(g =>
+                    {
+                        var totalQty = g.Sum(x => x.Quantity);
+                        var totalAmount = g.Sum(x => x.Price);
+
+                        return new EmployeeDailySalesSummaryDTO
+                        {
+                            Date = g.Key.Date,
+                            EmployeeName = g.Key.EmployeeName,
+                            TotalQuantity = totalQty,
+                            TotalAmount = totalAmount,
+                        };
+                    })
+                    .OrderByDescending(x => x.Date)
+                    .ThenBy(x => x.EmployeeName)
+                    .ToList();
+
+                return result;
+            }
+            catch
+            {
+                return new List<EmployeeDailySalesSummaryDTO>();
+            }
+        }
 
         public async Task<IList<DSRSalesReturnDTO>> GetDSRAllSalesReturn(DateTime? startDate, DateTime? endDate)
         {

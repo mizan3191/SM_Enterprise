@@ -79,10 +79,19 @@ INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (3, 'Internet 
 INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (4, 'Staff Salary', 'Salaries for staff members',0);
 INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (7, 'Home Rent', 'Monthly house rent',0);
 
-INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (1, N'Cash', N'Cash',0)
-INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (2, N'bKash', N'bKash',0)
-INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (3, N'Nagad', N'Nagad',0)
-INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (4, N'Rocket', N'Rocket',0)
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (1, N'Empty Cylinder Return', N'Empty Cylinder Return',0)
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (2, N'Daily Expense', N'Daily Expense',0)
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (3, N'Shop Due', N'Shop Due',0)
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (4, N'Payment in Order', N'Payment in Order',0)
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (5, N'Product Return', N'Product Return',0)
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (6, N'bKash', N'bKash',0)
+
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (10, N'Cash', N'Cash',0)
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (11, N'bKash', N'bKash',0)
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (12, N'Nagad', N'Nagad',0)
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (13, N'Rocket', N'Rocket',0)
+INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (14, N'Bank', N'Bank',0)
+
 
 INSERT INTO ShippingMethod (Id, Name, Description, IsDeleted) VALUES (1, 'Self Pickup', 'Customer picks up the product from the store',0);
 INSERT INTO ShippingMethod (Id, Name, Description, IsDeleted) VALUES (2, 'Bike/biCycle Delivery', 'Local delivery using a bicycle or motorbike',0);

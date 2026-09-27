@@ -88,7 +88,7 @@
                         OrderId = extraReturnProduct.OrderId,
                         ExtraReturnProductId = extraReturnProduct.Id,
                         PaymentDate = extraReturnProduct.Date,
-                        PaymentMethodId = 1, // Return/Adjustment
+                        PaymentMethodId = 1, // Empty Cylinder Return
                         TransactionID = string.Empty,
                         Number = string.Empty,
                         TotalAmountThisOrder = extraReturnProduct.TotalAmount,
@@ -214,7 +214,7 @@
                             OrderId = extraReturnProduct.OrderId,
                             ExtraReturnProductId = extraReturnProduct.Id,
                             PaymentDate = extraReturnProduct.Date,
-                            PaymentMethodId = 11,
+                            PaymentMethodId = 1, //Empty Cylinder Return
                             TransactionID = string.Empty,
                             Number = string.Empty,
                             TotalAmountThisOrder = extraReturnProduct.TotalAmount,

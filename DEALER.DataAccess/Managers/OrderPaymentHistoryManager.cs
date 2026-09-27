@@ -194,7 +194,7 @@
                     OrderId = OrderPaymentHistory.OrderId,
                     OrderPaymentHistoryId = OrderPaymentHistory.Id,
                     PaymentDate = OrderPaymentHistory.Date,
-                    PaymentMethodId = 1,
+                    PaymentMethodId = 4, //Payment in Order
                     TransactionID = string.Empty,
                     Number = string.Empty,
                     TotalAmountThisOrder = 0,

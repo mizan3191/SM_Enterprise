@@ -1,7 +1,7 @@
 ﻿@page "/Sale"
 @page "/Sale/{Id:int}"
-@page "/Sale/{Id:int}/{CustomerId:int}"
-@page "/Sale/{Id:int}/{CustomerId:int}/{OrderId:int}"
+@page "/Sale/{Id:int}/{EmployeeId:int}"
+@page "/Sale/{Id:int}/{EmployeeId:int}/{OrderId:int}"
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject NotificationService NotificationService
@@ -21,49 +21,44 @@
 
             .dataForm .table th:nth-child(1), /* Product */
             .dataForm .table td:nth-child(1) {
-                width: 30%;
+                width: 35%;
             }
 
-            .dataForm .table th:nth-child(2), /* Return Qty (Empty) */
+            .dataForm .table th:nth-child(2), /* Qty (Loaded) */
             .dataForm .table td:nth-child(2) {
                 width: 10%;
             }
 
-            .dataForm .table th:nth-child(3), /* Qty (Loaded) */
+            .dataForm .table th:nth-child(3), /* Cylinder U/P */
             .dataForm .table td:nth-child(3) {
                 width: 10%;
             }
 
-            .dataForm .table th:nth-child(4), /* Cylinder U/P (Read-only) */
+            .dataForm .table th:nth-child(4), /* Gas U/P */
             .dataForm .table td:nth-child(4) {
-                width: 10%;
-            }
-
-            .dataForm .table th:nth-child(5), /* Gas U/P (Read-only) */
-            .dataForm .table td:nth-child(5) {
                 width: 12%;
             }
 
-            .dataForm .table th:nth-child(6), /* Dis% */
-            .dataForm .table td:nth-child(6) {
+            .dataForm .table th:nth-child(5), /* Dis% */
+            .dataForm .table td:nth-child(5) {
                 width: 8%;
             }
 
-            .dataForm .table th:nth-child(7), /* Price */
-            .dataForm .table td:nth-child(7) {
-                width: 15%;
+            .dataForm .table th:nth-child(6), /* Price */
+            .dataForm .table td:nth-child(6) {
+                width: 20%;
             }
 
-            .dataForm .table th:nth-child(8), /* Action */
-            .dataForm .table td:nth-child(8) {
+            .dataForm .table th:nth-child(7), /* Action */
+            .dataForm .table td:nth-child(7) {
                 width: 5%;
             }
 
-            .dataForm .table td:nth-child(7) {
+            .dataForm .table td:nth-child(6) {
                 text-align: right;
             }
 
-        .dataForm .table tfoot td:nth-child(7) {
+        .dataForm .table tfoot td:nth-child(6) {
             text-align: right;
         }
 
@@ -133,8 +128,7 @@
         <thead>
             <tr>
                 <th>Product</th>
-                <th>Return Qty<br /><small>(Empty)</small></th>
-                <th>Qty<br /><small>(Loaded)</small></th>
+                <th>Qty</th>
                 <th>Cyl. U/P</th>
                 <th>Gas U/P</th>
                 <th>Dis%</th>
@@ -159,14 +153,6 @@
                                         Change="@(args => OnProductChanged(orderDetail, args))">
                             <Template Context="product">@product.DisplayNameSize</Template>
                         </RadzenDropDown>
-                    </td>
-
-                    <td>
-                        <input type="number"
-                               min="0"
-                               value="@orderDetail.ReturnQuantity"
-                               @oninput="(e) => OnReturnQuantityChanged(orderDetail, e)"
-                               class="form-control" />
                     </td>
 
                     <td>
@@ -215,7 +201,7 @@
 
         <tfoot>
             <tr>
-                <td colspan="6" class="text-end"><strong>Subtotal:</strong></td>
+                <td colspan="5" class="text-end"><strong>Subtotal:</strong></td>
                 <td class="text-end"><strong>@SubtotalAmount.ToString("N2")</strong></td>
                 <td></td>
             </tr>
@@ -224,88 +210,6 @@
 </div>
 
 <div class="card dataForm">
-
-    <div class="row m-3">
-        <div class="col-md-4 mb-3">
-            <div class="form-check">
-                <input class="form-check-input"
-                       type="checkbox"
-                       id="isNewCustomer"
-                       @bind="IsNewCustomer" />
-
-                <label class="form-check-label" for="isNewCustomer">
-                    Is New Customer?
-                </label>
-            </div>
-        </div>
-    </div>
-
-    @if (IsNewCustomer)
-    {
-        <!-- New Customer -->
-        <div class="row m-3">
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Name</label>
-                <input type="text"
-                       class="form-control"
-                       @bind="NewCustomerName"
-                       placeholder="Customer Name" />
-            </div>
-
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Phone</label>
-                <input type="text"
-                       class="form-control"
-                       @bind="NewCustomerPhone"
-                       placeholder="Phone Number" />
-            </div>
-
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Address</label>
-                <input type="text"
-                       class="form-control"
-                       @bind="NewCustomerAddress"
-                       placeholder="Customer Address" />
-            </div>
-        </div>
-    }
-    else
-    {
-        <!-- Existing Customer -->
-        <div class="row m-3">
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Customer</label>
-
-                <RadzenDropDown @bind-Value="Order.CustomerId"
-                                Data="@FilteredCustomerList"
-                                TextProperty="Name"
-                                ValueProperty="Id"
-                                Placeholder="Search Customer (Name / Phone)"
-                                Class="w-100"
-                                AllowFiltering="true"
-                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                                FilterOperator="StringFilterOperator.Contains"
-                                FilterDelay="0"
-                                LoadData="@OnLoadData">
-
-                    <Template Context="item">
-                        <div style="padding: 4px 0;">
-                            <div style="font-weight: 600; font-size: 0.95em;">
-                                @((item as Lovd)?.Name)
-                            </div>
-
-                            <div style="color: #888; font-size: 0.82em;">
-                                📞 @((item as Lovd)?.Desc)
-                            </div>
-                        </div>
-                    </Template>
-
-                </RadzenDropDown>
-            </div>
-        </div>
-    }
-
-
     <div class="row m-3">
         <div class="col-md-4 mb-3">
             <label class="form-label">Staff</label>
@@ -325,87 +229,8 @@
             <RadzenDatePicker @bind-Value="Order.Date" DateFormat="yyyy-MM-dd" Class="w-100" />
         </div>
     </div>
-
-    <div class="row m-3">
-        <hr />
-        <div class="col-md-4 mb-3">
-            <label for="paymentMethod" class="form-label">Payment Method</label>
-
-            <RadzenDropDown @bind-Value="Order.PaymentMethodId"
-                            Data="@PaymentMethodList"
-                            TextProperty="Name"
-                            ValueProperty="Id"
-                            Placeholder="Select Payment Method"
-                            Class="w-100"
-                            AllowFiltering="true"
-                            AllowClear="true"
-                            Change="OnPaymentMethodChanged"
-                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
-
-        </div>
-        <div class="col-md-4 mb-3">
-            <label for="billDiscount" class="form-label">Discount</label>
-            <input id="billDiscount"
-                   type="number"
-                   class="form-control"
-                   @bind="Order.Discount"
-                   @onblur="CalculateTotals"
-                   min="0"
-                   step="0.01" />
-
-        </div>
-        <div class="col-md-4 mb-3">
-            <label for="totalAmount" class="form-label">Total Amount</label>
-            <input id="totalAmount"
-                   type="number"
-                   class="form-control"
-                   value="@Order.TotalAmount.ToString("F2")" readonly />
-        </div>
-    </div>
-
-    <div class="row m-3">
-        <div class="col-md-4 mb-3">
-            <label for="totalPay" class="form-label">Total Paid</label>
-            <input id="totalPay"
-                   type="number"
-                   class="form-control"
-                   @bind="Order.TotalPay"
-                   @onblur="TotalPay"
-                   min="0"
-                   step="0.01" />
-        </div>
-
-        <div class="col-md-4 mb-3">
-            <label for="totalDue" class="form-label">Total Due</label>
-            <input id="totalDue"
-                   type="number"
-                   class="form-control"
-                   value="@Order.TotalDue.ToString("F2")" readonly />
-        </div>
-    </div>
-
-    <div class="row m-3">
-        <hr />
-        <div class="col-md-4 mb-3">
-            <label for="paidAmount" class="form-label">Given Amount</label>
-            <input id="paidAmount"
-                   type="number"
-                   class="form-control"
-                   @bind="PaidAmount"
-                   @onblur="CalculateChange"
-                   min="0"
-                   step="0.01" />
-        </div>
-
-        <div class="col-md-4 mb-3">
-            <label for="changeAmount" class="form-label">Return Amount</label>
-            <input id="changeAmount"
-                   type="text"
-                   class="form-control"
-                   value="@ChangeAmount.ToString("F2")" readonly />
-        </div>
-    </div>
 </div>
+
 <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Click="SaveOrder" class="mt-2 mb-2" />
 <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
 @code {
@@ -414,7 +239,7 @@
 
     
     [Parameter]
-    public int CustomerId { get; set; }
+    public int EmployeeId { get; set; }
 
     [Parameter]
     public int? OrderId { get; set; }
@@ -433,8 +258,8 @@
     private IEnumerable<Lov> PaymentMethodList { get; set; } = new List<Lov>();
     private IEnumerable<ExistingOrderDTO> ExistingOrderStockList { get; set; } = new List<ExistingOrderDTO>();
 
-    private IList<Lovd> CustomerList = new List<Lovd>();
-    private IList<Lovd> FilteredCustomerList = new List<Lovd>();
+   // private IList<Lovd> CustomerList = new List<Lovd>();
+   // private IList<Lovd> FilteredCustomerList = new List<Lovd>();
 
     public Order Order { get; set; } = new();
 
@@ -471,14 +296,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        CustomerList = await m_Lookup.GetAllCustomerList();
+       // CustomerList = await m_Lookup.GetAllCustomerList();
         PaymentMethodList = await m_Lookup.GetAllPaymentMethodList();
         SupplierList = await m_Lookup.GetAllSupplierList();
 
         EmployeeList = await m_Lookup.GetAllEmployeeList();
         //EmployeeList = personList.Where(x => x.Desc == "Staff").ToList();
 
-        FilteredCustomerList = CustomerList; // Initially show all
+      //  FilteredCustomerList = CustomerList; // Initially show all
 
         AllProducts = await m_Product.GetAllProduct();
         Products = AllProducts.Where(x => !x.Supplier.IsDisable).ToList();
@@ -512,31 +337,6 @@
         }
 
         SelectedProductIds = new List<int>();
-    }
-
-    // Customer search filters as you type, matching either Name or Phone (Desc)
-    private async Task OnLoadData(LoadDataArgs args)
-    {
-        await Task.Run(() =>
-        {
-            var filter = args.Filter?.ToLower() ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(filter))
-            {
-                FilteredCustomerList = CustomerList;
-            }
-            else
-            {
-                FilteredCustomerList = CustomerList
-                    .Where(x =>
-                        (x.Name != null && x.Name.ToLower().Contains(filter)) ||
-                        (x.Desc != null && x.Desc.ToLower().Contains(filter))
-                    )
-                    .ToList();
-            }
-        });
-
-        await InvokeAsync(StateHasChanged);
     }
 
     private void AddProducts()
@@ -738,27 +538,6 @@
             return;
         }
 
-        // Customer handling
-        if (Order.CustomerId.HasValue && Order.CustomerId.Value > 0)
-        {
-            // Existing customer selected — no action needed
-        }
-        else
-        {
-            if (!string.IsNullOrWhiteSpace(NewCustomerName))
-            {
-                var newCustomer = new Customer
-                {
-                    CustomerTypeId = 1,
-                    Name = NewCustomerName.Trim(),
-                    Phone = string.IsNullOrWhiteSpace(NewCustomerPhone) ? null : NewCustomerPhone.Trim(),
-                    Address = string.IsNullOrWhiteSpace(NewCustomerAddress) ? null : NewCustomerAddress.Trim()
-                };
-
-                var customerId = m_Customer.CreateCustomer(newCustomer);
-                Order.CustomerId = customerId;
-            }
-        }
 
         // Final stock check — against Loaded cylinders
         foreach (var detail in OrderDetails)

@@ -47,6 +47,18 @@
 
     }
 
+    // DTOs/EmployeeDailySalesSummaryDTO.cs
+    public class EmployeeDailySalesSummaryDTO
+    {
+        public DateTime Date { get; set; }
+        public string DateFormatted => Date.ToString("dd-MMM-yyyy (ddd)");
+        public string EmployeeName { get; set; } = string.Empty;
+
+        public int TotalQuantity { get; set; }        // total pieces sell
+
+        public double TotalAmount { get; set; }
+    }
+
     public class SalesHistoryDTO
     {
         public string SupplierName { get; set; }

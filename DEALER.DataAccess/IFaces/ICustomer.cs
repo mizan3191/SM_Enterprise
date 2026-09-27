@@ -8,6 +8,8 @@
         CustomerPaymentHistory GetCustomerPaymentHistory(int id);
         bool DeleteCustomerPayment(int id);
 
+        Task<CustomerInfo> GetCustomerInfoById(int customerId);
+
 
         #region Customer
         bool UpdateCustomer(Customer customer);

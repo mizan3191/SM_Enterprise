@@ -90,7 +90,7 @@
                         OrderId = DailyExpense.OrderId,
                         DailyExpenseId = DailyExpense.Id,
                         PaymentDate = DailyExpense.Date,
-                        PaymentMethodId = 1,
+                        PaymentMethodId = 2,
                         TransactionID = string.Empty,
                         Number = string.Empty,
                         TotalAmountThisOrder = 0,

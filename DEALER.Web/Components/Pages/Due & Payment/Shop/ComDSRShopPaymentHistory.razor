@@ -412,30 +412,6 @@ else
         }
     }
 
-    // private void OnQtyChanged(EmptyCylinderPaymentHistory product, ChangeEventArgs args)
-    // {
-    //     if (int.TryParse(args.Value?.ToString(), out int qty))
-    //     {
-    //         product.CylinderQty = qty;
-    //         RecalculateProductPaidAmount(product);
-    //     }
-    // }
-
-    // // ✅ NEW: ExtraPaidAmount change → recalculate
-    // private void OnExtraPaidChanged(EmptyCylinderPaymentHistory product, ChangeEventArgs args)
-    // {
-    //     if (double.TryParse(args.Value?.ToString(), out double extra))
-    //     {
-    //         product.ExtraPaidAmount = extra;
-    //     }
-    //     else
-    //     {
-    //         product.ExtraPaidAmount = 0;
-    //     }
-    //     RecalculateProductPaidAmount(product);
-    // }
-
-    
 
     // ---------------------------------------------------------------
     // First click on "+ Add Product" (before basic info saved)
@@ -601,12 +577,12 @@ else
             notificationComponent.Show("Validation Error", "Please select a Payment Method.", NotificationSeverity.Warning);
             return;
         }
-        if (DSRShopPaymentHistory.AmountPaid <= 0
-            && (DSRShopPaymentHistory.Products == null || !DSRShopPaymentHistory.Products.Any(p => p.PaidAmount > 0)))
-        {
-            notificationComponent.Show("Validation Error", "Paid amount must be greater than zero.", NotificationSeverity.Warning);
-            return;
-        }
+        // if (DSRShopPaymentHistory.AmountPaid <= 0
+        //     && (DSRShopPaymentHistory.Products == null || !DSRShopPaymentHistory.Products.Any(p => p.PaidAmount > 0)))
+        // {
+        //     notificationComponent.Show("Validation Error", "Paid amount must be greater than zero.", NotificationSeverity.Warning);
+        //     return;
+        // }
 
         try
         {

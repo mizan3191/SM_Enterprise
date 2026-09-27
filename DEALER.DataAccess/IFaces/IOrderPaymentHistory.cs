@@ -9,5 +9,6 @@
         OrderPaymentHistory GetOrderPaymentHistory(int customerId, int orderId);
         Task<IList<OrderPaymentHistory>> GetAllOrderPaymentHistoryByOrderId(int orderId);
         Task<IList<OrderPaymentHistory>> GetAllOrderPaymentHistoryList();
+
     }
 }

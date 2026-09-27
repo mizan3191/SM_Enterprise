@@ -9,6 +9,7 @@
         Task<IList<SalesHistoryDTO>> GetAllProductSalesHistory(DateTime? startDate, DateTime? endDate);
         Task<IList<DSRSalesReturnDTO>> GetDSRAllSalesReturn(DateTime? startDate, DateTime? endDate);
         Task<IList<TransactionHistory>> GetAllTransactionHistory(DateTime? startDate, DateTime? endDate);
+        Task<IList<EmployeeDailySalesSummaryDTO>> GetEmployeeDailySalesSummary(DateTime? startDate = null, DateTime? endDate = null);
         Task<IList<Lov>> GetAllProductList();
         Task<IList<Lov>> GetAllSupplierList();
        // Task<IList<Lov>> GetAllUnitOfMeasurementList();

@@ -51,7 +51,7 @@
                         OrderId = DSRShopDue.OrderId,
                         DSRShopDueId = DSRShopDue.Id,
                         PaymentDate = DSRShopDue.Date,
-                        PaymentMethodId = 1,
+                        PaymentMethodId = 3, // Shop Due
                         TransactionID = string.Empty,
                         Number = string.Empty,
                         TotalAmountThisOrder = 0,
@@ -158,7 +158,7 @@
                             OrderId = DSRShopDue.OrderId,
                             DSRShopDueId = DSRShopDue.Id,
                             PaymentDate = DSRShopDue.Date,
-                            PaymentMethodId = 1,
+                            PaymentMethodId = 3, //Shop Due
                             TransactionID = string.Empty,
                             Number = string.Empty,
                             TotalAmountThisOrder = 0,
