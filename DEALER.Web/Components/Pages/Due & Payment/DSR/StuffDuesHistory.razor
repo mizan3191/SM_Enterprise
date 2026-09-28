@@ -1,4 +1,4 @@
-﻿@page "/CustomerDuesHistory"
+﻿@page "/StuffDuesHistory"
 
 @using DEALER.DataAccess
 @using DEALER.Domain
@@ -84,19 +84,19 @@ else
 
     protected override void OnInitialized()
     {
-        CustomerDueHistory = m_Order.GetCustomerDueHistory();
+        CustomerDueHistory = m_Order.GetEmployeeDueHistory();
 
         FilteredCustomerDue = CustomerDueHistory;
     }
 
     private void ViewOrder(int id)
     {
-        _navigationManager.NavigateTo($"/PersonWiseOrder/{id}");
+        _navigationManager.NavigateTo($"/StuffOrderDetails/{id}");
     }
 
     private void MakePayment(int id)
     {
-        _navigationManager.NavigateTo($"/PaymentHistory/{id}");
+        _navigationManager.NavigateTo($"/StuffPaymentHistory/{id}");
     }
 
     private void OnSearch(ChangeEventArgs e)

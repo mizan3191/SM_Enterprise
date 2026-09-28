@@ -1,0 +1,18 @@
+﻿@page "/CustomerOrderDetails/{OrderId:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@if (OrderId > 0)
+{
+    <DEALER.Web.Components.Pages.Sales.SalesOnCustomer.CustomerSaleDetail OrderId="@OrderId"></DEALER.Web.Components.Pages.Sales.SalesOnCustomer.CustomerSaleDetail>
+}
+
+@code {
+    [Parameter]
+    public int OrderId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+}

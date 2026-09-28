@@ -319,7 +319,28 @@ namespace DEALER.DataAccess
             }
         }
 
-        public IEnumerable<OrdersByPersonDTO> GetAllOrdersByPerson(int personId)
+        public PersonInfoDTO GetCustomerInfo(int personId)
+        {
+            try
+            {
+                return _dbContext.Customers
+                  .Where(o => o.Id == personId)
+                      .Select(o => new PersonInfoDTO
+                      {
+                          Id = o.Id,
+                          Name = o.Name,
+                          Email = o.Email,
+                          Phone = o.Phone,
+                      })
+                  .FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
+        public IEnumerable<OrdersByPersonDTO> GetAllOrdersListForCustomer(int personId)
         {
             try
             {
@@ -328,6 +349,33 @@ namespace DEALER.DataAccess
                     .ThenInclude(od => od.Product)
                         .ThenInclude(p => p.ProductsSize)
                    .Where(o => o.CustomerId == personId)
+                   .Select(o => new OrdersByPersonDTO
+                   {
+                       OrderId = o.Id,
+                       ProductsName = string.Join(", ", o.OrderDetails.Select(od => od.Product.DisplayNameSize)), // Comma-separated product names
+                       OrderDate = o.Date,
+                       Area = o.SelectedRoad,
+                   })
+                   .OrderByDescending(o => o.OrderId)
+                    .ToList();
+
+                return orders;
+            }
+            catch (Exception ex)
+            {
+                return Enumerable.Empty<OrdersByPersonDTO>();
+            }
+        }
+
+        public IEnumerable<OrdersByPersonDTO> GetAllOrdersListForStuff(int personId)
+        {
+            try
+            {
+                var orders = _dbContext.Orders
+                   .Include(o => o.OrderDetails)
+                    .ThenInclude(od => od.Product)
+                        .ThenInclude(p => p.ProductsSize)
+                   .Where(o => o.EmployeeId == personId)
                    .Select(o => new OrdersByPersonDTO
                    {
                        OrderId = o.Id,
@@ -479,12 +527,49 @@ namespace DEALER.DataAccess
             }
         }
 
-        public async Task<IList<CustomerPaymentHistoryDTO>> GetCustomerPaymentHistoryById(int employeeId)
+
+        public async Task<IList<CustomerPaymentHistoryDTO>> GetEmployeePaymentHistoryById(int employeeId)
         {
             try
             {
                 var customerPaymentHistory = await _dbContext.CustomerPaymentHistories
                   .Where(x => x.EmployeeId == employeeId && !x.IsDeleted)
+                  .Select(x => new CustomerPaymentHistoryDTO
+                  {
+                      Id = x.Id,
+                      TotalAmountThisOrder = x.TotalAmountThisOrder,
+                      AmountPaid = x.AmountPaid,
+                      TotalDueBeforePayment = x.TotalDueBeforePayment,
+                      TotalDueAfterPayment = x.TotalDueAfterPayment,
+                      PaymentDate = x.PaymentDate,
+                      PaymentMethod = x.PaymentMethod.Name,
+                      TransactionID = x.TransactionID,
+                      Number = x.Number,
+                      IsDisabled = x.OrderId.HasValue ||
+                            x.CustomerProductReturnId.HasValue ||
+                            x.DSRShopDueId.HasValue ||
+                            x.DailyExpenseId.HasValue ||
+                            x.OrderPaymentHistoryId.HasValue
+
+                  })
+                  .OrderByDescending(x => x.Id)
+                  .ToListAsync();
+
+                return customerPaymentHistory;
+            }
+            catch (Exception ex)
+            {
+                return new List<CustomerPaymentHistoryDTO>();
+            }
+        }
+
+
+        public async Task<IList<CustomerPaymentHistoryDTO>> GetCustomerPaymentHistoryById(int customerId)
+        {
+            try
+            {
+                var customerPaymentHistory = await _dbContext.CustomerPaymentHistories
+                  .Where(x => x.CustomerId == customerId && !x.IsDeleted)
                   .Select(x => new CustomerPaymentHistoryDTO
                   {
                       Id = x.Id,
@@ -649,6 +734,36 @@ namespace DEALER.DataAccess
         }
 
         public IEnumerable<CustomerDueDTO> GetCustomerDueHistory()
+        {
+            try
+            {
+                var query = from customer in _dbContext.Customers
+                            join payment in _dbContext.CustomerPaymentHistories.Where(p => !p.IsDeleted)
+                                on customer.Id equals payment.CustomerId into paymentsGroup
+                            select new CustomerDueDTO
+                            {
+                                Id = customer.Id,
+                                Name = customer.Name,
+                                Phone = customer.Phone,
+                                Address = customer.Address,
+                                TotalDue = paymentsGroup.OrderByDescending(p => p.Id)
+                                                        .Select(p => (double?)p.TotalDueAfterPayment)
+                                                        .FirstOrDefault() ?? 0
+                            };
+
+                return query.Where(c => c.TotalDue != 0)
+                            .OrderByDescending(c => c.TotalDue)
+                            .ToList();
+            }
+            catch (Exception ex)
+            {
+                return Enumerable.Empty<CustomerDueDTO>();
+            }
+        }
+
+
+
+        public IEnumerable<CustomerDueDTO> GetEmployeeDueHistory()
         {
             try
             {

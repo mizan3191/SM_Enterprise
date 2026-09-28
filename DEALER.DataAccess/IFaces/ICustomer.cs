@@ -4,8 +4,12 @@
     {
         Task<IList<Lov>> GetAllClients();
         int AddCustomerPayment(CustomerPaymentHistory customerPayment);
+        int AddEmployeePayment(CustomerPaymentHistory customerPayment);
         bool UpdateCustomerPayment(CustomerPaymentHistory customerPayment);
+        bool UpdateEmployeePayment(CustomerPaymentHistory customerPayment);
         CustomerPaymentHistory GetCustomerPaymentHistory(int id);
+        CustomerPaymentHistory GetEmployeePaymentHistory(int id);
+        bool DeleteEmployeePayment(int id);
         bool DeleteCustomerPayment(int id);
 
         Task<CustomerInfo> GetCustomerInfoById(int customerId);

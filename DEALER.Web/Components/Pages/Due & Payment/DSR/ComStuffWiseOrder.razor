@@ -1,4 +1,5 @@
-﻿@page "/PersonWiseOrder/{Id:int}"
+﻿@page "/StuffOrderDetails/{Id:int}"
+
 @using DEALER.DataAccess
 @using DEALER.Domain
 
@@ -88,19 +89,19 @@ else
     protected override void OnInitialized()
     {
 
-        Orders = m_Order.GetAllOrdersByPerson(Id); 
-        ClientName = m_Customer.GetCustomer(Id).Name;
+        Orders = m_Order.GetAllOrdersListForStuff(Id);
+        ClientName = m_Customer.GetEmployee(Id).Name;
         FilteredOrders = Orders;
     }
 
     private void OrderDetails(int id)
     {
-        _navigationManager.NavigateTo($"/PrintOrder/{id}/{Id}");
+        _navigationManager.NavigateTo($"/PrintOrder/{id}");
     }
 
     private void Cancel()
     {
-        _navigationManager.NavigateTo($"/CustomerDuesHistory");
+        _navigationManager.NavigateTo($"/StuffDuesHistory");
     }
 
     private void OnSearch(ChangeEventArgs e)

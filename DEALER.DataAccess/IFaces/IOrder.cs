@@ -11,16 +11,20 @@
         Task<Order> GetOrderById(int orderId);
         Task<OrderInfo> GetOrderInfoById(int orderId);
         PersonInfoDTO GetPersonInfo(int personId);
-        IEnumerable<OrdersByPersonDTO> GetAllOrdersByPerson(int personId);
+        PersonInfoDTO GetCustomerInfo(int personId);
+        IEnumerable<OrdersByPersonDTO> GetAllOrdersListForCustomer(int personId);
+        IEnumerable<OrdersByPersonDTO> GetAllOrdersListForStuff(int personId);
         IEnumerable<OrderDetailsDTO> GetOrderDetailsByOrderId(int orderId);
         Task<IEnumerable<OrderDetailsDTO>> GetOrderDetailsByOrderAsync(int orderId);
         Task<IEnumerable<ExistingOrderDTO>> GetExistingOrderById(int orderId);
         //Task<IEnumerable<DamageProductDetailsDTO>> GetDamageProductDetailsByOrderAsync(int orderId);
         IEnumerable<CustomerDueDTO> GetCustomerDueHistory();
+        IEnumerable<CustomerDueDTO> GetEmployeeDueHistory();
         InvoiceDTO GetOrdersById(int id);
         OrderInfoDTO OrderInfoById(int id);
         List<(string name, double value)> GetPayment(int id);
         Task<IList<CustomerPaymentHistoryDTO>> GetCustomerPaymentHistoryById(int customerId);
+        Task<IList<CustomerPaymentHistoryDTO>> GetEmployeePaymentHistoryById(int customerId);
         Task<IEnumerable<CustomerOrderDetailDTO>> GetOrderDetailsByCustomerAsync(int orderId);
 
         CustomerPaymentHistoryDTO DuePayment(int id);

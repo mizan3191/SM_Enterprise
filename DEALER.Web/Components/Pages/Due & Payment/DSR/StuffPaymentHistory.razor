@@ -1,5 +1,5 @@
-﻿@page "/PaymentHistory"
-@page "/PaymentHistory/{EmployeeId:int}"
+﻿@page "/StuffPaymentHistory"
+@page "/StuffPaymentHistory/{EmployeeId:int}"
 @using DEALER.Domain
 
  @rendermode @(new InteractiveServerRenderMode(prerender: false))
@@ -7,7 +7,7 @@
 
 <Message @ref="notificationComponent" />
 
-<h3>DSR Payment History</h3>
+<h3>Stuff Payment History</h3>
 
 <div class="row">
     <div class="col-md-2">
@@ -317,7 +317,7 @@
         if (clientId > 0)
         {
             ClientName = m_Customer.GetEmployee(clientId).Name;
-            PaymentHistoryList = await m_Order.GetCustomerPaymentHistoryById(EmployeeId);
+            PaymentHistoryList = await m_Order.GetEmployeePaymentHistoryById(EmployeeId);
             TotalDue = 0;
             if (PaymentHistoryList.Count() > 0)
             {
@@ -377,14 +377,14 @@
 
         if (CustomerPaymentHistory.Id > 0)
         {
-            m_Customer.UpdateCustomerPayment(CustomerPaymentHistory); ;
+            m_Customer.UpdateEmployeePayment(CustomerPaymentHistory); ;
             notificationComponent.Show("Updated Summary", "Customer Payment has been Updated successfully", NotificationSeverity.Warning);
         }
         else
         {
             if (CustomerPaymentHistory.AmountPaid > 0)
             {
-                m_Customer.AddCustomerPayment(CustomerPaymentHistory);
+                m_Customer.AddEmployeePayment(CustomerPaymentHistory);
                 notificationComponent.Show("Added Summary", "Customer Payment has been Added successfully", NotificationSeverity.Success);
             }
         }
@@ -422,7 +422,7 @@
 
     async Task Delete(int id)
     {
-        m_Customer.DeleteCustomerPayment(id);
+        m_Customer.DeleteEmployeePayment(id);
         notificationComponent.Show("Deleted Summary", "Payment has been Deleted successfully", NotificationSeverity.Error);
         await OnClientChange(EmployeeId);
         StateHasChanged();
