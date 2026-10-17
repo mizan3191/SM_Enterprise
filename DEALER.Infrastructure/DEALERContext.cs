@@ -26,6 +26,7 @@ namespace DEALER.Infrastructure
         public virtual DbSet<SupplierPaymentHistory> SupplierPaymentHistories { get; set; }
         public virtual DbSet<ProductCategory> ProductCategories { get; set; }
         public virtual DbSet<Expense> Expenses { get; set; }
+        public virtual DbSet<YearlyExpense> YearlyExpenses { get; set; }
         //public virtual DbSet<PreOrder> PreOrders { get; set; }
       //  public virtual DbSet<PreOrderDetails> PreOrderDetails { get; set; }
        // public virtual DbSet<DamageProductReturn> DamageProductReturns { get; set; }
@@ -64,6 +65,7 @@ namespace DEALER.Infrastructure
         public virtual DbSet<PaymentType> PaymentType { get; set; }
         public virtual DbSet<ExpenseType> ExpenseType { get; set; }
         public virtual DbSet<DailyExpenseType> DailyExpenseType { get; set; }
+        public virtual DbSet<YearlyExpenseType> YearlyExpenseType { get; set; }
         public virtual DbSet<CustomerType> CustomerType { get; set; }
         public virtual DbSet<EmployeeType> EmployeeType { get; set; }
         public virtual DbSet<PaymentMethod> PaymentMethod { get; set; }

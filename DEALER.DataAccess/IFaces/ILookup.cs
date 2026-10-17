@@ -22,6 +22,7 @@
         Task<IList<Lov>> GetAllEmployeeTypeList();
         Task<IList<Lov>> GetAllExpenseTypeList();
         Task<IList<Lov>> GetAllDailyExpenseTypeList();
+        Task<IList<Lov>> GetAllYearlyExpenseTypeList();
         Task<IList<Lov>> GetAllReasonofAdjustmentList();
         Task<IList<Lov>> GetAllPaymentMethodList();
         Task<IList<Lov>> GetAllShippingMethodList();
@@ -109,6 +110,14 @@
         ExpenseType GetExpenseType(int id);
         Task<IList<ExpenseType>> GetAllExpenseType();
         #endregion ExpenseType
+
+        #region YearlyExpenseType
+        bool UpdateYearlyExpenseType(YearlyExpenseType yearlyExpenseType);
+        bool DeleteYearlyExpenseType(int id);
+        int CreateYearlyExpenseType(YearlyExpenseType yearlyExpenseType);
+        YearlyExpenseType GetYearlyExpenseType(int id);
+        Task<IList<YearlyExpenseType>> GetAllYearlyExpenseType();
+        #endregion YearlyExpenseType
 
         #region DailyExpenseType
         bool UpdateDailyExpenseType(DailyExpenseType DailyExpenseType);

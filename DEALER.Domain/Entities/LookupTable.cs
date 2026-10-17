@@ -19,6 +19,7 @@ namespace DEALER.Domain
     public class ReasonofAdjustment : BaseLookup { }
     public class Road : BaseLookup { }
     public class ExpenseType : BaseLookup { }
+    public class YearlyExpenseType : BaseLookup { }
     public class DailyExpenseType : BaseLookup { }
     public class CustomerType : BaseLookup { }
     public class EmployeeType : BaseLookup { }

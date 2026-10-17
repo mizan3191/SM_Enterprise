@@ -24,6 +24,9 @@ namespace DEALER.Domain
         public int? DailyExpenseId { get; set; }
         public DailyExpense DailyExpense { get; set; }
 
+        public int? YearlyExpenseId { get; set; }
+        public YearlyExpense YearlyExpense { get; set; }
+
         public int? ExpenseId { get; set; }
         public Expense Expense { get; set; }
 

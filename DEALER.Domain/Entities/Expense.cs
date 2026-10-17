@@ -40,4 +40,32 @@ namespace DEALER.Domain
         public bool IsDeleted { get; set; } = false;
 
     }
+
+    public class YearlyExpense
+    {
+        public int Id { get; set; }
+
+        [Required]
+        [DataType(DataType.Date)]
+        public DateTime Date { get; set; } = DateTime.UtcNow;
+        public string DateFormatted => Date.ToString("dd-MMM-yyyy (ddd)");
+
+        [Required]
+        public int YearlyExpenseTypeId { get; set; }
+        public YearlyExpenseType YearlyExpenseType { get; set; } // e.g., Electricity Bill, Salary
+
+        public int? EmployeeId { get; set; }
+        public Employee Employee { get; set; } // e.g., Electricity Bill, Salary
+
+        public string EmployeeName => Employee?.Name ?? string.Empty;
+
+        [StringLength(500)]
+        public string Description { get; set; }
+
+        [Required]
+        public double Amount { get; set; }
+
+        public bool IsDeleted { get; set; } = false;
+
+    }
 }

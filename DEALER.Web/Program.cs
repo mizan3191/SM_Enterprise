@@ -48,6 +48,7 @@ builder.Services.AddScoped<IChart, ChartManager>();
 builder.Services.AddScoped<IProductReturn, ProductReturnManager>();
 //builder.Services.AddScoped<IProductCategory, ProductCategoryManager>();
 builder.Services.AddScoped<IExpense, ExpenseManager>();
+builder.Services.AddScoped<IYearlyExpense, YearlyExpenseManager>();
 //builder.Services.AddScoped<IPreOrder, PreOrderManager>();
 builder.Services.AddScoped<ILookup, LookupManager>();
 //builder.Services.AddScoped<IDamageProductReturns, DamageProductReturnsManager>();

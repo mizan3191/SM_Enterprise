@@ -498,11 +498,11 @@ else
             notificationComponent.Show("দোকান নির্বাচন করুন", "চালিয়ে যাওয়ার আগে একটি দোকান নির্বাচন করুন।", NotificationSeverity.Warning);
             return;
         }
-        if (DSRShopDue.DueAmount <= 0)
-        {
-            notificationComponent.Show("বকেয়া পরিমাণ সঠিক নয়", "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।", NotificationSeverity.Warning);
-            return;
-        }
+        // if (DSRShopDue.DueAmount <= 0)
+        // {
+        //     notificationComponent.Show("বকেয়া পরিমাণ সঠিক নয়", "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।", NotificationSeverity.Warning);
+        //     return;
+        // }
         try
         {
             if (DSRShopDue.Id > 0)

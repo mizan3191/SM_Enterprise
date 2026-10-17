@@ -267,6 +267,27 @@ namespace DEALER.DataAccess
             }
         }
 
+        public async Task<IList<Lov>> GetAllYearlyExpenseTypeList()
+        {
+            try
+            {
+                return await _dbContext.YearlyExpenseType
+                    .Where(x => !x.IsDeleted)
+                     .Select(x => new Lov
+                     {
+                         Id = x.Id,
+                         Name = x.Name,
+
+                     })
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                return new List<Lov>();
+            }
+        }
+
         public async Task<IList<Lov>> GetAllReasonofAdjustmentList()
         {
             try
@@ -1139,6 +1160,90 @@ namespace DEALER.DataAccess
         }
 
         #endregion ExpenseType
+
+
+        #region YearlyExpenseType
+        public bool UpdateYearlyExpenseType(YearlyExpenseType YearlyExpenseType)
+        {
+            return AddUpdateEntity(YearlyExpenseType);
+        }
+
+        public int CreateYearlyExpenseType(YearlyExpenseType YearlyExpenseType)
+        {
+            var lastId = _dbContext.YearlyExpenseType
+                 .AsNoTracking()
+                 .OrderByDescending(p => p.Id)
+                 .Select(p => p.Id)
+                 .FirstOrDefault();
+
+            YearlyExpenseType.Id = lastId + 1;
+            _dbContext.YearlyExpenseType.Add(YearlyExpenseType);
+            _dbContext.SaveChanges();
+
+            return YearlyExpenseType.Id;
+        }
+
+        public YearlyExpenseType GetYearlyExpenseType(int id)
+        {
+            try
+            {
+                return _dbContext.YearlyExpenseType.FirstOrDefault(c => c.Id == id);
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
+        public async Task<IList<YearlyExpenseType>> GetAllYearlyExpenseType()
+        {
+            try
+            {
+                return await _dbContext.YearlyExpenseType
+                    .OrderBy(x => x.Name)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                return new List<YearlyExpenseType>();
+            }
+        }
+
+        public bool DeleteYearlyExpenseType(int id)
+        {
+            try
+            {
+                var YearlyExpenseType = _dbContext.YearlyExpenseType.FirstOrDefault(c => c.Id == id);
+
+                if (YearlyExpenseType is null)
+                {
+                    return false;
+                }
+
+                var isDelete = _dbContext.Expenses.Any(c => c.ExpenseTypeId == id);
+
+                if (!isDelete)
+                {
+                    _dbContext.Remove(YearlyExpenseType);
+                    _dbContext.SaveChanges();
+                }
+                else
+                {
+                    // If no customers are associated, proceed with deletion
+                    YearlyExpenseType.IsDeleted = true;
+                    _dbContext.Update(YearlyExpenseType);
+                    _dbContext.SaveChanges();
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
+
+        #endregion YearlyExpenseType
 
         #region DailyExpenseType
         public bool UpdateDailyExpenseType(DailyExpenseType DailyExpenseType)
