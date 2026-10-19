@@ -118,6 +118,14 @@ INSERT INTO DailyExpenseType (Id, Name, Description, IsDeleted) VALUES (1, 'Pers
 INSERT INTO DailyExpenseType (Id, Name, Description, IsDeleted) VALUES (2, 'Bazar Khoroc', 'Bazar Khoroc',0);
 INSERT INTO DailyExpenseType (Id, Name, Description, IsDeleted) VALUES (3, 'Guest Entertainment', 'Expenses for guest hospitality',0);
 
+INSERT INTO YearlyExpenseType (Id, Name, Description, IsDeleted)
+VALUES
+(1, 'Asset Purchase', 'Car, motorcycle, land, house and other asset purchases', 0),
+(2, 'License & Registration', 'Shop license, trade license, vehicle registration and renewal fees', 0),
+(3, 'Business Investment', 'Shop setup, business equipment and other business investments', 0),
+(4, 'Property & Construction', 'Land development, house construction, renovation and property-related expenses', 0),
+(5, 'Other Yearly Expense', 'Other major yearly expenses not covered by existing categories', 0);
+
 
 
 
