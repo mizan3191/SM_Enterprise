@@ -193,7 +193,7 @@
                 }
 
                 // Step 3: Update header
-                existingExchange.SupplierId = exchange.SupplierId;
+                existingExchange.DealerPointId = exchange.DealerPointId;
                 existingExchange.ExchangeType = exchange.ExchangeType;
                 existingExchange.PaymentMethodId = exchange.PaymentMethodId;
                 existingExchange.Date = exchange.Date;
@@ -332,7 +332,7 @@
             try
             {
                 return _dbContext.CylinderExchanges
-                    .Include(e => e.Supplier)
+                    .Include(e => e.DealerPoint)
                     .Include(e => e.PaymentMethod)
                     .Include(e => e.ExchangeDetails)
                         .ThenInclude(d => d.Product)
@@ -353,7 +353,7 @@
             try
             {
                 return _dbContext.CylinderExchanges
-                    .Include(e => e.Supplier)
+                    .Include(e => e.DealerPoint)
                     .Include(e => e.PaymentMethod)
                     .Include(e => e.ExchangeDetails)
                         .ThenInclude(d => d.Product)
@@ -371,17 +371,17 @@
         // ============================================================
         // GET BY SUPPLIER (single latest)
         // ============================================================
-        public CylinderExchange GetCylinderExchangeBySupplierId(int supplierId)
+        public CylinderExchange GetCylinderExchangeBySupplierId(int dealerId)
         {
             try
             {
                 return _dbContext.CylinderExchanges
-                    .Include(e => e.Supplier)
+                    .Include(e => e.DealerPoint)
                     .Include(e => e.PaymentMethod)
                     .Include(e => e.ExchangeDetails)
                         .ThenInclude(d => d.Product)
                     .Include(e => e.ExchangePaymentHistories)
-                    .Where(e => e.SupplierId == supplierId && !e.IsDeleted)
+                    .Where(e => e.DealerPointId == dealerId && !e.IsDeleted)
                     .OrderByDescending(e => e.Date)
                     .FirstOrDefault();
             }
@@ -398,13 +398,13 @@
                 var query = from ce in _dbContext.CylinderExchanges
                             join ced in _dbContext.CylinderExchangeDetails on ce.Id equals ced.CylinderExchangeId
                             join p in _dbContext.Products on ced.ProductId equals p.Id
-                            join s in _dbContext.Suppliers on ce.SupplierId equals s.Id into supplierJoin
+                            join s in _dbContext.DealerPoints on ce.DealerPointId equals s.Id into supplierJoin
                             from s in supplierJoin.DefaultIfEmpty()
                             where ce.Id == exchangeId && !ce.IsDeleted
                             select new CylinderExchangeDetailsDTO
                             {
                                 CylinderExchangeId = ce.Id,
-                                SupplierName = s != null ? s.Name : "",
+                                DealerPointName = s != null ? s.Name : "",
                                 ExchangeType = ce.ExchangeType,
                                 ExchangeDate = ce.Date,
 

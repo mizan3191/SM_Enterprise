@@ -56,6 +56,9 @@ namespace DEALER.Domain
 
         public int? StaffSalaryId { get; set; }
         public StaffSalary StaffSalary { get; set; }
+
+        public int? PreOrderPaymentId { get; set; }
+        public PreOrderPayment PreOrderPayment { get; set; }
     }
 
     public enum BalanceTypeEnum

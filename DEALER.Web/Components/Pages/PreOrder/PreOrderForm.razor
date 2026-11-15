@@ -1,0 +1,555 @@
+@page "/PreOrder"
+@page "/PreOrder/{Id:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<Message @ref="notificationComponent" />
+
+<style>
+    .dataForm .table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .dataForm .table th, .dataForm .table td {
+        padding: 6px;
+    }
+
+    .dataForm .table input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .dataForm .table td.text-end { text-align: right; }
+    .dataForm .table td.text-center { text-align: center; }
+</style>
+
+<h3>@(IsEdit ? "Edit Pre Order" : "New Pre Order")</h3>
+
+@if (HasDelivery)
+{
+    <div class="alert alert-warning">
+        Delivery has started for this order, so products and prices can't be changed.
+        Only the dates and comments can be edited.
+    </div>
+}
+
+@* ================= TOP: SUPPLIER + DATES + PRODUCT ================= *@
+<div class="card dataForm">
+    <div class="row mt-3 mx-1">
+
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Supplier / Company <span class="text-danger">*</span></label>
+            <RadzenDropDown TValue="int?"
+                            @bind-Value="SelectedSupplierId"
+                            Data="@SupplierList"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Placeholder="Select Supplier"
+                            AllowClear="true"
+                            AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            Disabled="@SupplierLocked"
+                            Style="width:100%" />
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Order Date</label>
+            <RadzenDatePicker @bind-Value="Order.OrderDate" DateFormat="yyyy-MM-dd" Class="w-100" />
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Expected Delivery Date</label>
+            <RadzenDatePicker TValue="DateTime?" @bind-Value="Order.ExpectedDeliveryDate" DateFormat="yyyy-MM-dd"
+                              AllowClear="true" Class="w-100" />
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Payment Method</label>
+            <RadzenDropDown TValue="int?"
+                            @bind-Value="Order.PaymentMethodId"
+                            Data="@PaymentMethods"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Placeholder="Select Payment Method"
+                            AllowClear="true"
+                            Style="width:100%" />
+        </div>
+    </div>
+
+    <div class="row mx-1">
+        <div class="col-md-9 mb-3">
+            <label class="form-label">Product</label>
+            <RadzenDropDown TValue="int?"
+                            @bind-Value="SelectedProductId"
+                            Data="@AllProducts"
+                            TextProperty="DisplayNameSize"
+                            ValueProperty="Id"
+                            Placeholder="Select Product"
+                            AllowClear="true"
+                            AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            Disabled="@(SelectedSupplierId == null || HasDelivery)"
+                            Style="width:100%">
+                <Template Context="product">
+                    <div>
+                        <div>@product.DisplayNameSize</div>
+                        <small style="color: #888;">
+                            Cylinder: @GetPrice(product?.CurrentPrice?.CylinderBuyingPrice) | Gas: @GetPrice(product?.CurrentPrice?.GasBuyingPrice)
+                        </small>
+                    </div>
+                </Template>
+            </RadzenDropDown>
+        </div>
+
+        <div class="col-md-3 mb-3 d-flex align-items-end">
+            <RadzenButton Disabled="@(SelectedProductId == null || HasDelivery)"
+                          Text="Add"
+                          Style="width:100%"
+                          ButtonStyle="ButtonStyle.Secondary"
+                          Click="AddDetail" />
+        </div>
+    </div>
+</div>
+
+@* ================= DETAILS TABLE ================= *@
+<div class="card dataForm mt-3">
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="width:28%">Product</th>
+                <th class="text-center" style="width:10%">Qty</th>
+                <th class="text-end" style="width:14%">Cylinder Price</th>
+                <th class="text-end" style="width:14%">Gas Price</th>
+                <th class="text-end" style="width:12%">Discount</th>
+                <th class="text-end" style="width:14%">Total</th>
+                <th style="width:8%"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var detail in Details)
+            {
+                <tr>
+                    <td>
+                        <RadzenDropDown TValue="int"
+                                        @bind-Value="detail.ProductId"
+                                        Data="@AllProducts"
+                                        TextProperty="DisplayNameSize"
+                                        ValueProperty="Id"
+                                        Placeholder="Select Product"
+                                        AllowFiltering="true"
+                                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        Disabled="@(HasDelivery || detail.DeliveredQuantity > 0 || detail.CancelledQuantity > 0)"
+                                        Change="@(args => OnProductChanged(detail, args))" />
+                    </td>
+                    <td>
+                        <input type="number" min="1"
+                               value="@detail.OrderedQuantity"
+                               disabled="@HasDelivery"
+                               @oninput="(e) => OnQuantityChanged(detail, e)"
+                               class="form-control text-center" />
+                    </td>
+                    <td class="text-end">
+                        <input type="number" step="0.01" min="0"
+                               value="@detail.CylinderUnitPrice"
+                               disabled="@HasDelivery"
+                               @oninput="(e) => OnCylinderPriceChanged(detail, e)"
+                               class="form-control text-end" />
+                    </td>
+                    <td class="text-end">
+                        <input type="number" step="0.01" min="0"
+                               value="@detail.GasUnitPrice"
+                               disabled="@HasDelivery"
+                               @oninput="(e) => OnGasPriceChanged(detail, e)"
+                               class="form-control text-end" />
+                    </td>
+                    <td class="text-end">
+                        <input type="number" step="0.01" min="0"
+                               value="@detail.Discount"
+                               disabled="@HasDelivery"
+                               @oninput="(e) => OnDiscountChanged(detail, e)"
+                               class="form-control text-end" />
+                    </td>
+                    <td class="text-end"><strong>@detail.Price.ToString("N2")</strong></td>
+                    <td class="text-center">
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger"
+                                      Disabled="@HasDelivery"
+                                      Click="() => RemoveDetail(detail)" />
+                    </td>
+                </tr>
+            }
+            @if (!Details.Any())
+            {
+                <tr>
+                    <td colspan="7" class="text-center text-muted">No items added yet.</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td class="text-end"><strong>Total Qty:</strong></td>
+                <td class="text-center"><strong>@Details.Sum(d => d.OrderedQuantity)</strong></td>
+                <td colspan="3" class="text-end"><strong>Sub Total:</strong></td>
+                <td class="text-end"><strong>@SubTotal.ToString("N2")</strong></td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+@* ================= PAYMENT / FINAL ================= *@
+<div class="card mt-3">
+    <div class="row m-3">
+        <div class="col-md-4">
+            <label class="form-label">Order Discount (Amount)</label>
+            <input type="number" step="0.01" min="0"
+                   class="form-control text-end"
+                   value="@Order.Discount"
+                   disabled="@HasDelivery"
+                   @oninput="OnOrderDiscountChanged" />
+        </div>
+
+        <div class="col-md-4">
+            @if (IsEdit)
+            {
+                <label class="form-label">Total Paid (so far)</label>
+                <input type="text" class="form-control text-end" value="@Order.TotalPaid.ToString("N2")" disabled />
+                <small class="text-muted">Add more payments from the order details page.</small>
+            }
+            else
+            {
+                <label class="form-label">Advance Payment</label>
+                <input type="number" step="0.01" min="0"
+                       class="form-control text-end"
+                       value="@InitialPayment"
+                       @oninput="OnInitialPaymentChanged" />
+                <small class="text-muted">Amount paid to the company now (optional).</small>
+            }
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Comments</label>
+            <input type="text" class="form-control"
+                   @bind="Order.Comments"
+                   placeholder="Optional remarks" />
+        </div>
+    </div>
+
+    <div class="row m-3">
+        <div class="col-md-3 offset-md-6 text-end">
+            <strong>Final Total:</strong>
+        </div>
+        <div class="col-md-3 text-end">
+            <strong>@TotalAmount.ToString("N2")</strong>
+        </div>
+        <div class="col-md-3 offset-md-6 text-end">
+            <strong>Paid:</strong>
+        </div>
+        <div class="col-md-3 text-end">
+            <strong>@PaidAmount.ToString("N2")</strong>
+        </div>
+        <div class="col-md-3 offset-md-6 text-end">
+            <strong>Due:</strong>
+        </div>
+        <div class="col-md-3 text-end">
+            <strong class="@(TotalDue > 0 ? "text-danger" : TotalDue < 0 ? "text-success" : "")">
+                @TotalDue.ToString("N2")
+            </strong>
+        </div>
+    </div>
+</div>
+
+<RadzenButton Text="Save" Icon="save" ButtonStyle="ButtonStyle.Primary" Click="Save" class="mt-2 mb-2" />
+<RadzenButton Text="Cancel" Icon="cancel" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    [Inject] private IPreOrder m_PreOrder { get; set; }
+    [Inject] private IProduct m_Product { get; set; }
+    [Inject] private ILookup m_Lookup { get; set; }
+    [Inject] private NavigationManager _navigationManager { get; set; }
+
+    private Message notificationComponent;
+
+    public List<PreOrderDetail> Details { get; set; } = new();
+    public IEnumerable<Product> AllProducts { get; set; } = new List<Product>();
+    public IEnumerable<Lov> SupplierList { get; set; } = new List<Lov>();
+    public IEnumerable<Lov> PaymentMethods { get; set; } = new List<Lov>();
+
+    public int? SelectedSupplierId { get; set; }
+    public int? SelectedProductId { get; set; }
+
+    public PreOrder Order { get; set; } = new() { OrderDate = DateTime.Now };
+
+    private double InitialPayment { get; set; }
+    private bool HasDelivery { get; set; }
+
+    private bool IsEdit => Id.HasValue && Id.Value > 0;
+
+    // পেমেন্ট বা ডেলিভারি হয়ে গেলে Supplier বদলানো যাবে না
+    private bool SupplierLocked => IsEdit && (Order.TotalPaid > 0 || HasDelivery);
+
+    // ================= CALCULATIONS =================
+    public double SubTotal => Details.Sum(d => d.Price);
+    public double TotalAmount => SubTotal - Order.Discount;
+    public double PaidAmount => IsEdit ? Order.TotalPaid : InitialPayment;
+    public double TotalDue => TotalAmount - PaidAmount;
+
+    // ================= INIT =================
+    protected override async Task OnInitializedAsync()
+    {
+        SupplierList = await m_Lookup.GetAllSupplierList();
+        PaymentMethods = await m_Lookup.GetAllPaymentMethodList();
+        AllProducts = await m_Product.GetAllProduct();
+
+        if (IsEdit)
+        {
+            var existing = await m_PreOrder.GetPreOrderById(Id!.Value);
+            if (existing == null)
+            {
+                notificationComponent.Show("Not Found", "Pre-order not found.", NotificationSeverity.Warning);
+                _navigationManager.NavigateTo("/PreOrderList");
+                return;
+            }
+
+            // Copy করে নেওয়া হচ্ছে, যাতে Save এর আগে tracked entity বদলে না যায়
+            Order = new PreOrder
+            {
+                Id = existing.Id,
+                SupplierId = existing.SupplierId,
+                OrderNumber = existing.OrderNumber,
+                OrderDate = existing.OrderDate,
+                ExpectedDeliveryDate = existing.ExpectedDeliveryDate,
+                PaymentMethodId = existing.PaymentMethodId,
+                Discount = existing.Discount,
+                TotalPaid = existing.TotalPaid,
+                Status = existing.Status,
+                Comments = existing.Comments
+            };
+
+            SelectedSupplierId = existing.SupplierId;
+            HasDelivery = existing.PreOrderDeliveries.Any(d => !d.IsDeleted);
+
+            Details = existing.PreOrderDetails.Select(CopyDetail).ToList();
+        }
+    }
+
+    private static PreOrderDetail CopyDetail(PreOrderDetail d) => new PreOrderDetail
+    {
+        Id = d.Id,
+        ProductId = d.ProductId,
+        OrderedQuantity = d.OrderedQuantity,
+        DeliveredQuantity = d.DeliveredQuantity,
+        CancelledQuantity = d.CancelledQuantity,
+        CylinderUnitPrice = d.CylinderUnitPrice,
+        GasUnitPrice = d.GasUnitPrice,
+        Discount = d.Discount,
+        Price = d.Price
+    };
+
+    // ================= HELPERS =================
+    private string GetPrice(double? price) => price.HasValue ? price.Value.ToString("N2") : "N/A";
+
+    // Line total = Qty × (Cylinder + Gas) − Discount
+    // দাম হিসাবের নিয়ম বদলাতে চাইলে শুধু এই method টা বদলাও
+    private void Recalculate(PreOrderDetail d)
+    {
+        var gross = d.OrderedQuantity * (d.CylinderUnitPrice + d.GasUnitPrice);
+        var discount = d.Discount ?? 0;
+        var total = gross - discount;
+        d.Price = total < 0 ? 0 : total;
+    }
+
+    // ================= HANDLERS =================
+    private void AddDetail()
+    {
+        if (SelectedProductId == null) return;
+
+        var product = AllProducts.FirstOrDefault(p => p.Id == SelectedProductId.Value);
+        if (product == null) return;
+
+        if (Details.Any(d => d.ProductId == product.Id))
+        {
+            notificationComponent.Show("Already Added", "This product is already in the list. Change its quantity instead.", NotificationSeverity.Warning);
+            return;
+        }
+
+        var detail = new PreOrderDetail
+        {
+            ProductId = product.Id,
+            OrderedQuantity = 1,
+            CylinderUnitPrice = product.CurrentPrice?.CylinderBuyingPrice ?? 0,
+            GasUnitPrice = product.CurrentPrice?.GasBuyingPrice ?? 0,
+            Discount = 0
+        };
+        Recalculate(detail);
+        Details.Add(detail);
+
+        SelectedProductId = null;
+        StateHasChanged();
+    }
+
+    private void RemoveDetail(PreOrderDetail d)
+    {
+        if (d.DeliveredQuantity > 0 || d.CancelledQuantity > 0)
+        {
+            notificationComponent.Show("Can't Remove", "This item already has delivered/cancelled quantity.", NotificationSeverity.Warning);
+            return;
+        }
+
+        Details.Remove(d);
+        StateHasChanged();
+    }
+
+    private void OnProductChanged(PreOrderDetail d, object value)
+    {
+        if (value is int pid)
+        {
+            var p = AllProducts.FirstOrDefault(x => x.Id == pid);
+            if (p != null)
+            {
+                d.ProductId = pid;
+                d.CylinderUnitPrice = p.CurrentPrice?.CylinderBuyingPrice ?? 0;
+                d.GasUnitPrice = p.CurrentPrice?.GasBuyingPrice ?? 0;
+                Recalculate(d);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void OnQuantityChanged(PreOrderDetail d, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+        {
+            var min = Math.Max(1, d.DeliveredQuantity + d.CancelledQuantity);
+            d.OrderedQuantity = v < min ? min : v;
+            Recalculate(d);
+            StateHasChanged();
+        }
+    }
+
+    private void OnCylinderPriceChanged(PreOrderDetail d, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double v))
+        {
+            d.CylinderUnitPrice = v < 0 ? 0 : v;
+            Recalculate(d);
+            StateHasChanged();
+        }
+    }
+
+    private void OnGasPriceChanged(PreOrderDetail d, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double v))
+        {
+            d.GasUnitPrice = v < 0 ? 0 : v;
+            Recalculate(d);
+            StateHasChanged();
+        }
+    }
+
+    private void OnDiscountChanged(PreOrderDetail d, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double v))
+        {
+            d.Discount = v < 0 ? 0 : v;
+            Recalculate(d);
+            StateHasChanged();
+        }
+    }
+
+    private void OnOrderDiscountChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double v))
+        {
+            Order.Discount = v < 0 ? 0 : v;
+            StateHasChanged();
+        }
+    }
+
+    private void OnInitialPaymentChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double v))
+        {
+            InitialPayment = v < 0 ? 0 : v;
+            StateHasChanged();
+        }
+    }
+
+    // ================= SAVE =================
+    private void Save()
+    {
+        if (!SelectedSupplierId.HasValue)
+        {
+            notificationComponent.Show("Validation Error", "Please select a supplier.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (!Details.Any())
+        {
+            notificationComponent.Show("Validation Error", "Please add at least one item.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (Details.Any(d => d.ProductId <= 0 || d.OrderedQuantity <= 0))
+        {
+            notificationComponent.Show("Validation Error", "Every item needs a product and a quantity.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (Order.ExpectedDeliveryDate.HasValue && Order.ExpectedDeliveryDate.Value.Date < Order.OrderDate.Date)
+        {
+            notificationComponent.Show("Validation Error", "Expected delivery date can't be before the order date.", NotificationSeverity.Warning);
+            return;
+        }
+
+        if (Order.Discount > SubTotal)
+        {
+            notificationComponent.Show("Validation Error", "Order discount can't be more than the sub total.", NotificationSeverity.Warning);
+            return;
+        }
+
+        try
+        {
+            var order = new PreOrder
+            {
+                Id = Order.Id,
+                SupplierId = SelectedSupplierId.Value,
+                OrderNumber = Order.OrderNumber,
+                OrderDate = Order.OrderDate,
+                ExpectedDeliveryDate = Order.ExpectedDeliveryDate,
+                PaymentMethodId = Order.PaymentMethodId,
+                SubTotal = SubTotal,
+                Discount = Order.Discount,
+                TotalAmount = TotalAmount,
+                TotalPaid = IsEdit ? Order.TotalPaid : InitialPayment,   // Create এ এটাই প্রথম পেমেন্ট
+                Comments = Order.Comments,
+                PreOrderDetails = Details.Select(CopyDetail).ToList()
+            };
+
+            if (IsEdit)
+            {
+                if (!m_PreOrder.UpdatePreOrder(order))
+                {
+                    notificationComponent.Show("Error", "Pre-order not found.", NotificationSeverity.Error);
+                    return;
+                }
+                notificationComponent.Show("Success", "Pre-order updated.", NotificationSeverity.Success);
+            }
+            else
+            {
+                m_PreOrder.CreatePreOrder(order);
+                notificationComponent.Show("Success", "Pre-order created.", NotificationSeverity.Success);
+            }
+
+            _navigationManager.NavigateTo("/PreOrderList");
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", $"Failed: {ex.Message}", NotificationSeverity.Error);
+        }
+    }
+
+    private void Cancel() => _navigationManager.NavigateTo("/PreOrderList");
+}

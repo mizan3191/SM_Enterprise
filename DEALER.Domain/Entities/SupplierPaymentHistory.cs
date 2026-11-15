@@ -1,6 +1,4 @@
-﻿using static System.Runtime.InteropServices.JavaScript.JSType;
-
-namespace DEALER.Domain
+﻿namespace DEALER.Domain
 {
     public class SupplierPaymentHistory
     {
@@ -12,15 +10,23 @@ namespace DEALER.Domain
         public int? PurchaseId { get; set; }
         public virtual Purchase Purchase { get; set; }
 
-        public double? TotalAmountThisPurchase { get; set; }  // Amount paid in this transaction
-        public double AmountPaid { get; set; }  // Amount paid in this transaction
-        public double TotalDueBeforePayment { get; set; } // Due before this payment
-        public double TotalDueAfterPayment { get; set; }  // Due after this payment
+        // Pre-order e deya payment
+        public int? PreOrderPaymentId { get; set; }
+        public virtual PreOrderPayment PreOrderPayment { get; set; }
+
+        // Pre-order er delivery (product paoa)
+        public int? PreOrderDeliveryId { get; set; }
+        public virtual PreOrderDelivery PreOrderDelivery { get; set; }
+
+        public double? TotalAmountThisPurchase { get; set; }
+        public double AmountPaid { get; set; }
+        public double TotalDueBeforePayment { get; set; }
+        public double TotalDueAfterPayment { get; set; }
         public DateTime PaymentDate { get; set; } = DateTime.Now;
         public string DateFormatted => PaymentDate.ToString("dd-MMM-yyyy (ddd)");
 
-        public int? PaymentMethodId { get; set; }  // Cash, Card, etc.
-        public PaymentMethod PaymentMethod { get; set; }  // Cash, Card, etc.
+        public int? PaymentMethodId { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
 
         public string TransactionID { get; set; }
         public string Number { get; set; }

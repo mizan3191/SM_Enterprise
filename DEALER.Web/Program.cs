@@ -49,7 +49,7 @@ builder.Services.AddScoped<IProductReturn, ProductReturnManager>();
 //builder.Services.AddScoped<IProductCategory, ProductCategoryManager>();
 builder.Services.AddScoped<IExpense, ExpenseManager>();
 builder.Services.AddScoped<IYearlyExpense, YearlyExpenseManager>();
-//builder.Services.AddScoped<IPreOrder, PreOrderManager>();
+builder.Services.AddScoped<IPreOrder, PreOrderManager>();
 builder.Services.AddScoped<ILookup, LookupManager>();
 //builder.Services.AddScoped<IDamageProductReturns, DamageProductReturnsManager>();
 //builder.Services.AddScoped<ISRDiscount, SRDiscountManager>();
@@ -60,7 +60,7 @@ builder.Services.AddScoped<IDSRShopPaymentHistory, DSRShopPaymentHistoryManager>
 builder.Services.AddScoped<IDailyExpense, DailyExpenseManager>();
 builder.Services.AddScoped<IOrderPaymentHistory, OrderPaymentHistoryManager>();
 //builder.Services.AddScoped<IDamageProductHandover, DamageProductHandoverManager>();
-//builder.Services.AddScoped<IDamageProductHandoverPaymentHistory, DamageProductHandoverPaymentHistoryManager>();
+builder.Services.AddScoped<IDealerPoint, DealerPointManager>();
 builder.Services.AddScoped<IExtraReturnProduct, ExtraReturnProductManager>();
 builder.Services.AddScoped<ICylinderExchange, CylinderExchangeManager>();
 builder.Services.AddScoped<IStaffSalary, StaffSalaryManager>();

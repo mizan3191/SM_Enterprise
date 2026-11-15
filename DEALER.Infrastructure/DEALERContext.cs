@@ -11,6 +11,7 @@ namespace DEALER.Infrastructure
         public virtual DbSet<CompanyInfo> CompanyInfos { get; set; }
         public virtual DbSet<Customer> Customers { get; set; }
         public virtual DbSet<Employee> Employees { get; set; }
+        public virtual DbSet<DealerPoint> DealerPoints { get; set; }
         public virtual DbSet<Product> Products { get; set; }
        // public virtual DbSet<FreeProductOffer> FreeProductOffers { get; set; }
         public virtual DbSet<Order> Orders { get; set; }
@@ -55,6 +56,12 @@ namespace DEALER.Infrastructure
         public virtual DbSet<ExchangePaymentHistory> ExchangePaymentHistories { get; set; }
 
         public virtual DbSet<StaffSalary> StaffSalaries { get; set; }
+
+        public DbSet<PreOrder> PreOrders { get; set; }
+        public DbSet<PreOrderDetail> PreOrderDetails { get; set; }
+        public DbSet<PreOrderPayment> PreOrderPayments { get; set; }
+        public DbSet<PreOrderDelivery> PreOrderDeliveries { get; set; }
+        public DbSet<PreOrderDeliveryDetail> PreOrderDeliveryDetails { get; set; }
 
         #region Lookup Tables        
         public virtual DbSet<UnitOfMeasurement> UnitOfMeasurement { get; set; }

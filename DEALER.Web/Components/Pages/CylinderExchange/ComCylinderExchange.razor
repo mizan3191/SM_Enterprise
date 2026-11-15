@@ -1,6 +1,6 @@
 ﻿@page "/CylinderExchange"
-@page "/CylinderExchange/{SupplierId:int}"
-@page "/CylinderExchange/{SupplierId:int}/{Id:int}"
+@page "/CylinderExchange/{DealerPointId:int}"
+@page "/CylinderExchange/{DealerPointId:int}/{Id:int}"
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject NotificationService NotificationService
@@ -28,7 +28,7 @@
 
 <h3>@(CylinderExchange.Id > 0 ? "Edit Cylinder Exchange" : "Cylinder Exchange")</h3>
 
-@* ================= TOP: EXCHANGE TYPE + DEALER + PRODUCT ================= *@
+@* ================= TOP: EXCHANGE TYPE + DEALER POINT + PRODUCT ================= *@
 <div class="card dataForm">
     <div class="row mt-3">
 
@@ -47,19 +47,19 @@
             </RadzenDropDown>
         </div>
 
-        @* Dealer *@
+        @* Dealer Point *@
         <div class="col-md-4 mb-3">
-            <label class="form-label">Dealer / Company <span class="text-danger">*</span></label>
+            <label class="form-label">Dealer Point <span class="text-danger">*</span></label>
             <RadzenDropDown TValue="int?"
-                            @bind-Value="SelectedSupplierId"
-                            Data="@SupplierList"
+                            @bind-Value="SelectedDealerPointId"
+                            Data="@DealerPointList"
                             TextProperty="Name"
                             ValueProperty="Id"
-                            Placeholder="Select Dealer"
+                            Placeholder="Select Dealer Point"
                             AllowClear="true"
                             AllowFiltering="true"
                             FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                            Change="@OnSupplierChanged"
+                            Change="@OnDealerPointChanged"
                             Disabled="@(string.IsNullOrEmpty(CylinderExchange.ExchangeType))"
                             Style="width:100%">
             </RadzenDropDown>
@@ -77,14 +77,13 @@
                             AllowClear="true"
                             AllowFiltering="true"
                             FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                            Disabled="@(SelectedSupplierId == null)"
+                            Disabled="@(SelectedDealerPointId == null)"
                             Style="width:100%">
                 <Template Context="product">
                     <div>
                         <div>@product.DisplayNameSize</div>
                         <small style="color: #888;">
                             Price: @GetCylinderBuyingPrice(product)
-@*                             Price: @product?.CurrentPrice?.CylinderBuyingPrice?.ToString("N2") *@
                         </small>
                     </div>
                 </Template>
@@ -252,7 +251,7 @@
 <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="Cancel" Class="m-2" />
 
 @code {
-    [Parameter] public int? SupplierId { get; set; }
+    [Parameter] public int? DealerPointId { get; set; }
     [Parameter] public int? Id { get; set; }
 
     [Inject] private ICylinderExchange m_CylinderExchange { get; set; }
@@ -264,10 +263,10 @@
 
     public List<CylinderExchangeDetailViewModel> Details { get; set; } = new();
     public IEnumerable<Product> AllProducts { get; set; } = new List<Product>();
-    public IEnumerable<Lov> SupplierList { get; set; } = new List<Lov>();
+    public IEnumerable<Lov> DealerPointList { get; set; } = new List<Lov>();
     public IEnumerable<Lov> PaymentMethods { get; set; } = new List<Lov>();
 
-    public int? SelectedSupplierId { get; set; }
+    public int? SelectedDealerPointId { get; set; }
     public int? SelectedProductId { get; set; }
 
     public CylinderExchange CylinderExchange { get; set; } = new();
@@ -288,7 +287,7 @@
     // ================= INIT =================
     protected override async Task OnInitializedAsync()
     {
-        SupplierList = await m_Lookup.GetAllSupplierList();
+        DealerPointList = await m_Lookup.GetAllDealerPointList();
         PaymentMethods = await m_Lookup.GetAllPaymentMethodList();
         AllProducts = await m_Product.GetAllProduct();
 
@@ -298,7 +297,7 @@
             if (existing != null)
             {
                 CylinderExchange = existing;
-                SelectedSupplierId = existing.SupplierId;
+                SelectedDealerPointId = existing.DealerPointId;
 
                 Details = existing.ExchangeDetails.Select(d =>
                 {
@@ -320,11 +319,11 @@
             CylinderExchange = new()
             {
                 Date = DateTime.Now,
-                SupplierId = SupplierId
+                DealerPointId = DealerPointId
             };
 
-            if (SupplierId.HasValue)
-                SelectedSupplierId = SupplierId.Value;
+            if (DealerPointId.HasValue)
+                SelectedDealerPointId = DealerPointId.Value;
         }
     }
 
@@ -340,10 +339,10 @@
         }
     }
 
-    private void OnSupplierChanged()
+    private void OnDealerPointChanged()
     {
-        if (SelectedSupplierId.HasValue)
-            CylinderExchange.SupplierId = SelectedSupplierId.Value;
+        if (SelectedDealerPointId.HasValue)
+            CylinderExchange.DealerPointId = SelectedDealerPointId.Value;
     }
 
     private string GetCylinderBuyingPrice(Product product)
@@ -434,9 +433,9 @@
             return;
         }
 
-        if (!SelectedSupplierId.HasValue)
+        if (!SelectedDealerPointId.HasValue)
         {
-            notificationComponent.Show("Validation Error", "Please select a dealer.", NotificationSeverity.Warning);
+            notificationComponent.Show("Validation Error", "Please select a dealer point.", NotificationSeverity.Warning);
             return;
         }
 
@@ -448,7 +447,7 @@
 
         try
         {
-            CylinderExchange.SupplierId = SelectedSupplierId.Value;
+            CylinderExchange.DealerPointId = SelectedDealerPointId.Value;
             CylinderExchange.SubTotal = SubTotal;
             CylinderExchange.TotalAmount = TotalAmount;
             CylinderExchange.TotalDue = TotalDue;

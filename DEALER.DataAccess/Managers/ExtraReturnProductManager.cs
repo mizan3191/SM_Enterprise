@@ -19,6 +19,13 @@
 
             try
             {
+                // Order-e je product gulo chilo segulo ber kore niye ashi
+                var orderProductIds = _dbContext.OrderDetails
+                    .Where(od => od.OrderId == extraReturnProduct.OrderId)
+                    .Select(od => od.ProductId)
+                    .Distinct()
+                    .ToHashSet();
+
                 // Get product empty cylinder prices
                 foreach (var detail in extraReturnProduct.ExtraReturnProductDetails)
                 {
@@ -29,8 +36,16 @@
                     if (product == null)
                         throw new Exception($"Product {detail.ProductId} not found");
 
-                    // Set empty cylinder price from product's buying price or a separate field
-                    detail.EmptyCylinderPrice = product.CurrentPrice?.CylinderBuyingPrice ?? 0;
+                    // ✅ Order-e thakle SellingPrice, na thakle BuyingPrice
+                    if (orderProductIds.Contains(detail.ProductId))
+                    {
+                        detail.EmptyCylinderPrice = product.CurrentPrice?.CylinderSellingPrice ?? 0;
+                    }
+                    else
+                    {
+                        detail.EmptyCylinderPrice = product.CurrentPrice?.CylinderBuyingPrice ?? 0;
+                    }
+
                     detail.Price = detail.Quantity * detail.EmptyCylinderPrice;
 
                     // Update Stock - INCREASE EmptyQty for this product/company
@@ -39,7 +54,6 @@
 
                     if (stock == null)
                     {
-                        // Create stock if not exists
                         stock = new ProductStock
                         {
                             ProductId = detail.ProductId,
@@ -62,6 +76,7 @@
                 _dbContext.ExtraReturnProducts.Add(extraReturnProduct);
                 _dbContext.SaveChanges();
 
+                // ... বাকি payment history কোড অপরিবর্তিত ...
                 // Update Order with extra return info
                 var order = _dbContext.Orders
                     .FirstOrDefault(o => o.Id == extraReturnProduct.OrderId);
@@ -120,10 +135,19 @@
                 return false;
             }
 
+            // Page theke asha tracked entity/temporary Id-gulo bad dewar jonno
+            _dbContext.ChangeTracker.Clear();
+
+            // Clear-er por-o page-er data thake, tai age theke plain list-e niye rakhi
+            var incomingDetails = extraReturnProduct.ExtraReturnProductDetails
+                .Select(d => new { d.ProductId, d.Quantity })
+                .ToList();
+
             using var transaction = _dbContext.Database.BeginTransaction();
 
             try
             {
+                // DB theke fresh load (ekhon kono stale tracked object nai)
                 var existingExtraReturn = _dbContext.ExtraReturnProducts
                     .Include(e => e.ExtraReturnProductDetails)
                     .FirstOrDefault(e => e.Id == extraReturnProduct.Id);
@@ -131,7 +155,7 @@
                 if (existingExtraReturn == null)
                     return false;
 
-                // Step 1: Reverse old stock changes
+                // Step 1: Purano stock change reverse kori
                 foreach (var oldDetail in existingExtraReturn.ExtraReturnProductDetails)
                 {
                     var stock = _dbContext.ProductStocks
@@ -143,12 +167,22 @@
                     }
                 }
 
-                // Remove old details
-                _dbContext.ExtraReturnProductDetails.RemoveRange(existingExtraReturn.ExtraReturnProductDetails);
+                // Purano details delete (egulo DB theke load, tai Id permanent)
+                var oldDetails = existingExtraReturn.ExtraReturnProductDetails.ToList();
+                _dbContext.ExtraReturnProductDetails.RemoveRange(oldDetails);
                 _dbContext.SaveChanges();
 
-                // Step 2: Apply new stock changes
-                foreach (var detail in extraReturnProduct.ExtraReturnProductDetails)
+                // Order-e je product gulo chilo
+                var orderProductIds = _dbContext.OrderDetails
+                    .Where(od => od.OrderId == extraReturnProduct.OrderId)
+                    .Select(od => od.ProductId)
+                    .Distinct()
+                    .ToHashSet();
+
+                // Step 2: Notun detail gulo fresh object hishebe toiri
+                var newDetails = new List<ExtraReturnProductDetails>();
+
+                foreach (var detail in incomingDetails)
                 {
                     var product = _dbContext.Products
                         .Include(p => p.CurrentPrice)
@@ -157,8 +191,19 @@
                     if (product == null)
                         throw new Exception($"Product {detail.ProductId} not found");
 
-                    detail.EmptyCylinderPrice = product.CurrentPrice?.CylinderBuyingPrice ?? 0;
-                    detail.Price = detail.Quantity * detail.EmptyCylinderPrice;
+                    // Order-e thakle SellingPrice, na thakle BuyingPrice
+                    double emptyPrice = orderProductIds.Contains(detail.ProductId)
+                        ? (product.CurrentPrice?.CylinderSellingPrice ?? 0)
+                        : (product.CurrentPrice?.CylinderBuyingPrice ?? 0);
+
+                    newDetails.Add(new ExtraReturnProductDetails
+                    {
+                        ExtraReturnProductId = existingExtraReturn.Id,
+                        ProductId = detail.ProductId,
+                        Quantity = detail.Quantity,
+                        EmptyCylinderPrice = emptyPrice,
+                        Price = detail.Quantity * emptyPrice
+                    });
 
                     var stock = _dbContext.ProductStocks
                         .FirstOrDefault(s => s.ProductId == detail.ProductId);
@@ -169,26 +214,20 @@
                     }
                 }
 
-                // Update header
+                // Header update
                 existingExtraReturn.Date = extraReturnProduct.Date;
                 existingExtraReturn.Remarks = extraReturnProduct.Remarks;
-                existingExtraReturn.TotalAmount = extraReturnProduct.ExtraReturnProductDetails
-                    .Sum(d => d.Price);
+                existingExtraReturn.TotalAmount = newDetails.Sum(d => d.Price);
 
-                // Add new details
-                foreach (var detail in extraReturnProduct.ExtraReturnProductDetails)
-                {
-                    detail.ExtraReturnProductId = extraReturnProduct.Id;
-                    existingExtraReturn.ExtraReturnProductDetails.Add(detail);
-                }
-
+                // Notun details add
+                _dbContext.ExtraReturnProductDetails.AddRange(newDetails);
                 _dbContext.SaveChanges();
 
-                // Update payment history
+                // Payment history update
                 if (extraReturnProduct.EmployeeId > 0)
                 {
                     var payment = _dbContext.CustomerPaymentHistories
-                        .FirstOrDefault(p => p.ExtraReturnProductId == extraReturnProduct.Id && !p.IsDeleted);
+                        .FirstOrDefault(p => p.ExtraReturnProductId == existingExtraReturn.Id && !p.IsDeleted);
 
                     var lastPayment = _dbContext.CustomerPaymentHistories
                         .Where(p => p.EmployeeId == extraReturnProduct.EmployeeId && !p.IsDeleted
@@ -197,32 +236,31 @@
                         .FirstOrDefault();
 
                     double totalDueBefore = lastPayment?.TotalDueAfterPayment ?? 0;
-                    double totalDueAfter = totalDueBefore - extraReturnProduct.TotalAmount;
+                    double totalDueAfter = totalDueBefore - existingExtraReturn.TotalAmount;
 
                     if (payment != null)
                     {
-                        payment.AmountPaid = extraReturnProduct.TotalAmount;
+                        payment.AmountPaid = existingExtraReturn.TotalAmount;
                         payment.TotalDueBeforePayment = totalDueBefore;
                         payment.TotalDueAfterPayment = totalDueAfter;
-                        payment.PaymentDate = extraReturnProduct.Date;
+                        payment.PaymentDate = existingExtraReturn.Date;
                     }
                     else
                     {
-                        var newPayment = new CustomerPaymentHistory
+                        _dbContext.CustomerPaymentHistories.Add(new CustomerPaymentHistory
                         {
                             EmployeeId = extraReturnProduct.EmployeeId,
                             OrderId = extraReturnProduct.OrderId,
-                            ExtraReturnProductId = extraReturnProduct.Id,
-                            PaymentDate = extraReturnProduct.Date,
-                            PaymentMethodId = 1, //Empty Cylinder Return
+                            ExtraReturnProductId = existingExtraReturn.Id,
+                            PaymentDate = existingExtraReturn.Date,
+                            PaymentMethodId = 1, // Empty Cylinder Return
                             TransactionID = string.Empty,
                             Number = string.Empty,
-                            TotalAmountThisOrder = extraReturnProduct.TotalAmount,
-                            AmountPaid = extraReturnProduct.TotalAmount,
+                            TotalAmountThisOrder = existingExtraReturn.TotalAmount,
+                            AmountPaid = existingExtraReturn.TotalAmount,
                             TotalDueBeforePayment = totalDueBefore,
                             TotalDueAfterPayment = totalDueAfter
-                        };
-                        _dbContext.CustomerPaymentHistories.Add(newPayment);
+                        });
                     }
                 }
 
@@ -230,12 +268,13 @@
                 transaction.Commit();
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
                 transaction.Rollback();
                 throw;
             }
         }
+
 
         public bool DeleteExtraReturnProduct(int extraReturnProductId)
         {
@@ -310,20 +349,32 @@
                     return existingExtraReturn;
                 }
 
-                // Create new empty extra return with products from order
+                // ✅ এখানে বসান — Create new empty extra return with products from order
                 var extraReturn = new ExtraReturnProduct
                 {
                     OrderId = orderId,
                     EmployeeId = order.EmployeeId ?? 0,
                     Date = DateTime.UtcNow,
                     TotalAmount = 0,
-                    ExtraReturnProductDetails = order.OrderDetails.Select(od => new ExtraReturnProductDetails
-                    {
-                        ProductId = od.ProductId,
-                        Quantity = 1,
-                        EmptyCylinderPrice = od.CylinderUnitPrice, // Ekhane CylinderUnitPrice bosbe
-                        Price = od.CylinderUnitPrice,
-                    }).ToList()
+                    ExtraReturnProductDetails = order.OrderDetails
+                        .GroupBy(od => od.ProductId)   // same product ekadhik bar hole merge
+                        .Select(g =>
+                        {
+                            var product = _dbContext.Products
+                                .Include(p => p.CurrentPrice)
+                                .FirstOrDefault(p => p.Id == g.Key);
+
+                            var sellingPrice = product?.CurrentPrice?.CylinderSellingPrice ?? 0;
+                            var qty = g.Sum(x => x.Quantity);
+
+                            return new ExtraReturnProductDetails
+                            {
+                                ProductId = g.Key,
+                                Quantity = qty,
+                                EmptyCylinderPrice = sellingPrice,
+                                Price = qty * sellingPrice
+                            };
+                        }).ToList()
                 };
 
                 return extraReturn;

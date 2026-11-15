@@ -10,8 +10,8 @@
 
         public int Id { get; set; }
 
-        public int? SupplierId { get; set; }
-        public virtual Supplier Supplier { get; set; }
+        public int? DealerPointId { get; set; }
+        public virtual DealerPoint DealerPoint { get; set; }
 
         // "Give" / "Receive"
         public string ExchangeType { get; set; } = string.Empty;
@@ -111,7 +111,7 @@
         public int CylinderExchangeId { get; set; }
 
         // Header info
-        public string SupplierName { get; set; } = string.Empty;
+        public string DealerPointName { get; set; } = string.Empty;
         public string ExchangeType { get; set; } = string.Empty;
         public DateTime ExchangeDate { get; set; }
         public string DateFormatted => ExchangeDate.ToString("dd-MMM-yyyy");

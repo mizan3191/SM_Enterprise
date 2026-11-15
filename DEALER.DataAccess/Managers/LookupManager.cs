@@ -329,6 +329,26 @@ namespace DEALER.DataAccess
             }
         }
 
+        public async Task<IList<Lov>> GetAllDealerPointList()
+        {
+            try
+            {
+                return await _dbContext.DealerPoints
+                    .Where(x => !x.IsDisable)
+                     .Select(x => new Lov
+                     {
+                         Id = x.Id,
+                         Name = x.Name,
+                     })
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                return new List<Lov>();
+            }
+        }
+
         public async Task<IList<Lov>> GetAllShippingMethodList()
         {
             try

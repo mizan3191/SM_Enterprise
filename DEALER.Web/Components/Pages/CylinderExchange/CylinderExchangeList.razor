@@ -127,7 +127,7 @@ else
                 <RadzenDataGridColumn TItem="CylinderExchange" Title="Actions" Width="130px" Sortable="false" Filterable="false">
                     <Template Context="item">
                         <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
-                                      Click="() => Edit(item.Id, item.SupplierId ?? 0)" style="margin-right: 5px;" title="Edit" />
+                                      Click="() => Edit(item.Id, item.DealerPointId ?? 0)" style="margin-right: 5px;" title="Edit" />
                         <RadzenButton Icon="info" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small"
                                       Click="() => ExchangeDetails(item.Id)" style="margin-right: 5px;" title="Details" />
                         <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
@@ -225,7 +225,7 @@ else
         else
         {
             FilteredList = ExchangeList.Where(c =>
-                (!string.IsNullOrEmpty(c.Supplier?.Name) && c.Supplier.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.DealerPoint?.Name) && c.DealerPoint.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.ExchangeType) && c.ExchangeType.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.Comments) && c.Comments.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                 c.TotalPay.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
@@ -352,7 +352,7 @@ else
                         // Data rows
                         foreach (var item in FilteredList)
                         {
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.Supplier?.Name ?? "");
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.DealerPoint?.Name ?? "");
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.ExchangeType ?? "");
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{item.TotalAmount:N2}");
                             table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{item.TotalPay:N2}");

@@ -1,0 +1,370 @@
+﻿@page "/Dealers"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<link rel="stylesheet" href="~/boniyadistyle.css" />
+
+<Message @ref="notificationComponent" />
+
+<style>
+    .custom-checkbox-lg {
+        width: 1.5em;
+        height: 1.5em;
+    }
+
+    .form-check-label {
+        margin-left: 0.5em;
+    }
+</style>
+
+<h3>Dealer Points</h3>
+
+@if (DealerPoints == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card-body p-0">
+
+        <div class="d-flex align-items-center mb-3" style="width: 100%;">
+            <!-- Add New Button -->
+            <RadzenButton Click="@AddNew" Text="Add New" ButtonStyle="ButtonStyle.Success" class="me-3" />
+
+            <!-- Search Box -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
+                    <i class="fas fa-search"></i>
+                </span>
+
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                               Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
+            </div>
+
+            <!-- Export Button -->
+            <div class="d-flex align-items-center border rounded me-3" style="width: fit-content;">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                </RadzenStack>
+            </div>
+        </div>
+
+        <RadzenDataGrid Data="@FilterDealerPoints" TItem="DealerPoint" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="DealerPoint" Property="@nameof(DealerPoint.Name)" Title="Name" Width="150px" />
+                <RadzenDataGridColumn TItem="DealerPoint" Property="@nameof(DealerPoint.Phone)" Title="Phone" Width="100px" />
+                <RadzenDataGridColumn TItem="DealerPoint" Property="@nameof(DealerPoint.Address)" Title="Address" Width="250px" />
+                <RadzenDataGridColumn TItem="DealerPoint" Title="Disable" Width="80px">
+                    <Template Context="item">
+                        @{
+                            string text = item.IsDisable ? "Yes" : "No";
+                            string badgeColor = item.IsDisable ? "badge bg-danger" : "badge bg-primary";
+                        }
+                        <span class="@badgeColor">@text</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DealerPoint" Title="Actions" Width="80px">
+                    <Template Context="item">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                      Click="() => Edit(item.Id)" title="Edit" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@if (showModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>@(DealerPoint.Id > 0 ? "Edit Dealer Point" : "Add Dealer Point")</h3>
+                </div>
+
+                <EditForm Model="@DealerPoint" OnValidSubmit="HandleSubmit">
+                    <div class="card dataForm">
+                        <div class="row m-3">
+                            <div class="col-md-6 mb-3">
+                                <label class="Asterisk">Name</label>
+                                <InputText @bind-Value="DealerPoint.Name" class="form-control"></InputText>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label>Phone</label>
+                                <InputText @bind-Value="DealerPoint.Phone" class="form-control"></InputText>
+                            </div>
+                        </div>
+                        <div class="row m-3">
+                            <div class="col-md-12 mb-3">
+                                <label>Address</label>
+                                <InputText @bind-Value="DealerPoint.Address" class="form-control"></InputText>
+                            </div>
+                        </div>
+                        <div class="row m-3">
+                            @if (DealerPoint.Id > 0)
+                            {
+                                <div class="col-md-4 mb-3">
+                                    <div class="form-check mb-3 pt-4">
+                                        <InputCheckbox @bind-Value="DealerPoint.IsDisable" class="form-check-input custom-checkbox-lg" id="disableCheck" />
+                                        <label class="form-check-label" for="disableCheck">Disable</label>
+                                    </div>
+                                </div>
+                            }
+
+                            <br />
+                            <div class="col-md-12">
+                                <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Type="submit" Disabled="@isSaving" Class="m-2" />
+                                <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseModal" Class="m-2" />
+                            </div>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject]
+    private IDealerPoint m_DealerPoint { get; set; }
+
+    [Inject]
+    private ILookup m_Lookup { get; set; }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+
+    public IEnumerable<DealerPoint> DealerPoints { get; set; }
+    public DealerPoint DealerPoint { get; set; } = new();
+
+    private IEnumerable<DealerPoint> FilterDealerPoints { get; set; } = new List<DealerPoint>();
+
+    private bool showModal = false;
+    private bool isSaving = false;
+    private string search = string.Empty;
+    private Message notificationComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        DealerPoints = await m_DealerPoint.GetAllDealerPoint(includeDisabled: true);
+        FilterData(); // search preserve korar jonno
+    }
+
+    public async Task HandleSubmit()
+    {
+        try
+        {
+            // Validation
+            if (string.IsNullOrWhiteSpace(DealerPoint.Name))
+            {
+                notificationComponent.Show(
+                    "Name Required",
+                    "Please enter the dealer point name.",
+                    NotificationSeverity.Warning);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(DealerPoint.Phone) &&
+                !System.Text.RegularExpressions.Regex.IsMatch(DealerPoint.Phone.Trim(), @"^[0-9+\-\s]{6,20}$"))
+            {
+                notificationComponent.Show(
+                    "Invalid Phone Number",
+                    "Please enter a valid phone number.",
+                    NotificationSeverity.Warning);
+                return;
+            }
+
+            // Duplicate check (isSaving set korar age)
+            if (await m_DealerPoint.IsNameExists(DealerPoint.Name, DealerPoint.Id > 0 ? DealerPoint.Id : null))
+            {
+                notificationComponent.Show(
+                    "Name Already Exists",
+                    "A dealer point with this name already exists.",
+                    NotificationSeverity.Warning);
+                return;
+            }
+
+            isSaving = true;
+
+            if (DealerPoint.Id > 0)
+            {
+                var ok = m_DealerPoint.UpdateDealerPoint(DealerPoint);
+
+                if (!ok)
+                {
+                    notificationComponent.Show(
+                        "Not Found",
+                        "Dealer point not found.",
+                        NotificationSeverity.Error);
+                    return;
+                }
+
+                notificationComponent.Show(
+                    "Dealer Point Updated",
+                    "Dealer point updated successfully.",
+                    NotificationSeverity.Success);
+            }
+            else
+            {
+                m_DealerPoint.CreateDealerPoint(DealerPoint);
+                notificationComponent.Show(
+                    "Dealer Point Added",
+                    "Dealer point added successfully.",
+                    NotificationSeverity.Success);
+            }
+
+            showModal = false;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", $"Failed to save: {ex.Message}", NotificationSeverity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Edit(int id)
+    {
+        var existing = DealerPoints.FirstOrDefault(s => s.Id == id);
+
+        // Copy kore nilam, jate Cancel dile list-er data change na hoy
+        DealerPoint = existing == null
+            ? new DealerPoint()
+            : new DealerPoint
+            {
+                Id = existing.Id,
+                Name = existing.Name,
+                Phone = existing.Phone,
+                Address = existing.Address,
+                IsDisable = existing.IsDisable
+            };
+
+        showModal = true;
+    }
+
+    private void AddNew()
+    {
+        DealerPoint = new DealerPoint();
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            FilterDealerPoints = DealerPoints;
+        }
+        else
+        {
+            FilterDealerPoints = DealerPoints.Where(c =>
+                (!string.IsNullOrEmpty(c.Name) && c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Phone) && c.Phone.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Address) && c.Address.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+    }
+
+    public async Task ExportToPdf()
+    {
+        if (!ValidationHelper.ValidateAndNotify(FilterDealerPoints, notificationComponent))
+            return;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.MarginTop(20);
+                page.MarginBottom(20);
+                page.MarginLeft(40);
+                page.MarginRight(40);
+
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(style => style.FontSize(10));
+
+                page.Header().Element(ComposeHeader);
+
+                page.Content()
+                    .PaddingVertical(10)
+                    .Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(4);
+                            columns.RelativeColumn(1);
+                        });
+
+                        table.Header(header =>
+                        {
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Name").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Phone").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Address").Bold();
+                            header.Cell().Background("#f5f5f5").Padding(5).Text("Disabled").Bold();
+                        });
+
+                        foreach (var item in FilterDealerPoints)
+                        {
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.Name);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.Phone);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.Address);
+                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(item.IsDisable ? "Yes" : "No");
+                        }
+                    });
+
+                page.Footer().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignCenter().Text(text =>
+                    {
+                        text.CurrentPageNumber();
+                        text.Span(" / ");
+                        text.TotalPages();
+                    });
+                    row.RelativeItem();
+                });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"Dealer Point List_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+    }
+
+    void ComposeHeader(IContainer container)
+    {
+        var company = m_Lookup.GetCompanyInfo();
+
+        container.Row(row =>
+        {
+            row.RelativeItem().Column(column =>
+            {
+                column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
+                column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
+                column.Item().AlignCenter().Text("Dealer Point List Report").Bold().FontSize(10);
+            });
+        });
+    }
+}

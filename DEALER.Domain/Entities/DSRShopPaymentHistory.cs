@@ -35,17 +35,16 @@ namespace DEALER.Domain
     {
         public int Id { get; set; }
 
-        // DSRShopDue এর সাথে সম্পর্ক (nullable, কারণ সব প্রোডাক্ট Due এর সাথে থাকবে না)
         public int? DSRShopPaymentHistoryId { get; set; }
         public virtual DSRShopPaymentHistory DSRShopPaymentHistory { get; set; }
-
 
         public int ProductId { get; set; }
         public virtual Product Product { get; set; }
 
         public int CylinderQty { get; set; }
-        public double PaidAmount { get; set; } // (Product.CurrentPrice.EmptyCylinderPrice * CylinderQty) + ExtraPaidAmount
-        public double ExtraPaidAmount { get; set; } 
+        public double PaidAmount { get; set; } // (CylinderSellingPrice * CylinderQty) + ExtraPaidAmount - DiscountAmount
+        public double ExtraPaidAmount { get; set; }
+        public double DiscountAmount { get; set; }   // ✅ NEW
     }
 
     public class DSRDueSummary

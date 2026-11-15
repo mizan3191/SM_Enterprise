@@ -1,0 +1,664 @@
+@page "/PreOrderDetails/{Id:int}"
+
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DialogService DialogService
+
+<Message @ref="notificationComponent" />
+
+@if (Order == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    @* ================= HEADER ================= *@
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">
+            Pre Order: @Order.OrderNumber
+            <span class="badge @StatusClass(Order.Status) fs-6 ms-2">@StatusText(Order.Status)</span>
+        </h3>
+        <div>
+            <RadzenButton Text="Back" Icon="arrow_back" ButtonStyle="ButtonStyle.Secondary" Click="Back" class="me-2" />
+            <RadzenButton Text="Edit" Icon="edit" ButtonStyle="ButtonStyle.Info" Click="Edit"
+                          Disabled="@(Order.Status == PreOrderStatus.Cancelled)" class="me-2" />
+            <RadzenButton Text="Add Payment" Icon="payments" ButtonStyle="ButtonStyle.Warning" Click="OpenPayment"
+                          Disabled="@(Order.Status == PreOrderStatus.Cancelled)" class="me-2" />
+            <RadzenButton Text="Add Delivery" Icon="local_shipping" ButtonStyle="ButtonStyle.Primary" Click="OpenDelivery"
+                          Disabled="@(!CanDeliver)" />
+        </div>
+    </div>
+
+    @* ================= SUMMARY ================= *@
+    <div class="card mb-3">
+        <div class="row m-3">
+            <div class="col-md-3 mb-2">
+                <div class="text-muted small">Supplier</div>
+                <div class="fw-bold">@Order.Supplier?.Name</div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="text-muted small">Order Date</div>
+                <div class="fw-bold">@Order.OrderDate.ToString("dd-MMM-yyyy")</div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="text-muted small">Expected Delivery</div>
+                @if (Order.ExpectedDeliveryDate.HasValue)
+                {
+                    <div class="fw-bold @(IsOverdue ? "text-danger" : "")">
+                        @Order.ExpectedDeliveryDate.Value.ToString("dd-MMM-yyyy")
+                        @if (IsOverdue)
+                        {
+                            <span class="badge bg-danger ms-1">Overdue</span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="fw-bold text-muted">-</div>
+                }
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="text-muted small">Comments</div>
+                <div>@(string.IsNullOrWhiteSpace(Order.Comments) ? "-" : Order.Comments)</div>
+            </div>
+        </div>
+        <div class="row m-3 mt-0">
+            <div class="col-md-3">
+                <div class="text-muted small">Total Amount</div>
+                <span class="badge bg-primary fs-6">@Order.TotalAmount.ToString("N2")</span>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Total Paid</div>
+                <span class="badge bg-success fs-6">@Order.TotalPaid.ToString("N2")</span>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">@(Order.TotalDue < 0 ? "Advance (extra paid)" : "Due")</div>
+                <span class="badge @(Order.TotalDue > 0 ? "bg-danger" : "bg-secondary") fs-6">@Math.Abs(Order.TotalDue).ToString("N2")</span>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small">Pending Value (paid but not received)</div>
+                <span class="badge bg-warning text-dark fs-6">@Order.PreOrderDetails.Sum(d => d.PendingAmount).ToString("N2")</span>
+            </div>
+        </div>
+    </div>
+
+    @* ================= ITEMS ================= *@
+    <div class="card mb-3">
+        <h5 class="m-3 mb-2">Items</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Product</th>
+                        <th class="text-end">Unit Price</th>
+                        <th class="text-end">Ordered</th>
+                        <th class="text-end">Delivered</th>
+                        <th class="text-end">Cancelled</th>
+                        <th class="text-end">Pending</th>
+                        <th class="text-end">Total</th>
+                        <th style="width:90px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Order.PreOrderDetails)
+                    {
+                        <tr>
+                            <td>@d.Product?.DisplayNameSize</td>
+                            <td class="text-end">@((d.CylinderUnitPrice + d.GasUnitPrice).ToString("N2"))</td>
+                            <td class="text-end">@d.OrderedQuantity</td>
+                            <td class="text-end text-success">@d.DeliveredQuantity</td>
+                            <td class="text-end text-danger">@d.CancelledQuantity</td>
+                            <td class="text-end fw-bold">@d.PendingQuantity</td>
+                            <td class="text-end">@d.Price.ToString("N2")</td>
+                            <td class="text-center">
+                                @if (d.PendingQuantity > 0 && Order.Status != PreOrderStatus.Cancelled)
+                                {
+                                    <RadzenButton Icon="block" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                                  Click="() => OpenCancel(d)" title="Cancel pending quantity (company won't supply)" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="2" class="text-end">Total</td>
+                        <td class="text-end">@Order.PreOrderDetails.Sum(d => d.OrderedQuantity)</td>
+                        <td class="text-end">@Order.PreOrderDetails.Sum(d => d.DeliveredQuantity)</td>
+                        <td class="text-end">@Order.PreOrderDetails.Sum(d => d.CancelledQuantity)</td>
+                        <td class="text-end">@Order.PreOrderDetails.Sum(d => d.PendingQuantity)</td>
+                        <td class="text-end">@Order.PreOrderDetails.Sum(d => d.Price).ToString("N2")</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    @* ================= PAYMENTS ================= *@
+    <div class="card mb-3">
+        <h5 class="m-3 mb-2">Payments</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th class="text-end">Amount</th>
+                        <th>Comments</th>
+                        <th style="width:70px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in ActivePayments)
+                    {
+                        <tr>
+                            <td>@p.Date.ToString("dd-MMM-yyyy")</td>
+                            <td>@PaymentMethodName(p.PaymentMethodId)</td>
+                            <td class="text-end">@p.Amount.ToString("N2")</td>
+                            <td>@p.Comments</td>
+                            <td class="text-center">
+                                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                              Click="() => DeletePayment(p.Id)" title="Delete payment" />
+                            </td>
+                        </tr>
+                    }
+                    @if (!ActivePayments.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-3">No payments yet.</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="2" class="text-end">Total Paid</td>
+                        <td class="text-end">@ActivePayments.Sum(p => p.Amount).ToString("N2")</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    @* ================= DELIVERIES ================= *@
+    <div class="card mb-3">
+        <h5 class="m-3 mb-2">Deliveries</h5>
+
+        @foreach (var delivery in ActiveDeliveries)
+        {
+            <div class="border rounded m-3 mt-1 p-2">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <strong>@delivery.DeliveryDate.ToString("dd-MMM-yyyy")</strong>
+                        @if (!string.IsNullOrWhiteSpace(delivery.ChallanNumber))
+                        {
+                            <span class="ms-3 text-muted">Challan: @delivery.ChallanNumber</span>
+                        }
+                        @if (delivery.PurchaseId.HasValue)
+                        {
+                            <span class="badge bg-info ms-2">Linked to Purchase #@delivery.PurchaseId</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(delivery.Comments))
+                        {
+                            <span class="ms-3 text-muted">@delivery.Comments</span>
+                        }
+                    </div>
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                  Click="() => DeleteDelivery(delivery.Id)" title="Delete delivery" />
+                </div>
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-end" style="width:140px;">Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in delivery.PreOrderDeliveryDetails)
+                        {
+                            <tr>
+                                <td>@ProductName(item.PreOrderDetailId)</td>
+                                <td class="text-end">@item.Quantity</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (!ActiveDeliveries.Any())
+        {
+            <div class="text-center text-muted py-3">No deliveries yet.</div>
+        }
+    </div>
+}
+
+@* ================= PAYMENT MODAL ================= *@
+@if (showPaymentModal)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>Add Payment</h3>
+                </div>
+                <div class="row m-3">
+                    <div class="col-md-6 mb-3">
+                        <label class="Asterisk form-label">Amount</label>
+                        <input type="number" step="0.01" min="0" class="form-control text-end"
+                               value="@NewPayment.Amount" @oninput="OnPaymentAmountInput" />
+                        <small class="text-muted">Due: @Order.TotalDue.ToString("N2")</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Date</label>
+                        <RadzenDatePicker @bind-Value="NewPayment.Date" DateFormat="yyyy-MM-dd" Class="w-100" />
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="Asterisk form-label">Payment Method</label>
+                        <RadzenDropDown TValue="int?"
+                                        @bind-Value="NewPayment.PaymentMethodId"
+                                        Data="@PaymentMethods"
+                                        TextProperty="Name"
+                                        ValueProperty="Id"
+                                        Placeholder="Select Payment Method"
+                                        AllowClear="true"
+                                        Class="w-100" />
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Comments</label>
+                        <input type="text" class="form-control" @bind="NewPayment.Comments" placeholder="Optional remarks" />
+                    </div>
+                    <div class="col-md-12">
+                        <RadzenButton Text="Save" Icon="save" ButtonStyle="ButtonStyle.Primary" Click="SavePayment" Class="m-2" />
+                        <RadzenButton Text="Cancel" Icon="cancel" ButtonStyle="ButtonStyle.Secondary" Click="ClosePayment" Class="m-2" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ================= DELIVERY MODAL ================= *@
+@if (showDeliveryModal && Order != null)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>Add Delivery</h3>
+                </div>
+                <div class="row m-3">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Delivery Date</label>
+                        <RadzenDatePicker @bind-Value="NewDelivery.DeliveryDate" DateFormat="yyyy-MM-dd" Class="w-100" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Challan Number</label>
+                        <input type="text" class="form-control" @bind="NewDelivery.ChallanNumber" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Comments</label>
+                        <input type="text" class="form-control" @bind="NewDelivery.Comments" />
+                    </div>
+
+                    <div class="col-12">
+                        <table class="table table-bordered table-striped mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th class="text-end" style="width:110px;">Pending</th>
+                                    <th style="width:160px;">Received Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var d in Order.PreOrderDetails.Where(x => x.PendingQuantity > 0))
+                                {
+                                    <tr>
+                                        <td>@d.Product?.DisplayNameSize</td>
+                                        <td class="text-end">@d.PendingQuantity</td>
+                                        <td>
+                                            <input type="number" min="0" max="@d.PendingQuantity"
+                                                   value="@GetDeliveryQty(d.Id)"
+                                                   @oninput="(e) => OnDeliveryQtyInput(d, e)"
+                                                   class="form-control text-center" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        <small class="text-muted">Enter only what was actually received. The rest stays pending.</small>
+                    </div>
+
+                    <div class="col-md-12 mt-3">
+                        <RadzenButton Text="Save" Icon="save" ButtonStyle="ButtonStyle.Primary" Click="SaveDelivery" Class="m-2" />
+                        <RadzenButton Text="Cancel" Icon="cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseDelivery" Class="m-2" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ================= CANCEL PENDING MODAL ================= *@
+@if (showCancelModal && CancelTarget != null)
+{
+    <div class="modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="1" style="display:block">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content card dataFormPop">
+                <div class="modal-header">
+                    <h3>Cancel Pending Quantity</h3>
+                </div>
+                <div class="row m-3">
+                    <div class="col-12 mb-2">
+                        <strong>@CancelTarget.Product?.DisplayNameSize</strong>
+                        <div class="text-muted small">Pending: @CancelTarget.PendingQuantity</div>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label class="form-label">Quantity the company will NOT supply</label>
+                        <input type="number" min="1" max="@CancelTarget.PendingQuantity" class="form-control"
+                               value="@CancelQty" @oninput="OnCancelQtyInput" />
+                        <small class="text-muted">The money you already paid stays with the supplier as advance.</small>
+                    </div>
+                    <div class="col-12">
+                        <RadzenButton Text="Confirm" Icon="check" ButtonStyle="ButtonStyle.Danger" Click="SaveCancel" Class="m-2" />
+                        <RadzenButton Text="Close" Icon="cancel" ButtonStyle="ButtonStyle.Secondary" Click="CloseCancel" Class="m-2" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    [Inject] private IPreOrder m_PreOrder { get; set; }
+    [Inject] private ILookup m_Lookup { get; set; }
+    [Inject] private NavigationManager _navigationManager { get; set; }
+
+    private Message notificationComponent;
+
+    private PreOrder Order { get; set; }
+    private IEnumerable<Lov> PaymentMethods { get; set; } = new List<Lov>();
+
+    // Modal state
+    private bool showPaymentModal;
+    private bool showDeliveryModal;
+    private bool showCancelModal;
+
+    private PreOrderPayment NewPayment { get; set; } = new();
+    private PreOrderDelivery NewDelivery { get; set; } = new();
+    private Dictionary<int, int> DeliveryQty { get; set; } = new();
+    private PreOrderDetail CancelTarget { get; set; }
+    private int CancelQty { get; set; }
+
+    // soft-deleted row গুলো আবার UI তে না আসে সেজন্য এখানেও filter
+    private IEnumerable<PreOrderPayment> ActivePayments =>
+        Order?.PreOrderPayments.Where(p => !p.IsDeleted).OrderByDescending(p => p.Date) ?? Enumerable.Empty<PreOrderPayment>();
+
+    private IEnumerable<PreOrderDelivery> ActiveDeliveries =>
+        Order?.PreOrderDeliveries.Where(d => !d.IsDeleted).OrderByDescending(d => d.DeliveryDate) ?? Enumerable.Empty<PreOrderDelivery>();
+
+    private bool CanDeliver =>
+        Order != null
+        && (Order.Status == PreOrderStatus.Pending || Order.Status == PreOrderStatus.PartiallyDelivered)
+        && Order.PreOrderDetails.Any(d => d.PendingQuantity > 0);
+
+    private bool IsOverdue =>
+        Order != null
+        && Order.ExpectedDeliveryDate.HasValue
+        && Order.ExpectedDeliveryDate.Value.Date < DateTime.Today
+        && (Order.Status == PreOrderStatus.Pending || Order.Status == PreOrderStatus.PartiallyDelivered);
+
+    protected override async Task OnInitializedAsync()
+    {
+        PaymentMethods = await m_Lookup.GetAllPaymentMethodList();
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        Order = await m_PreOrder.GetPreOrderById(Id);
+        if (Order == null)
+        {
+            _navigationManager.NavigateTo("/PreOrderList");
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------
+    private static string StatusClass(PreOrderStatus status) => status switch
+    {
+        PreOrderStatus.Pending => "bg-secondary",
+        PreOrderStatus.PartiallyDelivered => "bg-warning text-dark",
+        PreOrderStatus.Delivered => "bg-success",
+        PreOrderStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string StatusText(PreOrderStatus status) => status switch
+    {
+        PreOrderStatus.PartiallyDelivered => "Partially Delivered",
+        _ => status.ToString()
+    };
+
+    private string PaymentMethodName(int? id) =>
+        PaymentMethods.FirstOrDefault(x => x.Id == id)?.Name ?? "-";
+
+    private string ProductName(int preOrderDetailId) =>
+        Order.PreOrderDetails.FirstOrDefault(d => d.Id == preOrderDetailId)?.Product?.DisplayNameSize ?? "-";
+
+    private void Back() => _navigationManager.NavigateTo("/PreOrderList");
+    private void Edit() => _navigationManager.NavigateTo($"/PreOrder/{Id}");
+
+    // ---------------------------------------------------------------
+    // Payment
+    // ---------------------------------------------------------------
+    private void OpenPayment()
+    {
+        NewPayment = new PreOrderPayment
+        {
+            PreOrderId = Order.Id,
+            Date = DateTime.Now,
+            PaymentMethodId = Order.PaymentMethodId,
+            Amount = Order.TotalDue > 0 ? Order.TotalDue : 0
+        };
+        showPaymentModal = true;
+    }
+
+    private void ClosePayment() => showPaymentModal = false;
+
+    private void OnPaymentAmountInput(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double v))
+        {
+            NewPayment.Amount = v < 0 ? 0 : v;
+        }
+    }
+
+    private async Task SavePayment()
+    {
+        if (NewPayment.Amount <= 0)
+        {
+            notificationComponent.Show("Validation Error", "Amount must be greater than zero.", NotificationSeverity.Warning);
+            return;
+        }
+        if (NewPayment.PaymentMethodId == null || NewPayment.PaymentMethodId <= 0)
+        {
+            notificationComponent.Show("Validation Error", "Please select a Payment Method.", NotificationSeverity.Warning);
+            return;
+        }
+
+        try
+        {
+            m_PreOrder.AddPayment(NewPayment);
+            notificationComponent.Show("Added", "Payment has been added successfully.", NotificationSeverity.Success);
+            showPaymentModal = false;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", ex.Message, NotificationSeverity.Error);
+        }
+    }
+
+    private async Task DeletePayment(int paymentId)
+    {
+        var confirm = await DialogService.Confirm(
+            "Delete this payment? Supplier due and balance will be reversed.",
+            "Delete Payment",
+            new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" });
+
+        if (confirm != true)
+            return;
+
+        try
+        {
+            m_PreOrder.DeletePayment(paymentId);
+            notificationComponent.Show("Deleted", "Payment has been deleted.", NotificationSeverity.Warning);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", ex.Message, NotificationSeverity.Error);
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Delivery
+    // ---------------------------------------------------------------
+    private void OpenDelivery()
+    {
+        NewDelivery = new PreOrderDelivery
+        {
+            PreOrderId = Order.Id,
+            DeliveryDate = DateTime.Now
+        };
+
+        // ডিফল্টে সব বাকি পিস ধরা আছে, কম এলে কমিয়ে নিলেই হবে
+        DeliveryQty = Order.PreOrderDetails
+            .Where(d => d.PendingQuantity > 0)
+            .ToDictionary(d => d.Id, d => d.PendingQuantity);
+
+        showDeliveryModal = true;
+    }
+
+    private void CloseDelivery() => showDeliveryModal = false;
+
+    private int GetDeliveryQty(int detailId) =>
+        DeliveryQty.TryGetValue(detailId, out var q) ? q : 0;
+
+    private void OnDeliveryQtyInput(PreOrderDetail d, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+        {
+            DeliveryQty[d.Id] = v < 0 ? 0 : (v > d.PendingQuantity ? d.PendingQuantity : v);
+        }
+        else
+        {
+            DeliveryQty[d.Id] = 0;
+        }
+    }
+
+    private async Task SaveDelivery()
+    {
+        var items = DeliveryQty
+            .Where(kv => kv.Value > 0)
+            .Select(kv => new PreOrderDeliveryDetail
+            {
+                PreOrderDetailId = kv.Key,
+                Quantity = kv.Value
+            })
+            .ToList();
+
+        if (!items.Any())
+        {
+            notificationComponent.Show("Validation Error", "Enter received quantity for at least one product.", NotificationSeverity.Warning);
+            return;
+        }
+
+        try
+        {
+            NewDelivery.PreOrderDeliveryDetails = items;
+            m_PreOrder.AddDelivery(NewDelivery);
+
+            notificationComponent.Show("Added", "Delivery has been recorded and stock updated.", NotificationSeverity.Success);
+            showDeliveryModal = false;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", ex.Message, NotificationSeverity.Error);
+        }
+    }
+
+    private async Task DeleteDelivery(int deliveryId)
+    {
+        var confirm = await DialogService.Confirm(
+            "Delete this delivery? Stock and supplier due will be reversed.",
+            "Delete Delivery",
+            new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" });
+
+        if (confirm != true)
+            return;
+
+        try
+        {
+            m_PreOrder.DeleteDelivery(deliveryId);
+            notificationComponent.Show("Deleted", "Delivery has been deleted.", NotificationSeverity.Warning);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", ex.Message, NotificationSeverity.Error);
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Cancel pending quantity
+    // ---------------------------------------------------------------
+    private void OpenCancel(PreOrderDetail detail)
+    {
+        CancelTarget = detail;
+        CancelQty = detail.PendingQuantity;
+        showCancelModal = true;
+    }
+
+    private void CloseCancel()
+    {
+        showCancelModal = false;
+        CancelTarget = null;
+    }
+
+    private void OnCancelQtyInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+        {
+            CancelQty = v;
+        }
+    }
+
+    private async Task SaveCancel()
+    {
+        if (CancelTarget == null) return;
+
+        if (CancelQty <= 0 || CancelQty > CancelTarget.PendingQuantity)
+        {
+            notificationComponent.Show("Validation Error", $"Quantity must be between 1 and {CancelTarget.PendingQuantity}.", NotificationSeverity.Warning);
+            return;
+        }
+
+        try
+        {
+            m_PreOrder.CancelPendingQuantity(CancelTarget.Id, CancelQty);
+            notificationComponent.Show("Updated", "Pending quantity has been cancelled.", NotificationSeverity.Success);
+            CloseCancel();
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            notificationComponent.Show("Error", ex.Message, NotificationSeverity.Error);
+        }
+    }
+}

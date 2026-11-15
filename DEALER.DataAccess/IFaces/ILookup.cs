@@ -25,6 +25,7 @@
         Task<IList<Lov>> GetAllYearlyExpenseTypeList();
         Task<IList<Lov>> GetAllReasonofAdjustmentList();
         Task<IList<Lov>> GetAllPaymentMethodList();
+        Task<IList<Lov>> GetAllDealerPointList();
         Task<IList<Lov>> GetAllShippingMethodList();
         Task<IList<Lov>> GetAllShopList();
         Task<IList<Lov>> GetAllPaymentTypeList();
