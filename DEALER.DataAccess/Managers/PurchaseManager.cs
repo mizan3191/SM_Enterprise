@@ -6,7 +6,6 @@
         {
         }
 
-
         public bool CreatePurchase(Purchase purchase)
         {
             if (purchase == null || purchase.PurchaseDetails == null || !purchase.PurchaseDetails.Any())
@@ -71,7 +70,9 @@
                         CurrentBalance = existCurrentBalance - purchase.TotalPay,
                         Date = purchase.Date,
                         PurchaseId = purchase.Id,
-                        Resone = purchase.Supplier?.Name != null ? $"Purchase from {purchase.Supplier.Name}." : $"Purchase Payment",
+                        Resone = purchase.Supplier?.Name != null
+                            ? $"Purchase from {purchase.Supplier.Name}."
+                            : $"Purchase Payment",
                     };
 
                     _dbContext.Add(transactionHistory);
@@ -205,6 +206,15 @@
                     return false;
                 }
 
+                // ══════════════════════════════════════════════════════════════
+                // নতুন ✅: Pre-Order থেকে তৈরি Purchase সরাসরি delete করা যাবে না
+                if (purchasesEntity.IsFromPreOrder)
+                    throw new InvalidOperationException(
+                        "এই Purchase টি Pre-Order থেকে auto-create হয়েছে, " +
+                        "সরাসরি delete করা যাবে না। " +
+                        "Pre-Order এর Delivery delete করুন।");
+                // ══════════════════════════════════════════════════════════════
+
                 if (purchasesEntity.IsDeleted)
                     return true; // আগে থেকেই deleted, double-reverse এড়ানো
 
@@ -212,11 +222,13 @@
                 _dbContext.Update(purchasesEntity);
                 _dbContext.SaveChanges();
 
-                var purchasesDetailsEntity = _dbContext.PurchaseDetails.Where(x => x.PurchaseId == id).ToList();
+                var purchasesDetailsEntity = _dbContext.PurchaseDetails
+                    .Where(x => x.PurchaseId == id).ToList();
 
                 foreach (var detail in purchasesDetailsEntity)
                 {
-                    var stock = _dbContext.ProductStocks.FirstOrDefault(x => x.ProductId == detail.ProductId);
+                    var stock = _dbContext.ProductStocks
+                        .FirstOrDefault(x => x.ProductId == detail.ProductId);
                     if (stock != null)
                     {
                         ReverseStockForPurchase(stock, detail);
@@ -233,7 +245,10 @@
                     supplierPaymentHistoriesEntity.IsDeleted = true;
 
                     var amount = purchasesEntity.TotalAmount - supplierPaymentHistoriesEntity.AmountPaid;
-                    RecalculateSupplierPaymentHistoriesAsync(supplierPaymentHistoriesEntity.SupplierId, supplierPaymentHistoriesEntity.Id, amount);
+                    RecalculateSupplierPaymentHistoriesAsync(
+                        supplierPaymentHistoriesEntity.SupplierId,
+                        supplierPaymentHistoriesEntity.Id,
+                        amount);
 
                     _dbContext.Update(supplierPaymentHistoriesEntity);
                     _dbContext.SaveChanges();
@@ -247,7 +262,9 @@
                     if (purchasestransactionHistory.BalanceOut.HasValue
                         && purchasestransactionHistory.BalanceOut.Value > 0)
                     {
-                        BalanceInTransactionHistories(purchasestransactionHistory.Id, purchasestransactionHistory.BalanceOut.Value);
+                        BalanceInTransactionHistories(
+                            purchasestransactionHistory.Id,
+                            purchasestransactionHistory.BalanceOut.Value);
                     }
 
                     purchasestransactionHistory.IsDeleted = true;
@@ -258,14 +275,17 @@
                 if (supplierPaymentHistoriesEntity is not null)
                 {
                     var supplierPaymentHistorytransactionHistory = _dbContext.TransactionHistories
-                    .FirstOrDefault(t => t.SupplierPaymentHistoryId == supplierPaymentHistoriesEntity.Id);
+                        .FirstOrDefault(t =>
+                            t.SupplierPaymentHistoryId == supplierPaymentHistoriesEntity.Id);
 
                     if (supplierPaymentHistorytransactionHistory is not null)
                     {
                         if (supplierPaymentHistorytransactionHistory.BalanceOut.HasValue
                            && supplierPaymentHistorytransactionHistory.BalanceOut.Value > 0)
                         {
-                            BalanceOutTransactionHistories(supplierPaymentHistorytransactionHistory.Id, supplierPaymentHistorytransactionHistory.BalanceOut.Value);
+                            BalanceOutTransactionHistories(
+                                supplierPaymentHistorytransactionHistory.Id,
+                                supplierPaymentHistorytransactionHistory.BalanceOut.Value);
                         }
 
                         supplierPaymentHistorytransactionHistory.IsDeleted = true;
@@ -273,6 +293,7 @@
                         _dbContext.SaveChanges();
                     }
                 }
+
                 transaction.Commit();
                 return true;
             }
@@ -284,7 +305,7 @@
             }
         }
 
-        // --- Helper methods ---
+        // --- Helper methods --- (unchanged)
 
         private void ApplyStockForPurchase(ProductStock stock, PurchaseDetail detail)
         {
@@ -330,13 +351,16 @@
             }
         }
 
+        // নতুন ✅: PreOrderDelivery Include করা হয়েছে (back-link এর জন্য)
         public async Task<Purchase> GetPurchaseById(int purchaseId)
         {
             try
             {
                 return await _dbContext.Purchases
-                .Include(o => o.PurchaseDetails)
-                .FirstOrDefaultAsync(o => o.Id == purchaseId && !o.IsDeleted);
+                    .Include(o => o.PurchaseDetails)
+                    .Include(o => o.PreOrderDelivery)       // নতুন
+                        .ThenInclude(d => d.PreOrder)       // নতুন
+                    .FirstOrDefaultAsync(o => o.Id == purchaseId && !o.IsDeleted);
             }
             catch (Exception ex)
             {
@@ -363,7 +387,8 @@
                         ReturnQuantity = pd.ReturnQuantity ?? 0,
                         ProductPrice = pd.GasUnitPrice,
                         Discount = pd.Discount,
-                        TotalPrice = (double)((pd.Quantity * pd.GasUnitPrice) - (pd.Discount + (pd.ReturnQuantity ?? 0) * pd.CylinderUnitPrice))
+                        TotalPrice = (double)((pd.Quantity * pd.GasUnitPrice)
+                            - (pd.Discount + (pd.ReturnQuantity ?? 0) * pd.CylinderUnitPrice))
                     })
                     .ToListAsync();
 

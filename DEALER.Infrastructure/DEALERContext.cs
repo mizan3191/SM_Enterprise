@@ -145,7 +145,16 @@ namespace DEALER.Infrastructure
             //    .HasForeignKey(s => s.DSRCustomerId)
             //    .OnDelete(DeleteBehavior.Restrict); // or whatever delete behavior you want
 
-
+            // Dependent side = PreOrderDelivery (এর কাছে PurchaseId FK আছে)
+            modelBuilder.Entity<Purchase>()
+                .HasOne(p => p.PreOrderDelivery)
+                .WithOne(d => d.Purchase)
+                .HasForeignKey<PreOrderDelivery>(d => d.PurchaseId)
+                .OnDelete(DeleteBehavior.SetNull);
+            // Purchase.PreOrderDeliveryId → NotMapped হিসেবে চলবে,
+            // অথবা নিচের মতো ignore করো:
+            modelBuilder.Entity<Purchase>()
+                .Ignore(p => p.PreOrderDeliveryId);
 
         }
     }

@@ -22,36 +22,56 @@ else
                 <span class="ps-2" style="font-size: 1.2rem; color: #6c757d;">
                     <i class="fas fa-search"></i>
                 </span>
-                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..." @oninput="OnSearch"
+                <RadzenTextBox @bind-Value="@search" TValue="string" Placeholder="Search..."
+                               @oninput="OnSearch"
                                Style="border: none; box-shadow: none; padding-left: 0.5rem;" />
             </div>
 
             <!-- Export Button -->
             <div class="d-flex align-items-center border rounded" style="width: fit-content;">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
-                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf" Click="@(args => ExportToPdf())" />
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                             Gap="1rem;" Wrap="FlexWrap.Wrap" Style="padding-left: 0.10rem;">
+                    <RadzenButton Text="Export To PDF" Icon="picture_as_pdf"
+                                  Click="@(args => ExportToPdf())" />
                 </RadzenStack>
             </div>
         </div>
 
-        <RadzenDataGrid Data="@FilteredPreOrders" TItem="PreOrder" PageSize="10" AllowPaging="true" AllowSorting="true" AllowFiltering="false">
+        <RadzenDataGrid Data="@FilteredPreOrders" TItem="PreOrder"
+                        PageSize="10" AllowPaging="true"
+                        AllowSorting="true" AllowFiltering="false">
             <Columns>
-                <RadzenDataGridColumn TItem="PreOrder" Property="@nameof(PreOrder.OrderNumber)" Title="Order No" Width="110px" />
+                <RadzenDataGridColumn TItem="PreOrder"
+                                      Property="@nameof(PreOrder.OrderNumber)"
+                                      Title="Order No" Width="110px" />
+
                 <RadzenDataGridColumn TItem="PreOrder" Title="Supplier" Width="140px">
                     <Template Context="item">
                         <div>@item.Supplier?.Name</div>
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="PreOrder" Property="@nameof(PreOrder.OrderDate)" Title="Order Date" Width="110px">
+
+                <RadzenDataGridColumn TItem="PreOrder"
+                                      Property="@nameof(PreOrder.OrderDate)"
+                                      Title="Order Date" Width="110px">
                     <Template Context="item">
                         <div>@item.OrderDate.ToString("dd-MMM-yyyy")</div>
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="PreOrder" Property="@nameof(PreOrder.ExpectedDeliveryDate)" Title="Expected" Width="110px">
+
+                <RadzenDataGridColumn TItem="PreOrder"
+                                      Property="@nameof(PreOrder.ExpectedDeliveryDate)"
+                                      Title="Expected" Width="110px">
                     <Template Context="item">
                         @if (item.ExpectedDeliveryDate.HasValue)
                         {
-                            <div class="@(IsOverdue(item) ? "text-danger fw-bold" : "")">@item.ExpectedDeliveryDate.Value.ToString("dd-MMM-yyyy")</div>
+                            <div class="@(IsOverdue(item) ? "text-danger fw-bold" : "")">
+                                @item.ExpectedDeliveryDate.Value.ToString("dd-MMM-yyyy")
+                                @if (IsOverdue(item))
+                                {
+                                    <span class="badge bg-danger ms-1">Overdue</span>
+                                }
+                            </div>
                         }
                         else
                         {
@@ -59,60 +79,92 @@ else
                         }
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="PreOrder" Title="Ordered" Width="80px" TextAlign="TextAlign.Right">
+
+                <RadzenDataGridColumn TItem="PreOrder" Title="Ordered"
+                                      Width="80px" TextAlign="TextAlign.Right">
                     <Template Context="item">
                         <div>@item.PreOrderDetails.Sum(d => d.OrderedQuantity)</div>
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="PreOrder" Title="Delivered" Width="80px" TextAlign="TextAlign.Right">
+
+                <RadzenDataGridColumn TItem="PreOrder" Title="Delivered"
+                                      Width="80px" TextAlign="TextAlign.Right">
                     <Template Context="item">
                         <div>@item.PreOrderDetails.Sum(d => d.DeliveredQuantity)</div>
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="PreOrder" Title="Pending" Width="80px" TextAlign="TextAlign.Right">
+
+                <RadzenDataGridColumn TItem="PreOrder" Title="Pending"
+                                      Width="80px" TextAlign="TextAlign.Right">
                     <Template Context="item">
                         <div class="fw-bold">@item.PreOrderDetails.Sum(d => d.PendingQuantity)</div>
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="PreOrder" Title="Total Amount" Width="110px" TextAlign="TextAlign.Right">
+
+                <RadzenDataGridColumn TItem="PreOrder" Title="Total Amount"
+                                      Width="110px" TextAlign="TextAlign.Right">
                     <Template Context="item">
                         <div>@item.TotalAmount.ToString("N2")</div>
                     </Template>
                     <FooterTemplate>
-                        <div class="text-end fw-bold">@FilteredPreOrders.Sum(o => o.TotalAmount).ToString("N2")</div>
+                        <div class="text-end fw-bold">
+                            @FilteredPreOrders.Sum(o => o.TotalAmount).ToString("N2")
+                        </div>
                     </FooterTemplate>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="PreOrder" Title="Paid" Width="110px" TextAlign="TextAlign.Right">
+
+                <RadzenDataGridColumn TItem="PreOrder" Title="Paid"
+                                      Width="110px" TextAlign="TextAlign.Right">
                     <Template Context="item">
                         <div>@item.TotalPaid.ToString("N2")</div>
                     </Template>
                     <FooterTemplate>
-                        <div class="text-end fw-bold">@FilteredPreOrders.Sum(o => o.TotalPaid).ToString("N2")</div>
+                        <div class="text-end fw-bold">
+                            @FilteredPreOrders.Sum(o => o.TotalPaid).ToString("N2")
+                        </div>
                     </FooterTemplate>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="PreOrder" Title="Due" Width="110px" TextAlign="TextAlign.Right">
+
+                <RadzenDataGridColumn TItem="PreOrder" Title="Due"
+                                      Width="110px" TextAlign="TextAlign.Right">
                     <Template Context="item">
-                        <div class="@(item.TotalDue < 0 ? "text-success" : "")">@item.TotalDue.ToString("N2")</div>
+                        <div class="@(item.TotalDue < 0 ? "text-success" : "")">
+                            @item.TotalDue.ToString("N2")
+                        </div>
                     </Template>
                     <FooterTemplate>
-                        <div class="text-end fw-bold">@FilteredPreOrders.Sum(o => o.TotalDue).ToString("N2")</div>
+                        <div class="text-end fw-bold">
+                            @FilteredPreOrders.Sum(o => o.TotalDue).ToString("N2")
+                        </div>
                     </FooterTemplate>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="PreOrder" Title="Status" Width="130px">
+
+                <RadzenDataGridColumn TItem="PreOrder" Title="Status" Width="150px">
                     <Template Context="item">
-                        <span class="badge @StatusClass(item.Status)">@StatusText(item.Status)</span>
+                        <span class="badge @StatusClass(item.Status)">
+                            @StatusText(item.Status)
+                        </span>
                     </Template>
                 </RadzenDataGridColumn>
+
                 <RadzenDataGridColumn TItem="PreOrder" Title="Actions" Width="130px">
                     <Template Context="context">
-                        <RadzenButton Icon="visibility" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small"
-                                      Click="() => Details(context.Id)" style="margin-right: 5px;" title="Details / Payment / Delivery" />
+                        <RadzenButton Icon="visibility" ButtonStyle="ButtonStyle.Success"
+                                      Size="ButtonSize.Small"
+                                      Click="() => Details(context.Id)"
+                                      style="margin-right: 5px;"
+                                      title="Details / Payment / Delivery" />
 
-                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Warning" Size="ButtonSize.Small"
-                                      Click="() => Edit(context.Id)" style="margin-right: 5px;" title="Edit" />
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Warning"
+                                      Size="ButtonSize.Small"
+                                      Click="() => Edit(context.Id)"
+                                      style="margin-right: 5px;"
+                                      title="Edit" />
 
-                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
-                                      Click="() => Delete(context.Id)" title="Delete" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger"
+                                      Size="ButtonSize.Small"
+                                      Click="() => Delete(context.Id)"
+                                      title="Delete" />
                     </Template>
                 </RadzenDataGridColumn>
             </Columns>
@@ -121,23 +173,15 @@ else
 }
 
 @code {
-    [Inject]
-    private IPreOrder m_PreOrder { get; set; }
-
-    [Inject]
-    private ILookup m_Lookup { get; set; }
-
-    [Inject]
-    private NavigationManager _navigationManager { get; set; }
-
-    [Inject]
-    private IJSRuntime JSRuntime { get; set; }
+    [Inject] private IPreOrder m_PreOrder { get; set; }
+    [Inject] private ILookup m_Lookup { get; set; }
+    [Inject] private NavigationManager _navigationManager { get; set; }
+    [Inject] private IJSRuntime JSRuntime { get; set; }
 
     private Message notificationComponent;
 
     public IEnumerable<PreOrder> PreOrders { get; set; }
     private IEnumerable<PreOrder> FilteredPreOrders { get; set; } = new List<PreOrder>();
-
     private string search = string.Empty;
 
     protected override async Task OnInitializedAsync()
@@ -169,11 +213,11 @@ else
         _ => status.ToString()
     };
 
-    // পণ্য এখনো বাকি আছে কিন্তু expected তারিখ পেরিয়ে গেছে
     private static bool IsOverdue(PreOrder order) =>
         order.ExpectedDeliveryDate.HasValue
         && order.ExpectedDeliveryDate.Value.Date < DateTime.Today
-        && (order.Status == PreOrderStatus.Pending || order.Status == PreOrderStatus.PartiallyDelivered);
+        && (order.Status == PreOrderStatus.Pending ||
+            order.Status == PreOrderStatus.PartiallyDelivered);
 
     // ---------------------------------------------------------------
     // Navigation
@@ -192,13 +236,13 @@ else
             "Delete Pre Order",
             new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" });
 
-        if (confirm != true)
-            return;
+        if (confirm != true) return;
 
         try
         {
             m_PreOrder.DeletePreOrder(id);
-            notificationComponent.Show("Deleted", "Pre-order has been deleted successfully.", NotificationSeverity.Success);
+            notificationComponent.Show("Deleted",
+                "Pre-order has been deleted successfully.", NotificationSeverity.Success);
             await LoadData();
         }
         catch (Exception ex)
@@ -221,16 +265,17 @@ else
         if (string.IsNullOrWhiteSpace(search))
         {
             FilteredPreOrders = PreOrders;
+            return;
         }
-        else
-        {
-            FilteredPreOrders = PreOrders.Where(c =>
-                (!string.IsNullOrEmpty(c.OrderNumber) && c.OrderNumber.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.Supplier?.Name) && c.Supplier.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                StatusText(c.Status).Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                c.TotalAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
-            ).ToList();
-        }
+
+        FilteredPreOrders = PreOrders.Where(c =>
+            (!string.IsNullOrEmpty(c.OrderNumber) &&
+             c.OrderNumber.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+            (!string.IsNullOrEmpty(c.Supplier?.Name) &&
+             c.Supplier.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+            StatusText(c.Status).Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            c.TotalAmount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
+        ).ToList();
     }
 
     // ---------------------------------------------------------------
@@ -249,58 +294,66 @@ else
                 page.MarginBottom(20);
                 page.MarginLeft(40);
                 page.MarginRight(40);
-
                 page.Size(PageSizes.A4);
                 page.DefaultTextStyle(style => style.FontSize(10));
-
                 page.Header().Element(ComposeHeader);
 
-                page.Content()
-                    .PaddingVertical(10)
-                    .Table(table =>
+                page.Content().PaddingVertical(10).Table(table =>
+                {
+                    table.ColumnsDefinition(columns =>
                     {
-                        table.ColumnsDefinition(columns =>
-                        {
-                            columns.RelativeColumn(2);
-                            columns.RelativeColumn(3);
-                            columns.RelativeColumn(2);
-                            columns.RelativeColumn(2);
-                            columns.RelativeColumn(2);
-                            columns.RelativeColumn(2);
-                            columns.RelativeColumn(2);
-                        });
-
-                        table.Header(header =>
-                        {
-                            header.Cell().Background("#f5f5f5").Padding(5).Text("Order No").Bold();
-                            header.Cell().Background("#f5f5f5").Padding(5).Text("Supplier").Bold();
-                            header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
-                            header.Cell().Background("#f5f5f5").Padding(5).Text("Pending Qty").Bold();
-                            header.Cell().Background("#f5f5f5").Padding(5).Text("Total").Bold();
-                            header.Cell().Background("#f5f5f5").Padding(5).Text("Paid").Bold();
-                            header.Cell().Background("#f5f5f5").Padding(5).Text("Due").Bold();
-                        });
-
-                        foreach (var order in FilteredPreOrders)
-                        {
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(order.OrderNumber);
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(order.Supplier?.Name ?? "");
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(order.OrderDate.ToString("dd-MMM-yyyy"));
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text(order.PreOrderDetails.Sum(d => d.PendingQuantity).ToString());
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{order.TotalAmount:N2}");
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{order.TotalPaid:N2}");
-                            table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{order.TotalDue:N2}");
-                        }
-
-                        table.Cell().ColumnSpan(4).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Total").Bold();
-                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilteredPreOrders.Sum(x => x.TotalAmount):N2}").Bold();
-                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilteredPreOrders.Sum(x => x.TotalPaid):N2}").Bold();
-                        table.Cell().PaddingVertical(5).PaddingHorizontal(5).Text($"{FilteredPreOrders.Sum(x => x.TotalDue):N2}").Bold();
+                        columns.RelativeColumn(2);
+                        columns.RelativeColumn(3);
+                        columns.RelativeColumn(2);
+                        columns.RelativeColumn(2);
+                        columns.RelativeColumn(2);
+                        columns.RelativeColumn(2);
+                        columns.RelativeColumn(2);
                     });
+
+                    table.Header(header =>
+                    {
+                        header.Cell().Background("#f5f5f5").Padding(5).Text("Order No").Bold();
+                        header.Cell().Background("#f5f5f5").Padding(5).Text("Supplier").Bold();
+                        header.Cell().Background("#f5f5f5").Padding(5).Text("Date").Bold();
+                        header.Cell().Background("#f5f5f5").Padding(5).Text("Pending Qty").Bold();
+                        header.Cell().Background("#f5f5f5").Padding(5).Text("Total").Bold();
+                        header.Cell().Background("#f5f5f5").Padding(5).Text("Paid").Bold();
+                        header.Cell().Background("#f5f5f5").Padding(5).Text("Due").Bold();
+                    });
+
+                    foreach (var order in FilteredPreOrders)
+                    {
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                             .Text(order.OrderNumber);
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                             .Text(order.Supplier?.Name ?? "");
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                             .Text(order.OrderDate.ToString("dd-MMM-yyyy"));
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                             .Text(order.PreOrderDetails.Sum(d => d.PendingQuantity).ToString());
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                             .Text($"{order.TotalAmount:N2}");
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                             .Text($"{order.TotalPaid:N2}");
+                        table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                             .Text($"{order.TotalDue:N2}");
+                    }
+
+                    table.Cell().ColumnSpan(4).PaddingVertical(5).PaddingHorizontal(5)
+                         .AlignRight().Text("Total").Bold();
+                    table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                         .Text($"{FilteredPreOrders.Sum(x => x.TotalAmount):N2}").Bold();
+                    table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                         .Text($"{FilteredPreOrders.Sum(x => x.TotalPaid):N2}").Bold();
+                    table.Cell().PaddingVertical(5).PaddingHorizontal(5)
+                         .Text($"{FilteredPreOrders.Sum(x => x.TotalDue):N2}").Bold();
+                });
 
                 page.Footer().Row(row =>
                 {
-                    row.RelativeItem().AlignLeft().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    row.RelativeItem().AlignLeft()
+                       .Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
                     row.RelativeItem().AlignCenter().Text(text =>
                     {
                         text.CurrentPageNumber();
@@ -315,21 +368,21 @@ else
         using var stream = new MemoryStream();
         document.GeneratePdf(stream);
 
-        var fileName = $"Pre Orders_{DateTime.Now:yyyyMMddHHmmss}.pdf";
-        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", stream.ToArray());
+        var fileName = $"Pre_Orders_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        await JSRuntime.InvokeVoidAsync(
+            "downloadFile", fileName, "application/pdf", stream.ToArray());
     }
 
     void ComposeHeader(IContainer container)
     {
         var company = m_Lookup.GetCompanyInfo();
-
         container.Row(row =>
         {
             row.RelativeItem().Column(column =>
             {
                 column.Item().AlignCenter().Text($"{company.CompanyName}").Bold().FontSize(16);
                 column.Item().AlignCenter().Text($"{company.Address}").FontSize(10);
-                column.Item().AlignCenter().Text($"Pre Orders Report").Bold().FontSize(10);
+                column.Item().AlignCenter().Text("Pre Orders Report").Bold().FontSize(10);
             });
         });
     }

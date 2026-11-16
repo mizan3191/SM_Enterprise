@@ -7,14 +7,16 @@
         }
 
         // =====================================================================
-        // অ্যাকাউন্টিং নিয়ম (সংক্ষেপে):
-        //   পেমেন্ট দিলে    => Supplier এর due কমে (বেশি দিলে নেগেটিভ = অগ্রিম)
+        // অ্যাকাউন্টিং নিয়ম:
+        //   পেমেন্ট দিলে    => Supplier এর due কমে
         //   ডেলিভারি পেলে   => Supplier এর due বাড়ে (পাওয়া পণ্যের দামে)
-        //   ফলে ১০০০ পিসের টাকা দিয়ে ৯০০ পিস পেলে, ১০০ পিসের টাকা অগ্রিম হিসেবে থেকে যায়।
         //
-        //   ডেলিভারি যদি অন্য কোনো Purchase এর সাথে আসে (PurchaseId দেওয়া থাকে),
-        //   তাহলে stock আর due সেই Purchase নিজেই বাড়ায়, এখানে আবার বাড়ানো হয় না।
-        //   শুধু PreOrderDetail এর DeliveredQuantity আপডেট হয়।
+        //   createPurchase = true হলে:
+        //     → Purchase তৈরি হয়, Purchase-ই stock ও ledger manage করে
+        //     → AddDeliveryInternal stock/ledger skip করে (PurchaseId set থাকে)
+        //
+        //   createPurchase = false হলে:
+        //     → AddDeliveryInternal নিজেই stock ও ledger handle করে
         // =====================================================================
 
         // ---------------------------------------------------------------
@@ -23,14 +25,11 @@
         public bool CreatePreOrder(PreOrder preOrder)
         {
             if (preOrder == null || preOrder.PreOrderDetails == null || !preOrder.PreOrderDetails.Any())
-            {
                 return false;
-            }
 
             using var transaction = _dbContext.Database.BeginTransaction();
             try
             {
-                // প্রথম পেমেন্ট আলাদা করে রাখো, পরে PreOrderPayment হিসেবে সেভ হবে
                 var initialPayment = preOrder.TotalPaid;
                 preOrder.TotalPaid = 0;
                 preOrder.Status = PreOrderStatus.Pending;
@@ -42,7 +41,7 @@
                 }
 
                 _dbContext.PreOrders.Add(preOrder);
-                _dbContext.SaveChanges(); // Id তৈরির জন্য
+                _dbContext.SaveChanges();
 
                 if (string.IsNullOrWhiteSpace(preOrder.OrderNumber))
                 {
@@ -94,8 +93,6 @@
                 var hasActiveDelivery = _dbContext.PreOrderDeliveries
                     .Any(d => d.PreOrderId == existing.Id && !d.IsDeleted);
 
-                // ডেলিভারি শুরু হয়ে গেলে পণ্য/দাম বদলানো যাবে না
-                // (কারণ পুরনো ডেলিভারির due হিসাব আগের দামে হয়ে গেছে)
                 if (hasActiveDelivery)
                 {
                     if (Math.Abs(existing.TotalAmount - preOrder.TotalAmount) > 0.001)
@@ -110,8 +107,9 @@
                     return true;
                 }
 
-                // Supplier বদলানো যাবে না যদি পেমেন্ট হয়ে যায় (Supplier ledger নষ্ট হবে)
-                var hasPayment = _dbContext.PreOrderPayments.Any(p => p.PreOrderId == existing.Id && !p.IsDeleted);
+                var hasPayment = _dbContext.PreOrderPayments
+                    .Any(p => p.PreOrderId == existing.Id && !p.IsDeleted);
+
                 if (hasPayment && existing.SupplierId != preOrder.SupplierId)
                     throw new InvalidOperationException("Payment deya thakle Supplier change kora jabe na.");
 
@@ -124,22 +122,26 @@
                 existing.Discount = preOrder.Discount;
                 existing.TotalAmount = preOrder.TotalAmount;
 
-                // --- Details sync ---
-                var incomingIds = preOrder.PreOrderDetails.Where(d => d.Id > 0).Select(d => d.Id).ToList();
+                var incomingIds = preOrder.PreOrderDetails
+                    .Where(d => d.Id > 0).Select(d => d.Id).ToList();
 
-                // যেগুলো আর নেই, সেগুলো মুছো
-                var removed = existing.PreOrderDetails.Where(d => !incomingIds.Contains(d.Id)).ToList();
+                var removed = existing.PreOrderDetails
+                    .Where(d => !incomingIds.Contains(d.Id)).ToList();
+
                 foreach (var r in removed)
                 {
-                    if (r.CancelledQuantity > 0 || _dbContext.PreOrderDeliveryDetails.Any(x => x.PreOrderDetailId == r.Id))
-                        throw new InvalidOperationException("Delivery/Cancel hoye gese emon item remove kora jabe na.");
+                    if (r.CancelledQuantity > 0 ||
+                        _dbContext.PreOrderDeliveryDetails.Any(x => x.PreOrderDetailId == r.Id))
+                        throw new InvalidOperationException(
+                            "Delivery/Cancel hoye gese emon item remove kora jabe na.");
 
                     _dbContext.PreOrderDetails.Remove(r);
                 }
 
                 foreach (var incoming in preOrder.PreOrderDetails)
                 {
-                    var current = existing.PreOrderDetails.FirstOrDefault(d => d.Id == incoming.Id && incoming.Id > 0);
+                    var current = existing.PreOrderDetails
+                        .FirstOrDefault(d => d.Id == incoming.Id && incoming.Id > 0);
 
                     if (current == null)
                     {
@@ -168,7 +170,6 @@
 
                 UpdatePreOrderStatus(existing);
                 _dbContext.SaveChanges();
-
                 transaction.Commit();
                 return true;
             }
@@ -189,29 +190,24 @@
             try
             {
                 var preOrder = _dbContext.PreOrders.FirstOrDefault(o => o.Id == id);
-                if (preOrder == null)
-                    return false;
+                if (preOrder == null) return false;
+                if (preOrder.IsDeleted) return true;
 
-                if (preOrder.IsDeleted)
-                    return true; // আগে থেকেই deleted
+                var hasActiveDelivery = _dbContext.PreOrderDeliveries
+                    .Any(d => d.PreOrderId == id && !d.IsDeleted);
 
-                var hasActiveDelivery = _dbContext.PreOrderDeliveries.Any(d => d.PreOrderId == id && !d.IsDeleted);
                 if (hasActiveDelivery)
-                    throw new InvalidOperationException("Delivery thakle order delete kora jabe na. Age delivery delete koro.");
+                    throw new InvalidOperationException(
+                        "Delivery thakle order delete kora jabe na. Age delivery delete koro.");
 
-                // সব পেমেন্ট reverse করো
                 var payments = _dbContext.PreOrderPayments
-                    .Where(p => p.PreOrderId == id && !p.IsDeleted)
-                    .ToList();
+                    .Where(p => p.PreOrderId == id && !p.IsDeleted).ToList();
 
                 foreach (var payment in payments)
-                {
                     DeletePaymentCore(preOrder, payment);
-                }
 
                 preOrder.IsDeleted = true;
                 _dbContext.SaveChanges();
-
                 transaction.Commit();
                 return true;
             }
@@ -224,20 +220,21 @@
         }
 
         // ---------------------------------------------------------------
-        // বাকি পিস বাতিল (কোম্পানি আর দেবে না)
-        // দ্রষ্টব্য: দেওয়া টাকা Supplier এর কাছে অগ্রিম হিসেবেই থাকবে
+        // CANCEL PENDING QUANTITY
         // ---------------------------------------------------------------
         public bool CancelPendingQuantity(int preOrderDetailId, int quantity)
         {
             using var transaction = _dbContext.Database.BeginTransaction();
             try
             {
-                var detail = _dbContext.PreOrderDetails.FirstOrDefault(d => d.Id == preOrderDetailId);
-                if (detail == null)
-                    return false;
+                var detail = _dbContext.PreOrderDetails
+                    .FirstOrDefault(d => d.Id == preOrderDetailId);
+
+                if (detail == null) return false;
 
                 if (quantity <= 0 || quantity > detail.PendingQuantity)
-                    throw new InvalidOperationException($"Cancel quantity 1 theke {detail.PendingQuantity} er moddhe hote hobe.");
+                    throw new InvalidOperationException(
+                        $"Cancel quantity 1 theke {detail.PendingQuantity} er moddhe hote hobe.");
 
                 detail.CancelledQuantity += quantity;
 
@@ -247,7 +244,6 @@
 
                 UpdatePreOrderStatus(preOrder);
                 _dbContext.SaveChanges();
-
                 transaction.Commit();
                 return true;
             }
@@ -264,21 +260,20 @@
         // ---------------------------------------------------------------
         public bool AddPayment(PreOrderPayment payment)
         {
-            if (payment == null || payment.Amount <= 0)
-                return false;
+            if (payment == null || payment.Amount <= 0) return false;
 
             using var transaction = _dbContext.Database.BeginTransaction();
             try
             {
-                var preOrder = _dbContext.PreOrders.FirstOrDefault(o => o.Id == payment.PreOrderId && !o.IsDeleted);
-                if (preOrder == null)
-                    return false;
+                var preOrder = _dbContext.PreOrders
+                    .FirstOrDefault(o => o.Id == payment.PreOrderId && !o.IsDeleted);
+
+                if (preOrder == null) return false;
 
                 if (preOrder.Status == PreOrderStatus.Cancelled)
                     throw new InvalidOperationException("Cancelled pre-order e payment deya jabe na.");
 
                 AddPaymentCore(preOrder, payment);
-
                 transaction.Commit();
                 return true;
             }
@@ -295,17 +290,16 @@
             using var transaction = _dbContext.Database.BeginTransaction();
             try
             {
-                var payment = _dbContext.PreOrderPayments.FirstOrDefault(p => p.Id == paymentId);
-                if (payment == null)
-                    return false;
+                var payment = _dbContext.PreOrderPayments
+                    .FirstOrDefault(p => p.Id == paymentId);
 
-                if (payment.IsDeleted)
-                    return true;
+                if (payment == null) return false;
+                if (payment.IsDeleted) return true;
 
-                var preOrder = _dbContext.PreOrders.First(o => o.Id == payment.PreOrderId);
+                var preOrder = _dbContext.PreOrders
+                    .First(o => o.Id == payment.PreOrderId);
 
                 DeletePaymentCore(preOrder, payment);
-
                 transaction.Commit();
                 return true;
             }
@@ -318,14 +312,14 @@
         }
 
         // ---------------------------------------------------------------
-        // DELIVERY
+        // DELIVERY — সাধারণ (backward compatible)
         // ---------------------------------------------------------------
         public bool AddDelivery(PreOrderDelivery delivery)
         {
-            if (delivery == null || delivery.PreOrderDeliveryDetails == null || !delivery.PreOrderDeliveryDetails.Any())
-            {
+            if (delivery == null ||
+                delivery.PreOrderDeliveryDetails == null ||
+                !delivery.PreOrderDeliveryDetails.Any())
                 return false;
-            }
 
             using var transaction = _dbContext.Database.BeginTransaction();
             try
@@ -334,83 +328,134 @@
                     .Include(o => o.PreOrderDetails)
                     .FirstOrDefault(o => o.Id == delivery.PreOrderId && !o.IsDeleted);
 
-                if (preOrder == null)
-                    return false;
+                if (preOrder == null) return false;
 
                 if (preOrder.Status == PreOrderStatus.Cancelled)
                     throw new InvalidOperationException("Cancelled pre-order e delivery neya jabe na.");
 
-                // অন্য Purchase এর সাথে এলে, সেটা একই Supplier এর কিনা দেখো
-                if (delivery.PurchaseId.HasValue)
-                {
-                    var purchaseOk = _dbContext.Purchases.Any(p =>
-                        p.Id == delivery.PurchaseId.Value
-                        && p.SupplierId == preOrder.SupplierId
-                        && !p.IsDeleted);
-
-                    if (!purchaseOk)
-                        throw new InvalidOperationException("Purchase ti ei Supplier-er na ba paoa jai nai.");
-                }
-
-                // Header discount ke proportionally line value te distribute kora hoy,
-                // jate pura delivery hole total value == TotalAmount hoy
-                double factor = preOrder.SubTotal > 0 ? preOrder.TotalAmount / preOrder.SubTotal : 1;
-                double deliveredValue = 0;
-
-                foreach (var item in delivery.PreOrderDeliveryDetails)
-                {
-                    var detail = preOrder.PreOrderDetails.FirstOrDefault(d => d.Id == item.PreOrderDetailId);
-                    if (detail == null)
-                        throw new InvalidOperationException("Delivery item ei order-er na.");
-
-                    if (item.Quantity <= 0)
-                        throw new InvalidOperationException("Delivery quantity 0 er beshi hote hobe.");
-
-                    if (item.Quantity > detail.PendingQuantity)
-                        throw new InvalidOperationException($"Pending quantity ({detail.PendingQuantity}) er beshi delivery neya jabe na.");
-
-                    item.ProductId = detail.ProductId;
-                    detail.DeliveredQuantity += item.Quantity;
-
-                    if (detail.OrderedQuantity > 0)
-                        deliveredValue += detail.Price / detail.OrderedQuantity * item.Quantity * factor;
-                }
-
-                deliveredValue = Math.Round(deliveredValue, 2);
-
-                _dbContext.PreOrderDeliveries.Add(delivery);
-                UpdatePreOrderStatus(preOrder);
+                // PurchaseId নেই → AddDeliveryInternal নিজেই stock ও ledger handle করবে
+                AddDeliveryInternal(preOrder, delivery);
                 _dbContext.SaveChanges();
 
-                // সরাসরি ডেলিভারি হলে stock আর Supplier due এখানেই আপডেট হবে
-                if (!delivery.PurchaseId.HasValue)
+                transaction.Commit();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                Debug.WriteLine(ex.ToString());
+                throw;
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // DELIVERY — Purchase auto-create সহ (নতুন)
+        // ---------------------------------------------------------------
+        public bool AddDeliveryWithPurchase(
+            PreOrderDelivery delivery,
+            bool createPurchase,
+            DeliveryPurchaseOptions options = null)
+        {
+            if (delivery == null ||
+                delivery.PreOrderDeliveryDetails == null ||
+                !delivery.PreOrderDeliveryDetails.Any())
+                return false;
+
+            using var transaction = _dbContext.Database.BeginTransaction();
+            try
+            {
+                var preOrder = _dbContext.PreOrders
+                    .Include(o => o.PreOrderDetails)
+                    .FirstOrDefault(o => o.Id == delivery.PreOrderId && !o.IsDeleted);
+
+                if (preOrder == null) return false;
+
+                if (preOrder.Status == PreOrderStatus.Cancelled)
+                    throw new InvalidOperationException("Cancelled pre-order e delivery neya jabe na.");
+
+                if (createPurchase)
                 {
+                    options ??= new DeliveryPurchaseOptions();
+
+                    // ── Step 1: Purchase object তৈরি ─────────────────────────
+                    var purchase = BuildPurchaseFromDelivery(preOrder, delivery, options);
+
+                    // ── Step 2: Purchase DB তে সেভ করো (Id পাওয়ার জন্য) ─────
+                    _dbContext.Purchases.Add(purchase);
+                    _dbContext.SaveChanges();
+
+                    // ── Step 3: Stock আপডেট (Purchase এর জন্য) ───────────────
                     foreach (var item in delivery.PreOrderDeliveryDetails)
                     {
-                        var stock = _dbContext.ProductStocks.FirstOrDefault(x => x.ProductId == item.ProductId);
+                        var od = preOrder.PreOrderDetails
+                            .First(d => d.Id == item.PreOrderDetailId);
+
+                        var stock = _dbContext.ProductStocks
+                            .FirstOrDefault(x => x.ProductId == od.ProductId);
+
                         if (stock != null)
-                        {
                             stock.LoadedQty += item.Quantity;
-                        }
                     }
                     _dbContext.SaveChanges();
 
+                    // ── Step 4: Supplier Ledger (Purchase এর জন্য) ────────────
                     double dueBefore = GetLastSupplierDue(preOrder.SupplierId);
 
-                    var ledger = new SupplierPaymentHistory()
+                    var supplierHistory = new SupplierPaymentHistory
                     {
                         SupplierId = preOrder.SupplierId,
-                        PreOrderDeliveryId = delivery.Id,
+                        PurchaseId = purchase.Id,
                         PaymentDate = delivery.DeliveryDate,
-                        Comments = delivery.Comments ?? $"Pre-order delivery ({preOrder.OrderNumber})",
-                        Number = delivery.ChallanNumber,
-                        TotalAmountThisPurchase = deliveredValue,
-                        AmountPaid = 0,
+                        PaymentMethodId = options.PaymentMethodId,
+                        Comments = options.Comments
+                            ?? $"Auto-purchase from Pre-order {preOrder.OrderNumber}",
+                        Number = options.InvoiceNumber ?? delivery.ChallanNumber,
+                        TotalAmountThisPurchase = purchase.TotalAmount,
+                        AmountPaid = options.AmountPaid,
                         TotalDueBeforePayment = dueBefore,
-                        TotalDueAfterPayment = dueBefore + deliveredValue
+                        TotalDueAfterPayment = dueBefore + purchase.TotalAmount - options.AmountPaid
                     };
+                    _dbContext.SupplierPaymentHistories.Add(supplierHistory);
+                    _dbContext.SaveChanges();
 
-                    _dbContext.SupplierPaymentHistories.Add(ledger);
+                    // ── Step 5: Cash/Bank transaction (AmountPaid > 0 হলে) ────
+                    if (options.AmountPaid > 0)
+                    {
+                        var existBalance = _dbContext.TransactionHistories
+                            .AsNoTracking()
+                            .Where(x => !x.IsDeleted)
+                            .OrderByDescending(x => x.Id)
+                            .FirstOrDefault()?.CurrentBalance ?? 0;
+
+                        _dbContext.TransactionHistories.Add(new TransactionHistory
+                        {
+                            BalanceIn = 0,
+                            BalanceOut = options.AmountPaid,
+                            CurrentBalance = existBalance - options.AmountPaid,
+                            Date = delivery.DeliveryDate,
+                            PurchaseId = purchase.Id,
+                            Resone = $"Auto-purchase payment ({preOrder.OrderNumber})"
+                        });
+                        _dbContext.SaveChanges();
+                    }
+
+                    // ── Step 6: Delivery এর সাথে Purchase link করো ───────────
+                    delivery.PurchaseId = purchase.Id;
+
+                    // ── Step 7: Delivery সেভ করো ─────────────────────────────
+                    // PurchaseId set থাকায় AddDeliveryInternal stock/ledger skip করবে ✅
+                    AddDeliveryInternal(preOrder, delivery);
+                    _dbContext.SaveChanges();
+
+                    // ── Step 8: Purchase এ Delivery back-link ─────────────────
+                    purchase.PreOrderDeliveryId = delivery.Id;
+                    _dbContext.SaveChanges();
+                }
+                else
+                {
+                    // Purchase ছাড়া — সাধারণ path
+                    // AddDeliveryInternal নিজেই stock ও ledger handle করবে
+                    AddDeliveryInternal(preOrder, delivery);
                     _dbContext.SaveChanges();
                 }
 
@@ -425,6 +470,9 @@
             }
         }
 
+        // ---------------------------------------------------------------
+        // DELETE DELIVERY
+        // ---------------------------------------------------------------
         public bool DeleteDelivery(int deliveryId)
         {
             using var transaction = _dbContext.Database.BeginTransaction();
@@ -434,11 +482,8 @@
                     .Include(d => d.PreOrderDeliveryDetails)
                     .FirstOrDefault(d => d.Id == deliveryId);
 
-                if (delivery == null)
-                    return false;
-
-                if (delivery.IsDeleted)
-                    return true; // double-reverse এড়ানো
+                if (delivery == null) return false;
+                if (delivery.IsDeleted) return true;
 
                 var preOrder = _dbContext.PreOrders
                     .Include(o => o.PreOrderDetails)
@@ -448,27 +493,76 @@
 
                 foreach (var item in delivery.PreOrderDeliveryDetails)
                 {
-                    var detail = preOrder.PreOrderDetails.FirstOrDefault(d => d.Id == item.PreOrderDetailId);
-                    if (detail != null)
-                    {
-                        detail.DeliveredQuantity = Math.Max(0, detail.DeliveredQuantity - item.Quantity);
-                    }
+                    var detail = preOrder.PreOrderDetails
+                        .FirstOrDefault(d => d.Id == item.PreOrderDetailId);
 
+                    if (detail != null)
+                        detail.DeliveredQuantity = Math.Max(0, detail.DeliveredQuantity - item.Quantity);
+
+                    // Purchase নেই হলে এখানেই stock reverse করো
                     if (!delivery.PurchaseId.HasValue)
                     {
-                        var stock = _dbContext.ProductStocks.FirstOrDefault(x => x.ProductId == item.ProductId);
+                        var stock = _dbContext.ProductStocks
+                            .FirstOrDefault(x => x.ProductId == item.ProductId);
                         if (stock != null)
-                        {
                             stock.LoadedQty -= item.Quantity;
-                        }
                     }
                 }
 
                 UpdatePreOrderStatus(preOrder);
                 _dbContext.SaveChanges();
 
-                if (!delivery.PurchaseId.HasValue)
+                // ── Linked Purchase থাকলে সেটাও soft-delete করো ──────────────
+                if (delivery.PurchaseId.HasValue)
                 {
+                    var linkedPurchase = _dbContext.Purchases
+                        .Include(p => p.PurchaseDetails)
+                        .FirstOrDefault(p => p.Id == delivery.PurchaseId.Value);
+
+                    if (linkedPurchase != null && !linkedPurchase.IsDeleted)
+                    {
+                        // Stock reverse (Purchase details থেকে)
+                        foreach (var pd in linkedPurchase.PurchaseDetails)
+                        {
+                            var stock = _dbContext.ProductStocks
+                                .FirstOrDefault(x => x.ProductId == pd.ProductId);
+                            if (stock != null)
+                                stock.LoadedQty -= pd.Quantity;
+                        }
+
+                        // Supplier Ledger reverse
+                        var ledger = _dbContext.SupplierPaymentHistories
+                            .FirstOrDefault(h => h.PurchaseId == linkedPurchase.Id && !h.IsDeleted);
+
+                        if (ledger != null)
+                        {
+                            ledger.IsDeleted = true;
+                            RecalculateSupplierPaymentHistories(
+                                ledger.SupplierId,
+                                ledger.Id,
+                                (double)(ledger.TotalAmountThisPurchase - ledger.AmountPaid));
+                        }
+
+                        // TransactionHistory reverse
+                        var txn = _dbContext.TransactionHistories
+                            .FirstOrDefault(t => t.PurchaseId == linkedPurchase.Id && !t.IsDeleted);
+
+                        if (txn != null)
+                        {
+                            if (txn.BalanceOut.HasValue && txn.BalanceOut.Value > 0)
+                                BalanceInTransactionHistories(txn.Id, txn.BalanceOut.Value);
+
+                            txn.IsDeleted = true;
+                            _dbContext.Update(txn);
+                        }
+
+                        linkedPurchase.IsDeleted = true;
+                        _dbContext.SaveChanges();
+                    }
+                }
+                else
+                {
+                    // সরাসরি delivery (Purchase ছাড়া) এর ledger reverse
                     var ledger = _dbContext.SupplierPaymentHistories
                         .FirstOrDefault(p => p.PreOrderDeliveryId == delivery.Id && !p.IsDeleted);
 
@@ -479,7 +573,6 @@
                             ledger.SupplierId,
                             ledger.Id,
                             (double)(ledger.TotalAmountThisPurchase - ledger.AmountPaid));
-
                         _dbContext.SaveChanges();
                     }
                 }
@@ -509,6 +602,9 @@
                     .Include(o => o.PreOrderPayments.Where(p => !p.IsDeleted))
                     .Include(o => o.PreOrderDeliveries.Where(d => !d.IsDeleted))
                         .ThenInclude(d => d.PreOrderDeliveryDetails)
+                    // Linked Purchase info দেখানোর জন্য
+                    .Include(o => o.PreOrderDeliveries.Where(d => !d.IsDeleted))
+                        .ThenInclude(d => d.Purchase)
                     .FirstOrDefaultAsync(o => o.Id == preOrderId && !o.IsDeleted);
             }
             catch (Exception ex)
@@ -548,14 +644,13 @@
                     .Include(o => o.PreOrderDetails)
                         .ThenInclude(d => d.Product)
                     .Where(o => !o.IsDeleted
-                        && (o.Status == PreOrderStatus.Pending || o.Status == PreOrderStatus.PartiallyDelivered));
+                        && (o.Status == PreOrderStatus.Pending ||
+                            o.Status == PreOrderStatus.PartiallyDelivered));
 
                 if (supplierId.HasValue)
                     query = query.Where(o => o.SupplierId == supplierId.Value);
 
-                return await query
-                    .OrderByDescending(o => o.OrderDate)
-                    .ToListAsync();
+                return await query.OrderByDescending(o => o.OrderDate).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -565,10 +660,143 @@
         }
 
         // ---------------------------------------------------------------
-        // Helper methods
+        // Private helpers
         // ---------------------------------------------------------------
 
-        // Transaction শুরু না করেই পেমেন্ট সেভ (Create আর AddPayment দুটোই এটা ব্যবহার করে)
+        /// <summary>
+        /// Delivery এর core logic (transaction ছাড়া — caller এর transaction আছে)।
+        /// - সব সময়: quantity validate, DeliveredQuantity update, delivery row add, status update।
+        /// - PurchaseId NOT set হলে: stock ও supplier ledger ও update।
+        /// - PurchaseId set হলে: stock/ledger skip (Purchase ই করেছে)। ✅
+        /// </summary>
+        private void AddDeliveryInternal(PreOrder preOrder, PreOrderDelivery delivery)
+        {
+            double factor = preOrder.SubTotal > 0
+                ? preOrder.TotalAmount / preOrder.SubTotal
+                : 1;
+
+            double deliveredValue = 0;
+
+            foreach (var item in delivery.PreOrderDeliveryDetails)
+            {
+                var detail = preOrder.PreOrderDetails
+                    .FirstOrDefault(d => d.Id == item.PreOrderDetailId);
+
+                if (detail == null)
+                    throw new InvalidOperationException("Delivery item ei order-er na.");
+
+                if (item.Quantity <= 0)
+                    throw new InvalidOperationException("Delivery quantity 0 er beshi hote hobe.");
+
+                if (item.Quantity > detail.PendingQuantity)
+                    throw new InvalidOperationException(
+                        $"Pending quantity ({detail.PendingQuantity}) er beshi delivery neya jabe na.");
+
+                item.ProductId = detail.ProductId;
+                detail.DeliveredQuantity += item.Quantity;
+
+                if (detail.OrderedQuantity > 0)
+                    deliveredValue += detail.Price / detail.OrderedQuantity * item.Quantity * factor;
+
+                // Stock: শুধু Purchase না থাকলে এখানে করো
+                if (!delivery.PurchaseId.HasValue)
+                {
+                    var stock = _dbContext.ProductStocks
+                        .FirstOrDefault(x => x.ProductId == item.ProductId);
+                    if (stock != null)
+                        stock.LoadedQty += item.Quantity;
+                }
+            }
+
+            deliveredValue = Math.Round(deliveredValue, 2);
+
+            _dbContext.PreOrderDeliveries.Add(delivery);
+            UpdatePreOrderStatus(preOrder);
+            _dbContext.SaveChanges(); // delivery.Id পাওয়ার জন্য
+
+            // Supplier Ledger: শুধু Purchase না থাকলে এখানে করো
+            if (!delivery.PurchaseId.HasValue)
+            {
+                double dueBefore = GetLastSupplierDue(preOrder.SupplierId);
+
+                _dbContext.SupplierPaymentHistories.Add(new SupplierPaymentHistory
+                {
+                    SupplierId = preOrder.SupplierId,
+                    PreOrderDeliveryId = delivery.Id,
+                    PaymentDate = delivery.DeliveryDate,
+                    Comments = delivery.Comments
+                        ?? $"Pre-order delivery ({preOrder.OrderNumber})",
+                    Number = delivery.ChallanNumber,
+                    TotalAmountThisPurchase = deliveredValue,
+                    AmountPaid = 0,
+                    TotalDueBeforePayment = dueBefore,
+                    TotalDueAfterPayment = dueBefore + deliveredValue
+                });
+                _dbContext.SaveChanges();
+            }
+        }
+
+        /// <summary>
+        /// Delivered items থেকে Purchase object তৈরি করো (persist করে না)।
+        /// IsFromPreOrder = true সেট করা হয়।
+        /// </summary>
+        private Purchase BuildPurchaseFromDelivery(
+            PreOrder preOrder,
+            PreOrderDelivery delivery,
+            DeliveryPurchaseOptions options)
+        {
+            double factor = preOrder.SubTotal > 0
+                ? preOrder.TotalAmount / preOrder.SubTotal
+                : 1;
+
+            var details = delivery.PreOrderDeliveryDetails.Select(item =>
+            {
+                var od = preOrder.PreOrderDetails
+                    .First(d => d.Id == item.PreOrderDetailId);
+
+                double lineTotal = od.OrderedQuantity > 0
+                    ? Math.Round(od.Price / od.OrderedQuantity * item.Quantity * factor, 2)
+                    : 0;
+
+                return new PurchaseDetail
+                {
+                    ProductId = od.ProductId,
+                    Quantity = item.Quantity,
+                    CylinderUnitPrice = od.CylinderUnitPrice,
+                    GasUnitPrice = od.GasUnitPrice,
+                    Discount = 0,
+                    Price = lineTotal
+                };
+            }).ToList();
+
+            double totalAmount = details.Sum(d => d.Price);
+
+            return new Purchase
+            {
+                SupplierId = preOrder.SupplierId,
+                Date = delivery.DeliveryDate,
+                Number = string.IsNullOrWhiteSpace(options.InvoiceNumber)
+                    ? delivery.ChallanNumber
+                    : options.InvoiceNumber,
+                PaymentMethodId = options.PaymentMethodId,
+                Comments = string.IsNullOrWhiteSpace(options.Comments)
+                    ? $"Auto from Pre-order {preOrder.OrderNumber}"
+                    : options.Comments,
+                TotalAmount = totalAmount,
+                TotalPay = options.AmountPaid,
+                TotalDue = totalAmount - options.AmountPaid,
+                Discount = 0,
+                DeliveryCharge = 0,
+                Adjustment = 0,
+                DamageProductDueAdjustment = 0,
+                IsDeleted = false,
+                IsFromPreOrder = true,       // ← Delete block এর জন্য
+                PurchaseDetails = details
+                // PreOrderDeliveryId → delivery save এর পরে set হবে
+            };
+        }
+
+        // Transaction ছাড়া payment save (CreatePreOrder ও AddPayment দুটোই ব্যবহার করে)
         private void AddPaymentCore(PreOrder preOrder, PreOrderPayment payment)
         {
             payment.PreOrderId = preOrder.Id;
@@ -576,12 +804,11 @@
 
             _dbContext.PreOrderPayments.Add(payment);
             preOrder.TotalPaid += payment.Amount;
-            _dbContext.SaveChanges(); // payment.Id তৈরির জন্য
+            _dbContext.SaveChanges();
 
-            // --- Supplier ledger: পেমেন্টে due কমে ---
             double dueBefore = GetLastSupplierDue(preOrder.SupplierId);
 
-            var ledger = new SupplierPaymentHistory()
+            _dbContext.SupplierPaymentHistories.Add(new SupplierPaymentHistory
             {
                 SupplierId = preOrder.SupplierId,
                 PreOrderPaymentId = payment.Id,
@@ -592,19 +819,16 @@
                 AmountPaid = payment.Amount,
                 TotalDueBeforePayment = dueBefore,
                 TotalDueAfterPayment = dueBefore - payment.Amount
-            };
-
-            _dbContext.SupplierPaymentHistories.Add(ledger);
+            });
             _dbContext.SaveChanges();
 
-            // --- Cash/Bank balance: টাকা বের হয়ে গেছে ---
             var existCurrentBalance = _dbContext.TransactionHistories
                 .AsNoTracking()
                 .Where(x => !x.IsDeleted)
                 .OrderByDescending(x => x.Id)
                 .FirstOrDefault()?.CurrentBalance ?? 0;
 
-            var transactionHistory = new TransactionHistory()
+            _dbContext.Add(new TransactionHistory
             {
                 BalanceIn = 0,
                 BalanceOut = payment.Amount,
@@ -612,13 +836,11 @@
                 Date = payment.Date,
                 PreOrderPaymentId = payment.Id,
                 Resone = $"Pre-order payment ({preOrder.OrderNumber})."
-            };
-
-            _dbContext.Add(transactionHistory);
+            });
             _dbContext.SaveChanges();
         }
 
-        // Transaction শুরু না করেই পেমেন্ট reverse
+        // Transaction ছাড়া payment reverse
         private void DeletePaymentCore(PreOrder preOrder, PreOrderPayment payment)
         {
             payment.IsDeleted = true;
@@ -642,9 +864,7 @@
             if (txn != null)
             {
                 if (txn.BalanceOut.HasValue && txn.BalanceOut.Value > 0)
-                {
                     BalanceInTransactionHistories(txn.Id, txn.BalanceOut.Value);
-                }
 
                 txn.IsDeleted = true;
                 _dbContext.Update(txn);
@@ -653,25 +873,23 @@
             _dbContext.SaveChanges();
         }
 
-        // অর্ডারের অবস্থা হিসাব করে বসাও (PreOrderDetails আগে Include করা থাকতে হবে)
+        // Order এর status recalculate করো
         private void UpdatePreOrderStatus(PreOrder preOrder)
         {
             var details = preOrder.PreOrderDetails?.ToList();
-            if (details == null || !details.Any())
-                return;
+            if (details == null || !details.Any()) return;
 
             var totalDelivered = details.Sum(d => d.DeliveredQuantity);
             var totalPending = details.Sum(d => d.PendingQuantity);
 
             if (totalPending <= 0)
-            {
-                // সব পাওয়া গেছে, অথবা কিছুই পাওয়া যায়নি কিন্তু সব বাতিল
-                preOrder.Status = totalDelivered > 0 ? PreOrderStatus.Delivered : PreOrderStatus.Cancelled;
-            }
+                preOrder.Status = totalDelivered > 0
+                    ? PreOrderStatus.Delivered
+                    : PreOrderStatus.Cancelled;
             else
-            {
-                preOrder.Status = totalDelivered > 0 ? PreOrderStatus.PartiallyDelivered : PreOrderStatus.Pending;
-            }
+                preOrder.Status = totalDelivered > 0
+                    ? PreOrderStatus.PartiallyDelivered
+                    : PreOrderStatus.Pending;
         }
 
         private double GetLastSupplierDue(int supplierId)
@@ -683,11 +901,10 @@
                 .FirstOrDefault() ?? 0;
         }
 
-        // PurchaseManager এর মতোই: পরের সব ledger row এর due সামঞ্জস্য করো
+        // পরের সব ledger row এর due সামঞ্জস্য করো
         private void RecalculateSupplierPaymentHistories(int supplierId, int id, double amount)
         {
-            if (amount == 0)
-                return;
+            if (amount == 0) return;
 
             var payments = _dbContext.SupplierPaymentHistories
                 .Where(p => p.SupplierId == supplierId && p.Id > id)
