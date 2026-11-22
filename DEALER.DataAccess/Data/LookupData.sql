@@ -57,27 +57,13 @@ VALUES (
 );
 
 
-
 INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (1, '5.5KG', 'Small domestic cylinder', 0);
 INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (2, '12KG', 'Regular domestic cylinder', 0);
-INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (3, '12.5KG', 'Regular domestic cylinder', 0);
-INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (4, '15KG', 'Commercial cylinder', 0);
-INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (5, '16KG', 'Commercial cylinder', 0);
 INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (6, '18KG', 'Commercial cylinder', 0);
 INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (7, '20KG', 'Commercial cylinder', 0);
-INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (8, '22KG', 'Commercial cylinder', 0);
-INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (9, '25KG', 'Large commercial cylinder', 0);
 INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (10, '30KG', 'Large commercial cylinder', 0);
-INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (11, '33KG', 'Large commercial cylinder', 0);
 INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (12, '35KG', 'Medium bulk cylinder', 0);
 INSERT INTO ProductsSize (Id, Name, Description, IsDeleted) VALUES (13, '45KG', 'Large bulk cylinder', 0);
-
-
-INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (1, 'Electricity Bill', 'Monthly electricity expenses',0);
-INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (2, 'Water Bill', 'Monthly water usage charges',0);
-INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (3, 'Internet Bill', 'Monthly internet charges',0);
-INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (4, 'Staff Salary', 'Salaries for staff members',0);
-INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (7, 'Home Rent', 'Monthly house rent',0);
 
 INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (1, N'Empty Cylinder Return', N'Empty Cylinder Return',0)
 INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (2, N'Daily Expense', N'Daily Expense',0)
@@ -94,7 +80,8 @@ INSERT [dbo].[PaymentMethod] ([Id], [Name], [Description], IsDeleted) VALUES (14
 
 
 INSERT INTO ShippingMethod (Id, Name, Description, IsDeleted) VALUES (1, 'Self Pickup', 'Customer picks up the product from the store',0);
-INSERT INTO ShippingMethod (Id, Name, Description, IsDeleted) VALUES (2, 'Bike/biCycle Delivery', 'Local delivery using a bicycle or motorbike',0);
+INSERT INTO ShippingMethod (Id, Name, Description, IsDeleted) VALUES (2, 'Auto Rickshaw', 'Local delivery using a Auto Rickshaw',0);
+INSERT INTO ShippingMethod (Id, Name, Description, IsDeleted) VALUES (3, 'Truck', 'Truck',0);
 
 INSERT INTO CustomerType (Id, Name, Description, IsDeleted)
 VALUES (1, 'Regular Customer', 'Customer who purchases regularly', 0);
@@ -113,10 +100,18 @@ VALUES (6, 'Wholesale Customer', 'Customer who purchases products in bulk', 0);
 INSERT INTO EmployeeType (Id, Name, Description, IsDeleted) VALUES (1, 'Shop Owner', 'Shop Owner',0);
 INSERT INTO EmployeeType (Id, Name, Description, IsDeleted) VALUES (2, 'Staff', 'Company staff or internal employee',0);
 INSERT INTO EmployeeType (Id, Name, Description, IsDeleted) VALUES (3, 'Driver', 'Driver',0);
+INSERT INTO EmployeeType (Id, Name, Description, IsDeleted) VALUES (4, 'SR', 'SR',0);
 
 INSERT INTO DailyExpenseType (Id, Name, Description, IsDeleted) VALUES (1, 'Personal Due', 'Personal Due',0);
 INSERT INTO DailyExpenseType (Id, Name, Description, IsDeleted) VALUES (2, 'Bazar Khoroc', 'Bazar Khoroc',0);
 INSERT INTO DailyExpenseType (Id, Name, Description, IsDeleted) VALUES (3, 'Guest Entertainment', 'Expenses for guest hospitality',0);
+
+
+INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (1, 'Electricity Bill', 'Monthly electricity expenses',0);
+INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (2, 'Water Bill', 'Monthly water usage charges',0);
+INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (3, 'Internet Bill', 'Monthly internet charges',0);
+INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (4, 'Staff Salary', 'Salaries for staff members',0);
+INSERT INTO ExpenseType (Id, Name, Description, IsDeleted) VALUES (7, 'Home Rent', 'Monthly house rent',0);
 
 INSERT INTO YearlyExpenseType (Id, Name, Description, IsDeleted)
 VALUES
@@ -125,3 +120,11 @@ VALUES
 (3, 'Business Investment', 'Shop setup, business equipment and other business investments', 0),
 (4, 'Property & Construction', 'Land development, house construction, renovation and property-related expenses', 0),
 (5, 'Other Yearly Expense', 'Other major yearly expenses not covered by existing categories', 0);
+
+
+INSERT [dbo].PaymentType ([Id], [Name], [Description], IsDeleted) VALUES (1, N'Advance Salary', N'Advance Salary',0)
+INSERT [dbo].PaymentType ([Id], [Name], [Description], IsDeleted) VALUES (2, N'Inceptive', N'Inceptive',0)
+INSERT [dbo].PaymentType ([Id], [Name], [Description], IsDeleted) VALUES (3, N'Partial Salary', N'Partial Salary',0)
+INSERT [dbo].PaymentType ([Id], [Name], [Description], IsDeleted) VALUES (4, N'Salary', N'Salary',0)
+INSERT [dbo].PaymentType ([Id], [Name], [Description], IsDeleted) VALUES (5, N'Other', N'Other',0)
+

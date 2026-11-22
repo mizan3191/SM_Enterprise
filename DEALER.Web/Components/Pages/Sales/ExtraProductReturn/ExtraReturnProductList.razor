@@ -61,10 +61,18 @@
                             AllowFiltering="true"
                             FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                             Style="width:100%">
-                <Template Context="product">
+                @* <Template Context="product">
                     <div>
                         <div>@product.DisplayNameSize</div>
                         <small style="color: #888;">Empty Price: @product.CurrentPrice?.CylinderBuyingPrice?.ToString("N2")</small>
+                    </div>
+                </Template> *@
+                <Template Context="product">
+                    <div>
+                        <div>@product.DisplayNameSize</div>
+                        <small style="color: #888;">
+                            Empty Price: @(product.CurrentPrice?.CylinderBuyingPrice?.ToString("N2") ?? "0.00")
+                        </small>
                     </div>
                 </Template>
             </RadzenDropDown>
@@ -105,10 +113,18 @@
                                         Placeholder="Select Empty Cylinder"
                                         FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                                         Change="@(args => OnProductChanged(detail, args))">
-                            <Template Context="product">
+                           @*  <Template Context="product">
                                 <div>
                                     <div>@product.DisplayNameSize</div>
                                     <small style="color: #888;">Empty Price: @product.CurrentPrice?.CylinderBuyingPrice?.ToString("N2")</small>
+                                </div>
+                            </Template> *@
+                            <Template Context="product">
+                                <div>
+                                    <div>@product.DisplayNameSize</div>
+                                    <small style="color: #888;">
+                                        Empty Price: @(product.CurrentPrice?.CylinderBuyingPrice?.ToString("N2") ?? "0.00")
+                                    </small>
                                 </div>
                             </Template>
                         </RadzenDropDown>

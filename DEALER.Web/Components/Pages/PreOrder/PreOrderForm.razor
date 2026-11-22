@@ -6,11 +6,27 @@
 <Message @ref="notificationComponent" />
 
 <style>
-    .dataForm .table { table-layout: fixed; width: 100%; }
-    .dataForm .table th, .dataForm .table td { padding: 6px; }
-    .dataForm .table input { width: 100%; box-sizing: border-box; }
-    .dataForm .table td.text-end    { text-align: right; }
-    .dataForm .table td.text-center { text-align: center; }
+    .dataForm .table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+        .dataForm .table th, .dataForm .table td {
+            padding: 6px;
+        }
+
+        .dataForm .table input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .dataForm .table td.text-end {
+            text-align: right;
+        }
+
+        .dataForm .table td.text-center {
+            text-align: center;
+        }
 </style>
 
 <h3>@(IsEdit ? "Edit Pre Order" : "New Pre Order")</h3>
@@ -112,13 +128,14 @@
     <table class="table">
         <thead>
             <tr>
-                <th style="width:28%">Product</th>
-                <th class="text-center" style="width:10%">Qty</th>
-                <th class="text-end"    style="width:14%">Cylinder Price</th>
-                <th class="text-end"    style="width:14%">Gas Price</th>
-                <th class="text-end"    style="width:12%">Discount</th>
-                <th class="text-end"    style="width:14%">Total</th>
-                <th                     style="width:8%"></th>
+                <th style="width:24%">Product</th>
+                <th class="text-center" style="width:8%">Qty</th>
+                <th class="text-center" style="width:10%">Return Qty<br /><small>(Empty)</small></th>
+                <th class="text-end" style="width:12%">Cylinder Price</th>
+                <th class="text-end" style="width:12%">Gas Price</th>
+                <th class="text-end" style="width:12%">Discount</th>
+                <th class="text-end" style="width:14%">Total</th>
+                <th style="width:8%"></th>
             </tr>
         </thead>
         <tbody>
@@ -144,6 +161,13 @@
                                value="@detail.OrderedQuantity"
                                disabled="@HasDelivery"
                                @oninput="(e) => OnQuantityChanged(detail, e)"
+                               class="form-control text-center" />
+                    </td>
+                    <td>
+                        <input type="number" min="0"
+                               value="@detail.ReturnQuantity"
+                               disabled="@HasDelivery"
+                               @oninput="(e) => OnReturnQuantityChanged(detail, e)"
                                class="form-control text-center" />
                     </td>
                     <td class="text-end">
@@ -181,20 +205,20 @@
             @if (!Details.Any())
             {
                 <tr>
-                    <td colspan="7" class="text-center text-muted">No items added yet.</td>
+                    <td colspan="8" class="text-center text-muted">No items added yet.</td>
                 </tr>
             }
         </tbody>
         <tfoot>
             <tr>
                 <td class="text-end"><strong>Total Qty:</strong></td>
+                <td class="text-center"><strong>@Details.Sum(d => d.OrderedQuantity)</strong></td>
                 <td class="text-center">
-                    <strong>@Details.Sum(d => d.OrderedQuantity)</strong>
+                    <strong>@Details.Sum(d => d.ReturnQuantity ?? 0)</strong>
+                    <div><small class="text-muted">Empty</small></div>
                 </td>
                 <td colspan="3" class="text-end"><strong>Sub Total:</strong></td>
-                <td class="text-end">
-                    <strong>@SubTotal.ToString("N2")</strong>
-                </td>
+                <td class="text-end"><strong>@SubTotal.ToString("N2")</strong></td>
                 <td></td>
             </tr>
         </tfoot>
@@ -282,24 +306,24 @@
     [Parameter] public int? Id { get; set; }
 
     [Inject] private IPreOrder m_PreOrder { get; set; }
-    [Inject] private IProduct  m_Product  { get; set; }
-    [Inject] private ILookup   m_Lookup   { get; set; }
+    [Inject] private IProduct m_Product { get; set; }
+    [Inject] private ILookup m_Lookup { get; set; }
     [Inject] private NavigationManager _navigationManager { get; set; }
 
     private Message notificationComponent;
 
-    public List<PreOrderDetail>  Details        { get; set; } = new();
-    public IEnumerable<Product>  AllProducts    { get; set; } = new List<Product>();
-    public IEnumerable<Lov>      SupplierList   { get; set; } = new List<Lov>();
-    public IEnumerable<Lov>      PaymentMethods { get; set; } = new List<Lov>();
+    public List<PreOrderDetail> Details { get; set; } = new();
+    public IEnumerable<Product> AllProducts { get; set; } = new List<Product>();
+    public IEnumerable<Lov> SupplierList { get; set; } = new List<Lov>();
+    public IEnumerable<Lov> PaymentMethods { get; set; } = new List<Lov>();
 
     public int? SelectedSupplierId { get; set; }
-    public int? SelectedProductId  { get; set; }
+    public int? SelectedProductId { get; set; }
 
     public PreOrder Order { get; set; } = new() { OrderDate = DateTime.Now };
 
     private double InitialPayment { get; set; }
-    private bool   HasDelivery    { get; set; }
+    private bool HasDelivery { get; set; }
 
     private bool IsEdit => Id.HasValue && Id.Value > 0;
 
@@ -307,17 +331,17 @@
     private bool SupplierLocked => IsEdit && (Order.TotalPaid > 0 || HasDelivery);
 
     // ── Calculations ────────────────────────────────────────────────────────
-    public double SubTotal    => Details.Sum(d => d.Price);
+    public double SubTotal => Details.Sum(d => d.Price);
     public double TotalAmount => SubTotal - Order.Discount;
-    public double PaidAmount  => IsEdit ? Order.TotalPaid : InitialPayment;
-    public double TotalDue    => TotalAmount - PaidAmount;
+    public double PaidAmount => IsEdit ? Order.TotalPaid : InitialPayment;
+    public double TotalDue => TotalAmount - PaidAmount;
 
     // ── Init ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
-        SupplierList   = await m_Lookup.GetAllSupplierList();
+        SupplierList = await m_Lookup.GetAllSupplierList();
         PaymentMethods = await m_Lookup.GetAllPaymentMethodList();
-        AllProducts    = await m_Product.GetAllProduct();
+        AllProducts = await m_Product.GetAllProduct();
 
         if (IsEdit)
         {
@@ -332,16 +356,16 @@
 
             Order = new PreOrder
             {
-                Id                   = existing.Id,
-                SupplierId           = existing.SupplierId,
-                OrderNumber          = existing.OrderNumber,
-                OrderDate            = existing.OrderDate,
+                Id = existing.Id,
+                SupplierId = existing.SupplierId,
+                OrderNumber = existing.OrderNumber,
+                OrderDate = existing.OrderDate,
                 ExpectedDeliveryDate = existing.ExpectedDeliveryDate,
-                PaymentMethodId      = existing.PaymentMethodId,
-                Discount             = existing.Discount,
-                TotalPaid            = existing.TotalPaid,
-                Status               = existing.Status,
-                Comments             = existing.Comments
+                PaymentMethodId = existing.PaymentMethodId,
+                Discount = existing.Discount,
+                TotalPaid = existing.TotalPaid,
+                Status = existing.Status,
+                Comments = existing.Comments
             };
 
             SelectedSupplierId = existing.SupplierId;
@@ -352,27 +376,29 @@
 
     private static PreOrderDetail CopyDetail(PreOrderDetail d) => new PreOrderDetail
     {
-        Id                = d.Id,
-        ProductId         = d.ProductId,
-        OrderedQuantity   = d.OrderedQuantity,
+        Id = d.Id,
+        ProductId = d.ProductId,
+        OrderedQuantity = d.OrderedQuantity,
+        ReturnQuantity = d.ReturnQuantity,
         DeliveredQuantity = d.DeliveredQuantity,
         CancelledQuantity = d.CancelledQuantity,
         CylinderUnitPrice = d.CylinderUnitPrice,
-        GasUnitPrice      = d.GasUnitPrice,
-        Discount          = d.Discount,
-        Price             = d.Price
+        GasUnitPrice = d.GasUnitPrice,
+        Discount = d.Discount,
+        Price = d.Price
     };
 
     // ── Helpers ─────────────────────────────────────────────────────────────
     private string GetPrice(double? price) =>
         price.HasValue ? price.Value.ToString("N2") : "N/A";
 
-    // Line total = Qty × (Cylinder + Gas) − Discount
+    // Line total = Qty × (Cylinder + Gas) − Discount − (Return Qty × Cylinder Price)
     private void Recalculate(PreOrderDetail d)
     {
-        var gross    = d.OrderedQuantity * (d.CylinderUnitPrice + d.GasUnitPrice);
+        var gross = d.OrderedQuantity * (d.CylinderUnitPrice + d.GasUnitPrice);
         var discount = d.Discount ?? 0;
-        var total    = gross - discount;
+        var emptyReturn = (d.ReturnQuantity ?? 0) * d.CylinderUnitPrice;
+        var total = gross - discount - emptyReturn;
         d.Price = total < 0 ? 0 : total;
     }
 
@@ -394,11 +420,12 @@
 
         var detail = new PreOrderDetail
         {
-            ProductId         = product.Id,
-            OrderedQuantity   = 1,
+            ProductId = product.Id,
+            OrderedQuantity = 1,
+            ReturnQuantity = 0,
             CylinderUnitPrice = product.CurrentPrice?.CylinderBuyingPrice ?? 0,
-            GasUnitPrice      = product.CurrentPrice?.GasBuyingPrice ?? 0,
-            Discount          = 0
+            GasUnitPrice = product.CurrentPrice?.GasBuyingPrice ?? 0,
+            Discount = 0
         };
         Recalculate(detail);
         Details.Add(detail);
@@ -427,9 +454,9 @@
             var p = AllProducts.FirstOrDefault(x => x.Id == pid);
             if (p != null)
             {
-                d.ProductId         = pid;
+                d.ProductId = pid;
                 d.CylinderUnitPrice = p.CurrentPrice?.CylinderBuyingPrice ?? 0;
-                d.GasUnitPrice      = p.CurrentPrice?.GasBuyingPrice ?? 0;
+                d.GasUnitPrice = p.CurrentPrice?.GasBuyingPrice ?? 0;
                 Recalculate(d);
                 StateHasChanged();
             }
@@ -442,6 +469,16 @@
         {
             var min = Math.Max(1, d.DeliveredQuantity + d.CancelledQuantity);
             d.OrderedQuantity = v < min ? min : v;
+            Recalculate(d);
+            StateHasChanged();
+        }
+    }
+
+    private void OnReturnQuantityChanged(PreOrderDetail d, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int v))
+        {
+            d.ReturnQuantity = v < 0 ? 0 : v;
             Recalculate(d);
             StateHasChanged();
         }
@@ -540,18 +577,18 @@
         {
             var order = new PreOrder
             {
-                Id                   = Order.Id,
-                SupplierId           = SelectedSupplierId.Value,
-                OrderNumber          = Order.OrderNumber,
-                OrderDate            = Order.OrderDate,
+                Id = Order.Id,
+                SupplierId = SelectedSupplierId.Value,
+                OrderNumber = Order.OrderNumber,
+                OrderDate = Order.OrderDate,
                 ExpectedDeliveryDate = Order.ExpectedDeliveryDate,
-                PaymentMethodId      = Order.PaymentMethodId,
-                SubTotal             = SubTotal,
-                Discount             = Order.Discount,
-                TotalAmount          = TotalAmount,
-                TotalPaid            = IsEdit ? Order.TotalPaid : InitialPayment,
-                Comments             = Order.Comments,
-                PreOrderDetails      = Details.Select(CopyDetail).ToList()
+                PaymentMethodId = Order.PaymentMethodId,
+                SubTotal = SubTotal,
+                Discount = Order.Discount,
+                TotalAmount = TotalAmount,
+                TotalPaid = IsEdit ? Order.TotalPaid : InitialPayment,
+                Comments = Order.Comments,
+                PreOrderDetails = Details.Select(CopyDetail).ToList()
             };
 
             if (IsEdit)

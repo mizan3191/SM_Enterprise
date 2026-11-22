@@ -565,7 +565,7 @@
         var discountAmount = loadedPrice * (detail.Discount / 100);
 
         // Final Price
-        detail.Price = loadedPrice - discountAmount + returnPrice;
+        detail.Price = loadedPrice - (discountAmount + returnPrice);
     }
 
     private void CalculateTotalPay()

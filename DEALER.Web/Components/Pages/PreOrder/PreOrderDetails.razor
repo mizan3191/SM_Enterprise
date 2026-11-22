@@ -27,10 +27,16 @@ else
                           ButtonStyle="ButtonStyle.Info" Click="Edit"
                           Disabled="@(Order.Status == PreOrderStatus.Cancelled)"
                           class="me-2" />
-            <RadzenButton Text="Add Payment" Icon="payments"
+           @*  <RadzenButton Text="Add Payment" Icon="payments"
                           ButtonStyle="ButtonStyle.Warning" Click="OpenPayment"
                           Disabled="@(Order.Status == PreOrderStatus.Cancelled)"
+                          class="me-2" /> *@
+
+            <RadzenButton Text="Add Payment" Icon="payments"
+                          ButtonStyle="ButtonStyle.Warning" Click="OpenPayment"
+                          Disabled="@(Order.Status == PreOrderStatus.Cancelled || Order.TotalDue <= 0)"
                           class="me-2" />
+
             <RadzenButton Text="Add Delivery" Icon="local_shipping"
                           ButtonStyle="ButtonStyle.Primary" Click="OpenDelivery"
                           Disabled="@(!CanDeliver)" />
@@ -342,6 +348,7 @@ else
         </div>
     </div>
 }
+
 
 @* ================= DELIVERY MODAL ================= *@
 @if (showDeliveryModal && Order != null)

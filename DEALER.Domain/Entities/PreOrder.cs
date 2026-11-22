@@ -101,6 +101,8 @@
         public int ProductId { get; set; }
         public virtual Product Product { get; set; }
 
+        public int? ReturnQuantity { get; set; }
+
         // কত পিস অর্ডার করা হয়েছে (যেমন: ১০০০)
         public int OrderedQuantity { get; set; }
 

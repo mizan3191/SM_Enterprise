@@ -43,6 +43,13 @@
                 _dbContext.PreOrders.Add(preOrder);
                 _dbContext.SaveChanges();
 
+                // Return empty cylinder company ke diye deya hoy => amader empty stock kombe
+                foreach (var detail in preOrder.PreOrderDetails)
+                {
+                    ApplyReturnEmptyStock(detail.ProductId, detail.ReturnQuantity ?? 0);
+                }
+                _dbContext.SaveChanges();
+
                 if (string.IsNullOrWhiteSpace(preOrder.OrderNumber))
                 {
                     preOrder.OrderNumber = $"PO-{preOrder.OrderDate:yyyy}-{preOrder.Id:D4}";
@@ -113,6 +120,12 @@
                 if (hasPayment && existing.SupplierId != preOrder.SupplierId)
                     throw new InvalidOperationException("Payment deya thakle Supplier change kora jabe na.");
 
+                // Step 1: purono empty return effect reverse (detail mutate korar age)
+                foreach (var old in existing.PreOrderDetails.ToList())
+                {
+                    ApplyReturnEmptyStock(old.ProductId, -(old.ReturnQuantity ?? 0));
+                }
+
                 existing.SupplierId = preOrder.SupplierId;
                 existing.OrderDate = preOrder.OrderDate;
                 existing.ExpectedDeliveryDate = preOrder.ExpectedDeliveryDate;
@@ -149,6 +162,7 @@
                         {
                             ProductId = incoming.ProductId,
                             OrderedQuantity = incoming.OrderedQuantity,
+                            ReturnQuantity = incoming.ReturnQuantity ?? 0,
                             DeliveredQuantity = 0,
                             CancelledQuantity = 0,
                             CylinderUnitPrice = incoming.CylinderUnitPrice,
@@ -161,11 +175,19 @@
                     {
                         current.ProductId = incoming.ProductId;
                         current.OrderedQuantity = incoming.OrderedQuantity;
+                        current.ReturnQuantity = incoming.ReturnQuantity ?? 0;
                         current.CylinderUnitPrice = incoming.CylinderUnitPrice;
                         current.GasUnitPrice = incoming.GasUnitPrice;
                         current.Discount = incoming.Discount;
                         current.Price = incoming.Price;
                     }
+                }
+
+                // Step 2: notun empty return effect apply (removed row gulo baad diye)
+                var removedSet = removed.ToHashSet();
+                foreach (var detail in existing.PreOrderDetails.ToList().Where(d => !removedSet.Contains(d)))
+                {
+                    ApplyReturnEmptyStock(detail.ProductId, detail.ReturnQuantity ?? 0);
                 }
 
                 UpdatePreOrderStatus(existing);
@@ -762,6 +784,7 @@
                 {
                     ProductId = od.ProductId,
                     Quantity = item.Quantity,
+                    ReturnQuantity = od.ReturnQuantity,
                     CylinderUnitPrice = od.CylinderUnitPrice,
                     GasUnitPrice = od.GasUnitPrice,
                     Discount = 0,
@@ -918,6 +941,21 @@
             }
 
             _dbContext.SaveChanges();
+        }
+
+        private void ApplyReturnEmptyStock(int productId, int returnQuantity)
+        {
+            if (returnQuantity == 0)
+                return;
+
+            var stock = _dbContext.ProductStocks
+                .FirstOrDefault(x => x.ProductId == productId);
+
+            if (stock == null)
+                return;
+
+            // Company ke empty ferot deya => amader empty stock kombe (Purchase er same)
+            stock.EmptyQty -= returnQuantity;
         }
     }
 }

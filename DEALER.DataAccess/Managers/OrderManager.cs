@@ -39,6 +39,34 @@ namespace DEALER.DataAccess
 
                 _dbContext.SaveChanges();
 
+
+                var lastPayment = _dbContext.CustomerPaymentHistories
+                                 .Where(p => p.EmployeeId == order.EmployeeId && p.IsDeleted == false)
+                                 .OrderByDescending(p => p.Id)
+                                 .FirstOrDefault();
+
+                double totalDueBefore = lastPayment?.TotalDueAfterPayment ?? 0; // If no previous payment, due is 0
+                double totalDueAfter = totalDueBefore + order.TotalAmount;
+
+                // Add new entry to CustomerPaymentHistory
+                var payment = new CustomerPaymentHistory()
+                {
+                    EmployeeId = order.EmployeeId,
+                    OrderId = order.Id,
+                    PaymentDate = order.Date,
+                    PaymentMethodId = order.PaymentMethodId,
+                    //TransactionID = order.TransactionID,
+                    //Number = order.Number,
+                    TotalAmountThisOrder = order.TotalAmount,
+                    AmountPaid = order.TotalPay,
+                    TotalDueBeforePayment = totalDueBefore,
+                    TotalDueAfterPayment = totalDueAfter - order.TotalPay
+                };
+
+                _dbContext.CustomerPaymentHistories.Add(payment);
+                _dbContext.SaveChanges();
+
+
                 if (order.TotalPay > 0)
                 {
                     var lastBalance = _dbContext.TransactionHistories

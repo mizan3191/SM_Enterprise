@@ -34,6 +34,12 @@
                     _dbContext.SaveChanges();
                 }
 
+                double emptyCylindersPrices = _dbContext.ShopEmptyCylinderProducts
+                                                        .AsNoTracking()
+                                                        .Where(x => x.DSRShopDueId == DSRShopDue.Id)
+                                                        .Sum(x => x.DueAmount);
+
+
                 // Customer Payment History
                 if (DSRShopDue.OrderId > 0)
                 {
@@ -43,7 +49,7 @@
                                     .FirstOrDefault();
 
                     double totalDueBefore = lastPayment?.TotalDueAfterPayment ?? 0;
-                    double totalDueAfter = totalDueBefore + DSRShopDue.DueAmount;
+                    double totalDueAfter = totalDueBefore - (DSRShopDue.DueAmount + emptyCylindersPrices);
 
                     var payment = new CustomerPaymentHistory()
                     {
@@ -55,7 +61,7 @@
                         TransactionID = string.Empty,
                         Number = string.Empty,
                         TotalAmountThisOrder = 0,
-                        AmountPaid = DSRShopDue.DueAmount,
+                        AmountPaid = (DSRShopDue.DueAmount + emptyCylindersPrices),
                         TotalDueBeforePayment = totalDueBefore,
                         TotalDueAfterPayment = totalDueAfter
                     };
@@ -134,12 +140,21 @@
                     var payment = _dbContext.CustomerPaymentHistories
                         .FirstOrDefault(p => p.DSRShopDueId == DSRShopDue.Id
                                           && p.EmployeeId == DSRShopDue.DSREmployeeId);
+
+
+                    double emptyCylindersPrices = _dbContext.ShopEmptyCylinderProducts
+                                                      .AsNoTracking()
+                                                      .Where(x => x.DSRShopDueId == DSRShopDue.Id)
+                                                      .Sum(x => x.DueAmount);
+
+
                     if (payment != null)
                     {
                         double diff = DSRShopDue.DueAmount - previousAmount;
                         payment.PaymentDate = DSRShopDue.Date;
-                        payment.AmountPaid = DSRShopDue.DueAmount;
-                        payment.TotalDueAfterPayment += diff;
+                        //payment.AmountPaid = DSRShopDue.DueAmount;
+                        payment.AmountPaid = (DSRShopDue.DueAmount + emptyCylindersPrices);
+                        payment.TotalDueAfterPayment += (diff - emptyCylindersPrices);
                         _dbContext.Update(payment);
                         _dbContext.SaveChanges();
                         if (diff != 0)
@@ -147,11 +162,13 @@
                     }
                     else
                     {
+
                         var lastPayment = _dbContext.CustomerPaymentHistories
                             .Where(p => p.EmployeeId == DSRShopDue.DSREmployeeId)
                             .OrderByDescending(p => p.Id)
                             .FirstOrDefault();
                         double before = lastPayment?.TotalDueAfterPayment ?? 0;
+
                         _dbContext.CustomerPaymentHistories.Add(new CustomerPaymentHistory
                         {
                             EmployeeId = DSRShopDue.DSREmployeeId.Value,
@@ -162,9 +179,9 @@
                             TransactionID = string.Empty,
                             Number = string.Empty,
                             TotalAmountThisOrder = 0,
-                            AmountPaid = DSRShopDue.DueAmount,
+                            AmountPaid = (DSRShopDue.DueAmount + emptyCylindersPrices),
                             TotalDueBeforePayment = before,
-                            TotalDueAfterPayment = before + DSRShopDue.DueAmount
+                            TotalDueAfterPayment = before + (DSRShopDue.DueAmount + emptyCylindersPrices)
                         });
                         _dbContext.SaveChanges();
                     }

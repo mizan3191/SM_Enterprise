@@ -99,6 +99,7 @@
                 if (customerProductReturn.EmployeeId.HasValue && customerProductReturn.EmployeeId.Value > 0)
                 {
                     UpdateCustomerPaymentHistory(customerProductReturn);
+                    //_dbContext.SaveChanges();
                 }
 
                 transaction.Commit();
@@ -110,7 +111,6 @@
                 throw;
             }
         }
-
         public bool UpdateCustomerProductReturn(CustomerProductReturn customerProductReturn)
         {
             if (customerProductReturn == null ||
@@ -131,115 +131,145 @@
                 if (existingReturn == null)
                     return false;
 
-                // Step 1: Reverse old stock changes
-                foreach (var oldDetail in existingReturn.CustomerProductReturnDetails)
-                {
-                    var stock = _dbContext.ProductStocks
-                        .FirstOrDefault(s => s.ProductId == oldDetail.ProductId);
-
-                    if (stock != null)
+                // Posted list e same product ekadhik bar thakle ek row e merge kori (qty sum)
+                var incomingDetails = customerProductReturn.CustomerProductReturnDetails
+                    .GroupBy(d => d.ProductId)
+                    .Select(g => new CustomerProductReturnDetails
                     {
-                        stock.LoadedQty -= oldDetail.ReturnQuantity;
+                        ProductId = g.Key,
+                        ReturnQuantity = g.Sum(x => x.ReturnQuantity),
+                        Discount = g.First().Discount
+                    })
+                    .ToList();
+
+                var existingDetails = existingReturn.CustomerProductReturnDetails.ToList();
+                var orderDetails = new Dictionary<int, OrderDetail>();
+
+                // Step 1: kichu change korar age sob validate
+                foreach (var detail in incomingDetails)
+                {
+                    if (!orderDetails.TryGetValue(detail.ProductId, out var orderDetail))
+                    {
+                        orderDetail = _dbContext.OrderDetails
+                            .FirstOrDefault(od => od.OrderId == existingReturn.OrderId
+                                                  && od.ProductId == detail.ProductId);
+
+                        if (orderDetail == null)
+                            throw new Exception($"Product {detail.ProductId} not found in original order");
+
+                        orderDetails[detail.ProductId] = orderDetail;
                     }
 
-                    // Reverse OrderDetail ReturnQuantity
-                    var orderDetail = _dbContext.OrderDetails
-                        .FirstOrDefault(od => od.OrderId == existingReturn.OrderId
-                                              && od.ProductId == oldDetail.ProductId);
-
-                    if (orderDetail != null)
-                    {
-                        orderDetail.ReturnQuantity = (orderDetail.ReturnQuantity ?? 0) - oldDetail.ReturnQuantity;
-                    }
-                }
-
-                _dbContext.SaveChanges();
-
-                // Step 2: Remove old details and add new ones
-                _dbContext.CustomerProductReturnDetails.RemoveRange(existingReturn.CustomerProductReturnDetails);
-                _dbContext.SaveChanges();
-
-                // Step 3: Apply new stock changes
-                foreach (var detail in customerProductReturn.CustomerProductReturnDetails)
-                {
-                    detail.CustomerProductReturnId = customerProductReturn.Id;
-
-                    // Validate against original order
-                    var orderDetail = _dbContext.OrderDetails
-                        .FirstOrDefault(od => od.OrderId == customerProductReturn.OrderId
-                                              && od.ProductId == detail.ProductId);
-
-                    if (orderDetail == null)
-                        throw new Exception($"Product {detail.ProductId} not found in original order");
-
-                    // Check total returned including other returns
-                    var totalReturned = _dbContext.CustomerProductReturnDetails
-                        .Where(r => r.CustomerProductReturn.OrderId == customerProductReturn.OrderId
+                    var returnedByOtherReturns = _dbContext.CustomerProductReturnDetails
+                        .Where(r => r.CustomerProductReturn.OrderId == existingReturn.OrderId
                                     && r.ProductId == detail.ProductId
-                                    && r.CustomerProductReturnId != customerProductReturn.Id)
+                                    && r.CustomerProductReturnId != existingReturn.Id)
                         .Sum(r => r.ReturnQuantity);
 
-                    var availableToReturn = orderDetail.Quantity - totalReturned;
+                    var availableToReturn = orderDetail.Quantity - returnedByOtherReturns;
 
                     if (detail.ReturnQuantity > availableToReturn)
                         throw new Exception($"Cannot return more than {availableToReturn} for product {detail.ProductId}");
-
-                    // Set prices
-                    detail.CylinderUnitPrice = orderDetail.CylinderUnitPrice;
-                    detail.GasUnitPrice = orderDetail.GasUnitPrice;
-                    detail.OrderQuantity = orderDetail.Quantity;
-
-                    // Calculate return prices
-                    detail.CylinderReturnPrice = detail.CylinderUnitPrice * detail.ReturnQuantity;
-                    detail.GasReturnPrice = detail.GasUnitPrice * detail.ReturnQuantity;
-
-                    var subtotal = detail.CylinderReturnPrice + detail.GasReturnPrice;
-                    detail.ReturnPrice = subtotal - (subtotal * (detail.Discount / 100));
-
-                    // Update stock
-                    var stock = _dbContext.ProductStocks
-                        .FirstOrDefault(s => s.ProductId == detail.ProductId);
-
-                    if (stock != null)
-                    {
-                        stock.LoadedQty += detail.ReturnQuantity;
-                    }
-
-                    // Update OrderDetail ReturnQuantity
-                    orderDetail.ReturnQuantity = (orderDetail.ReturnQuantity ?? 0) + detail.ReturnQuantity;
                 }
 
-                // Update return header
+                // Step 2: je product gulo ekhon return list e nei, segulo remove + delta reverse
+                var incomingProductIds = incomingDetails.Select(d => d.ProductId).ToHashSet();
+
+                foreach (var oldDetail in existingDetails
+                             .Where(d => !incomingProductIds.Contains(d.ProductId))
+                             .ToList())
+                {
+                    ApplyReturnDelta(existingReturn.OrderId, oldDetail.ProductId, -oldDetail.ReturnQuantity);
+                    _dbContext.CustomerProductReturnDetails.Remove(oldDetail);
+                }
+
+                // Step 3: existing row update / notun row add — sudhu delta apply
+                var finalDetails = new List<CustomerProductReturnDetails>();
+
+                foreach (var detail in incomingDetails)
+                {
+                    var orderDetail = orderDetails[detail.ProductId];
+                    var existingDetail = existingDetails
+                        .FirstOrDefault(d => d.ProductId == detail.ProductId);
+
+                    var oldQty = existingDetail?.ReturnQuantity ?? 0;
+                    var delta = detail.ReturnQuantity - oldQty;
+
+                    CustomerProductReturnDetails target;
+
+                    if (existingDetail != null)
+                    {
+                        target = existingDetail;
+                        target.ReturnQuantity = detail.ReturnQuantity;
+                        target.Discount = detail.Discount;
+                    }
+                    else
+                    {
+                        detail.Id = 0;
+                        detail.CustomerProductReturn = null; // tracked header er sathe conflict e jeno na jay
+                        detail.CustomerProductReturnId = existingReturn.Id;
+                        existingReturn.CustomerProductReturnDetails.Add(detail);
+                        target = detail;
+                    }
+
+                    target.CylinderUnitPrice = orderDetail.CylinderUnitPrice;
+                    target.GasUnitPrice = orderDetail.GasUnitPrice;
+                    target.OrderQuantity = orderDetail.Quantity;
+
+                    target.CylinderReturnPrice = target.CylinderUnitPrice * target.ReturnQuantity;
+                    target.GasReturnPrice = target.GasUnitPrice * target.ReturnQuantity;
+
+                    var subtotal = target.CylinderReturnPrice + target.GasReturnPrice;
+                    target.ReturnPrice = subtotal - (subtotal * (target.Discount / 100));
+
+                    if (delta != 0)
+                        ApplyReturnDelta(existingReturn.OrderId, detail.ProductId, delta);
+
+                    finalDetails.Add(target);
+                }
+
+                // Step 4: header update
                 existingReturn.Date = customerProductReturn.Date;
                 existingReturn.Discount = customerProductReturn.Discount;
                 existingReturn.Remarks = customerProductReturn.Remarks;
-                existingReturn.TotalAmount = customerProductReturn.CustomerProductReturnDetails
+                existingReturn.TotalAmount = finalDetails
                     .Sum(d => d.CylinderReturnPrice + d.GasReturnPrice);
-                existingReturn.TotalReturnPrice = customerProductReturn.CustomerProductReturnDetails
-                    .Sum(d => d.ReturnPrice);
-
-                // Add new details
-                foreach (var detail in customerProductReturn.CustomerProductReturnDetails)
-                {
-                    existingReturn.CustomerProductReturnDetails.Add(detail);
-                }
+                existingReturn.TotalReturnPrice = finalDetails.Sum(d => d.ReturnPrice);
 
                 _dbContext.SaveChanges();
 
-                // Update customer payment
+                // Step 5: customer payment (age ei SaveChanges ta miss chilo)
                 if (existingReturn.EmployeeId.HasValue && existingReturn.EmployeeId.Value > 0)
                 {
                     UpdateCustomerPaymentHistory(existingReturn);
+                    _dbContext.SaveChanges();
                 }
 
                 transaction.Commit();
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 transaction.Rollback();
                 throw;
             }
+        }
+
+        private void ApplyReturnDelta(int orderId, int productId, int qtyDelta)
+        {
+            var stock = _dbContext.ProductStocks
+                .FirstOrDefault(s => s.ProductId == productId);
+
+            if (stock == null)
+                throw new Exception($"Stock not found for product {productId}");
+
+            stock.LoadedQty += qtyDelta;
+
+            var orderDetail = _dbContext.OrderDetails
+                .FirstOrDefault(od => od.OrderId == orderId && od.ProductId == productId);
+
+            if (orderDetail != null)
+                orderDetail.ReturnQuantity = (orderDetail.ReturnQuantity ?? 0) + qtyDelta;
         }
 
 
@@ -310,44 +340,82 @@
             if (!customerProductReturn.EmployeeId.HasValue)
                 return;
 
-            var lastPayment = _dbContext.CustomerPaymentHistories
-                .Where(p => p.EmployeeId == customerProductReturn.EmployeeId.Value && !p.IsDeleted)
-                .OrderByDescending(p => p.Id)
-                .FirstOrDefault();
+            var employeeId = customerProductReturn.EmployeeId.Value;
 
-            double totalDueBefore = lastPayment?.TotalDueAfterPayment ?? 0;
-            double totalDueAfter = totalDueBefore - customerProductReturn.TotalReturnPrice;
-
-            // Check if payment already exists for this return
             var existingPayment = _dbContext.CustomerPaymentHistories
                 .FirstOrDefault(p => p.CustomerProductReturnId == customerProductReturn.Id && !p.IsDeleted);
 
-            if (existingPayment != null)
+            // ---------- CREATE path ----------
+            if (existingPayment == null)
             {
-                existingPayment.AmountPaid = customerProductReturn.TotalReturnPrice;
-                existingPayment.TotalDueBeforePayment = totalDueBefore;
-                existingPayment.TotalDueAfterPayment = totalDueAfter;
-                existingPayment.PaymentDate = customerProductReturn.Date;
-            }
-            else
-            {
-                var payment = new CustomerPaymentHistory
+                var lastPayment = _dbContext.CustomerPaymentHistories
+                    .Where(p => p.EmployeeId == employeeId && !p.IsDeleted)
+                    .OrderByDescending(p => p.Id)
+                    .FirstOrDefault();
+
+                double totalDueBefore2 = lastPayment?.TotalDueAfterPayment ?? 0;
+                double totalDueAfter2 = totalDueBefore2 - customerProductReturn.TotalReturnPrice;
+
+                _dbContext.CustomerPaymentHistories.Add(new CustomerPaymentHistory
                 {
-                    EmployeeId = customerProductReturn.EmployeeId.Value,
+                    EmployeeId = employeeId,
                     OrderId = customerProductReturn.OrderId,
                     CustomerProductReturnId = customerProductReturn.Id,
                     PaymentDate = customerProductReturn.Date,
-                    PaymentMethodId = 5, //Product Return
+                    PaymentMethodId = 5, // Product Return
                     TransactionID = string.Empty,
                     Number = string.Empty,
                     TotalAmountThisOrder = customerProductReturn.TotalReturnPrice,
                     AmountPaid = customerProductReturn.TotalReturnPrice,
-                    TotalDueBeforePayment = totalDueBefore,
-                    TotalDueAfterPayment = totalDueAfter
-                };
+                    TotalDueBeforePayment = totalDueBefore2,
+                    TotalDueAfterPayment = totalDueAfter2
+                });
 
-                _dbContext.CustomerPaymentHistories.Add(payment);
+                _dbContext.SaveChanges();
+                return;
             }
+
+            // ---------- UPDATE path ----------
+            // Ei return er "due before" oi return er payment record er age je payment ta ache,
+            // tar theke nite hobe. Last payment theke nile record ta nijei dhora pore effect double hoy.
+            var previousPayment = _dbContext.CustomerPaymentHistories
+                .Where(p => p.EmployeeId == employeeId
+                            && !p.IsDeleted
+                            && p.Id < existingPayment.Id)
+                .OrderByDescending(p => p.Id)
+                .FirstOrDefault();
+
+            double totalDueBefore = previousPayment?.TotalDueAfterPayment ?? 0;
+            double totalDueAfter = totalDueBefore - customerProductReturn.TotalReturnPrice;
+
+            // Ei record er effect jodi bodlay, tahole porer sob payment er running balance o
+            // ei difference diye shift hote hobe
+            double oldAmount = existingPayment.AmountPaid;
+            double dueCorrection = oldAmount - customerProductReturn.TotalReturnPrice;
+
+            existingPayment.AmountPaid = customerProductReturn.TotalReturnPrice;
+            existingPayment.TotalAmountThisOrder = customerProductReturn.TotalReturnPrice;
+            existingPayment.TotalDueBeforePayment = totalDueBefore;
+            existingPayment.TotalDueAfterPayment = totalDueAfter;
+            existingPayment.PaymentDate = customerProductReturn.Date;
+
+            if (dueCorrection != 0)
+            {
+                var laterPayments = _dbContext.CustomerPaymentHistories
+                    .Where(p => p.EmployeeId == employeeId
+                                && !p.IsDeleted
+                                && p.Id > existingPayment.Id)
+                    .OrderBy(p => p.Id)
+                    .ToList();
+
+                foreach (var payment in laterPayments)
+                {
+                    payment.TotalDueBeforePayment += dueCorrection;
+                    payment.TotalDueAfterPayment += dueCorrection;
+                }
+            }
+
+            _dbContext.SaveChanges();
         }
 
         public async Task<CustomerProductReturn> GetCustomerProductReturnByOrderId(int orderId)

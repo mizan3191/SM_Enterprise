@@ -62,8 +62,7 @@ else
                         <div class="text-end fw-bold">@FilterDSRShopDueList.Sum(o => o.TotalCylinderQty)</div>
                     </FooterTemplate>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Property="@nameof(DSRShopDueForOrderDTO.DateFormatted)" Title="Date" Width="150px" />
-
+               
                 <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Referred By" Width="150px">
                     <Template Context="item">
                         <div>@item.EmployeeName</div>
@@ -74,6 +73,8 @@ else
                         <div>@item.DSRCustomerName</div>
                     </Template>
                 </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Property="@nameof(DSRShopDueForOrderDTO.DateFormatted)" Title="Date" Width="150px" />
+
                 <RadzenDataGridColumn TItem="DSRShopDueForOrderDTO" Title="Actions" Width="100px">
                     <Template Context="context">
                         <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
