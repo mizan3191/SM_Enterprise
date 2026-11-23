@@ -156,6 +156,12 @@ namespace DEALER.Infrastructure
             modelBuilder.Entity<Purchase>()
                 .Ignore(p => p.PreOrderDeliveryId);
 
+            modelBuilder.Entity<ExchangePaymentHistory>()
+                .HasOne(p => p.CylinderExchange)
+                .WithMany(e => e.ExchangePaymentHistories)
+                .HasForeignKey(p => p.CylinderExchangeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
         }
     }
 }

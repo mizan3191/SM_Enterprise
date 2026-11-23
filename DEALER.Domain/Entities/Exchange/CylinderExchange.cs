@@ -68,11 +68,16 @@
     {
         public int Id { get; set; }
 
-        public int CylinderExchangeId { get; set; }
+        // standalone payment er jonno nullable
+        public int? CylinderExchangeId { get; set; }
         public virtual CylinderExchange CylinderExchange { get; set; }
 
+        // kon dealer er sathe transaction
+        public int? DealerPointId { get; set; }
+        public virtual DealerPoint DealerPoint { get; set; }
+         
         public double Amount { get; set; }
-        public string Direction { get; set; } = string.Empty;
+        public string Direction { get; set; } = string.Empty;   // "Give" / "Receive"
 
         public int? PaymentMethodId { get; set; }
         public virtual PaymentMethod PaymentMethod { get; set; }
@@ -137,5 +142,20 @@
         public double TotalPay { get; set; }
         public double TotalDue { get; set; }
         public string? Comments { get; set; }
+    }
+
+    public class DealerPointDueDTO
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+
+        // > 0 => dealer amader kache pabe, < 0 => amader dealer er kache dite hobe
+        public double NetDue { get; set; }
+
+        public string StatusText => NetDue > 0 ? "Receive (We Take Money)"
+                                 : NetDue < 0 ? "Give (We Pay Money)"
+                                 : "-";
     }
 }

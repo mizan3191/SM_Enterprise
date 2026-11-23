@@ -433,5 +433,79 @@
                 return new List<CylinderExchangeDetailsDTO>();
             }
         }
+
+        public IEnumerable<DealerPointDueDTO> GetDealerPointDueSummary()
+        {
+            // Exchange header theke: Give = +, Receive = −
+            var exchangeSums = _dbContext.CylinderExchanges
+                .Where(x => !x.IsDeleted && x.DealerPointId != null)
+                .GroupBy(x => x.DealerPointId.Value)
+                .Select(g => new
+                {
+                    DealerPointId = g.Key,
+                    Net = g.Sum(e => (e.ExchangeType == "Give" ? 1 : -1)
+                                     * (e.TotalAmount - e.TotalPay))
+                })
+                .ToDictionary(x => x.DealerPointId, x => x.Net);
+
+            // Standalone payment (exchange sathe linked payment gulo TotalPay te already ache)
+            var paymentSums = _dbContext.ExchangePaymentHistories
+                .Where(x => !x.IsDeleted
+                            && x.CylinderExchangeId == null
+                            && x.DealerPointId != null)
+                .GroupBy(x => x.DealerPointId.Value)
+                .Select(g => new
+                {
+                    DealerPointId = g.Key,
+                    Net = g.Sum(p => (p.Direction == "Give" ? 1 : -1) * p.Amount)
+                })
+                .ToDictionary(x => x.DealerPointId, x => x.Net);
+
+            return _dbContext.DealerPoints
+                .Where(d => !d.IsDisable)
+                .Select(d => new DealerPointDueDTO
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    Phone = d.Phone,
+                    Address = d.Address
+                })
+                .ToList()
+                .Select(d =>
+                {
+                    d.NetDue = exchangeSums.GetValueOrDefault(d.Id)
+                             + paymentSums.GetValueOrDefault(d.Id);
+                    return d;
+                })
+                .OrderByDescending(d => d.NetDue)
+                .ToList();
+        }
+
+        public IEnumerable<Lov> GetDealerPointList()
+        {
+            return _dbContext.DealerPoints
+                .Where(x => !x.IsDisable)
+                .OrderBy(x => x.Name)
+                .Select(x => new Lov { Id = x.Id, Name = x.Name })
+                .ToList();
+        }
+
+        public int AddDealerPointPayment(ExchangePaymentHistory payment)
+        {
+            using var transaction = _dbContext.Database.BeginTransaction();
+            try
+            {
+                payment.CylinderExchangeId = null;
+                _dbContext.ExchangePaymentHistories.Add(payment);
+                _dbContext.SaveChanges();
+                transaction.Commit();
+                return payment.Id;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
     }
 }

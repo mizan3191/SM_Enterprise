@@ -10,5 +10,9 @@
         void DeleteCylinderExchange(int id);
 
         Task<IEnumerable<CylinderExchangeDetailsDTO>> GetCylinderExchangeDetailsByIdAsync(int exchangeId);
+
+        IEnumerable<DealerPointDueDTO> GetDealerPointDueSummary();
+        IEnumerable<Lov> GetDealerPointList();
+        int AddDealerPointPayment(ExchangePaymentHistory payment);
     }
 }
