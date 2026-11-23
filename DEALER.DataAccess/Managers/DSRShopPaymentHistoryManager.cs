@@ -12,12 +12,48 @@
 
             try
             {
+                var products = DSRShopPaymentHistory.Products ?? new List<EmptyCylinderPaymentHistory>();
+
+                // Stock reverse korar jonno purono detail snapshot (update er age)
+                var oldDetails = _dbContext.Set<EmptyCylinderPaymentHistory>()
+                    .AsNoTracking()
+                    .Where(x => x.DSRShopPaymentHistoryId == DSRShopPaymentHistory.Id)
+                    .ToList();
+
                 var existingTransaction = _dbContext.TransactionHistories
                     .FirstOrDefault(x => x.DSRShopPaymentHistoryId == DSRShopPaymentHistory.Id
                                       && !x.IsDeleted);
 
+                // Step 1: purono cylinder return er stock effect reverse
+                foreach (var group in oldDetails.GroupBy(x => x.ProductId))
+                {
+                    ApplyStockForShopCylinderReturn(group.Key, -group.Sum(x => x.CylinderQty));
+                }
+
                 // Update main entity
                 _dbContext.Update(DSRShopPaymentHistory);
+                _dbContext.SaveChanges();
+
+                // Step 2: client theke bad deya detail row gulo DB theke remove
+                var keptIds = products.Select(p => p.Id).ToList();
+                var staleDetails = _dbContext.Set<EmptyCylinderPaymentHistory>()
+                    .Where(x => x.DSRShopPaymentHistoryId == DSRShopPaymentHistory.Id
+                                && !keptIds.Contains(x.Id))
+                    .ToList();
+
+                if (staleDetails.Any())
+                {
+                    _dbContext.RemoveRange(staleDetails);
+                }
+
+                // Step 3: notun cylinder return er stock effect apply
+                foreach (var group in products
+                             .Where(p => p.CylinderQty > 0)
+                             .GroupBy(p => p.ProductId))
+                {
+                    ApplyStockForShopCylinderReturn(group.Key, group.Sum(p => p.CylinderQty));
+                }
+
                 _dbContext.SaveChanges();
 
                 double newAmountPaid = DSRShopPaymentHistory.AmountPaid;
@@ -25,7 +61,6 @@
                 // Case 1: New amount is 0 → no transaction history needed
                 if (newAmountPaid <= 0)
                 {
-                    // If previously a transaction history existed, soft-delete & reverse balance
                     if (existingTransaction != null)
                     {
                         var previousAmountPaid = existingTransaction.BalanceIn ?? 0;
@@ -33,7 +68,6 @@
                         existingTransaction.IsDeleted = true;
                         _dbContext.Update(existingTransaction);
 
-                        // Reverse the balance difference
                         BalanceInTransactionHistories(existingTransaction.Id, -previousAmountPaid);
                     }
 
@@ -45,7 +79,6 @@
                 // Case 2: New amount > 0
                 if (existingTransaction == null)
                 {
-                    // No previous transaction → create a new one
                     var existCurrentBalance = _dbContext.TransactionHistories
                         .AsNoTracking()
                         .Where(x => !x.IsDeleted)
@@ -71,7 +104,6 @@
                 }
                 else
                 {
-                    // Existing transaction → update it
                     var previousAmountPaid = existingTransaction.BalanceIn ?? 0;
                     var currentBalanceBeforeUpdate = existingTransaction.CurrentBalance ?? 0;
 
@@ -104,7 +136,17 @@
             try
             {
                 var entity = _dbContext.DSRShopPaymentHistories
-                                        .FirstOrDefault(x => x.Id == id);
+                    .Include(x => x.Products)
+                    .FirstOrDefault(x => x.Id == id);
+
+                if (entity == null)
+                    return false;
+
+                // Cylinder return er stock effect reverse
+                foreach (var group in entity.Products.GroupBy(x => x.ProductId))
+                {
+                    ApplyStockForShopCylinderReturn(group.Key, -group.Sum(x => x.CylinderQty));
+                }
 
                 entity.IsDeleted = true;
                 _dbContext.Update(entity);
@@ -113,12 +155,14 @@
                 var existingTransaction = _dbContext.TransactionHistories
                     .FirstOrDefault(x => x.DSRShopPaymentHistoryId == id);
 
-                existingTransaction.IsDeleted = true;
-                _dbContext.Update(existingTransaction);
-                _dbContext.SaveChanges();
+                if (existingTransaction != null)
+                {
+                    existingTransaction.IsDeleted = true;
+                    _dbContext.Update(existingTransaction);
+                    _dbContext.SaveChanges();
 
-                // Optional: update related transaction history records
-                BalanceOutTransactionHistories(existingTransaction.Id, entity.AmountPaid);
+                    BalanceOutTransactionHistories(existingTransaction.Id, entity.AmountPaid);
+                }
 
                 transaction.Commit();
                 return true;
@@ -161,6 +205,16 @@
                 }
 
                 _dbContext.SaveChanges();
+
+                // Shop theke cylinder back ase => stock e entry (product-wise sum)
+                foreach (var group in DSRShopPaymentHistory.Products
+                             .Where(p => p.CylinderQty > 0)
+                             .GroupBy(p => p.ProductId))
+                {
+                    ApplyStockForShopCylinderReturn(group.Key, group.Sum(p => p.CylinderQty));
+                }
+
+                _dbContext.SaveChanges();
                 transaction.Commit();
 
                 return DSRShopPaymentHistory.Id;
@@ -170,6 +224,18 @@
                 transaction.Rollback();
                 throw;
             }
+        }
+
+        private void ApplyStockForShopCylinderReturn(int productId, int cylinderQty)
+        {
+            var stock = _dbContext.ProductStocks
+                .FirstOrDefault(x => x.ProductId == productId);
+
+            if (stock == null)
+                return;
+
+            // Shop cylinder back kore diyese => amader stock barbe
+            stock.EmptyQty += cylinderQty;
         }
 
         //public DSRShopPaymentHistory GetDSRShopPaymentHistory(int id)
