@@ -183,9 +183,9 @@ else
         if (string.IsNullOrWhiteSpace(Supplier.Name))
         {
             notificationComponent.Show(
-                "কোম্পানির নাম লিখুন",
-                "অনুগ্রহ করে কোম্পানির নাম লিখুন।",
-                NotificationSeverity.Warning);
+     "Enter Company Name",
+     "Please enter the company name.",
+     NotificationSeverity.Warning);
             return;
         }
 
@@ -195,17 +195,17 @@ else
         {
             m_Supplier.UpdateSupplier(Supplier);
             notificationComponent.Show(
-    "কোম্পানি আপডেট হয়েছে",
-    "কোম্পানির তথ্য সফলভাবে আপডেট করা হয়েছে।",
-    NotificationSeverity.Success);
+     "Company Updated",
+     "Company information has been updated successfully.",
+     NotificationSeverity.Success);
         }
         else
         {
             m_Supplier.CreateSupplier(Supplier);
             notificationComponent.Show(
-                "কোম্পানি যোগ করা হয়েছে",
-                "কোম্পানির তথ্য সফলভাবে যোগ করা হয়েছে।",
-                NotificationSeverity.Success);
+      "Company Added",
+      "Company information has been added successfully.",
+      NotificationSeverity.Success);
         }
 
         await LoadData();
@@ -240,8 +240,8 @@ else
     {
         m_Supplier.DeleteSupplier(id);
         notificationComponent.Show(
-    "কোম্পানি মুছে ফেলা হয়েছে",
-    "কোম্পানির তথ্য সফলভাবে মুছে ফেলা হয়েছে।",
+    "Company Deleted",
+    "Company information has been deleted successfully.",
     NotificationSeverity.Success);
       
         await LoadData();

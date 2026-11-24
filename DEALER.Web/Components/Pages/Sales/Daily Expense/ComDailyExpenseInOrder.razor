@@ -145,18 +145,18 @@ else
         if (DailyExpense.DailyExpenseTypeId <= 0)
         {
             notificationComponent.Show(
-                "খরচের ধরন নির্বাচন করুন",
-                "আগে একটি খরচের ধরন নির্বাচন করুন।",
-                NotificationSeverity.Warning);
+    "Select Expense Type",
+    "Please select an expense type first.",
+    NotificationSeverity.Warning);
             return;
         }
 
         if (DailyExpense.Amount <= 0)
         {
             notificationComponent.Show(
-                "সঠিক পরিমাণ দিন",
-                "পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।",
-                NotificationSeverity.Warning);
+     "Enter a Valid Amount",
+     "The amount must be greater than zero.",
+     NotificationSeverity.Warning);
             return;
         }
 
@@ -166,18 +166,18 @@ else
         {
             m_DailyExpense.UpdateDailyExpenseInOrder(DailyExpense);
             notificationComponent.Show(
-                "দৈনিক খরচ আপডেট হয়েছে",
-                "দৈনিক খরচটি সফলভাবে আপডেট করা হয়েছে।",
-                NotificationSeverity.Success);
+      "Daily Expense Updated",
+      "The daily expense has been updated successfully.",
+      NotificationSeverity.Success);
         }
         else
         {
 
             m_DailyExpense.CreateDailyExpenseInOrder(DailyExpense);
             notificationComponent.Show(
-                "দৈনিক খরচ যোগ করা হয়েছে",
-                "দৈনিক খরচটি সফলভাবে যোগ করা হয়েছে।",
-                NotificationSeverity.Success);
+         "Daily Expense Added",
+         "The daily expense has been added successfully.",
+         NotificationSeverity.Success);
         }
 
         LoadData();
@@ -238,9 +238,9 @@ else
     {
         m_DailyExpense.DeleteDailyExpense(id);
         notificationComponent.Show(
-            "দৈনিক খরচ মুছে ফেলা হয়েছে",
-            "দৈনিক খরচটি সফলভাবে মুছে ফেলা হয়েছে।",
-            NotificationSeverity.Success);
+       "Daily Expense Deleted",
+       "The daily expense has been deleted successfully.",
+       NotificationSeverity.Success);
 
         LoadData();
         StateHasChanged();

@@ -199,27 +199,27 @@ else
         if (YearlyExpense.YearlyExpenseTypeId <= 0)
         {
             notificationComponent.Show(
-                "খরচের ধরন নির্বাচন করুন",
-                "অনুগ্রহ করে একটি খরচের ধরন নির্বাচন করুন।",
-                NotificationSeverity.Warning);
+     "Select Expense Type",
+     "Please select an expense type.",
+     NotificationSeverity.Warning);
             return;
         }
 
         if (YearlyExpense.EmployeeId <= 0)
         {
             notificationComponent.Show(
-                "ইস্যুকারীর নাম নির্বাচন করুন",
-                "অনুগ্রহ করে ইস্যুকারীর নাম নির্বাচন করুন।",
-                NotificationSeverity.Warning);
+     "Select Issuer Name",
+     "Please select the issuer name.",
+     NotificationSeverity.Warning);
             return;
         }
 
         if (YearlyExpense.Amount <= 0)
         {
             notificationComponent.Show(
-                "পরিমাণ সঠিক নয়",
-                "অনুগ্রহ করে শূন্যের চেয়ে বেশি একটি সঠিক পরিমাণ লিখুন।",
-                NotificationSeverity.Warning);
+      "Invalid Amount",
+      "Please enter a valid amount greater than zero.",
+      NotificationSeverity.Warning);
             return;
         }
 
@@ -231,17 +231,17 @@ else
                 m_YearlyExpense.UpdateYearlyExpense(YearlyExpense);
 
             notificationComponent.Show(
-                "বার্ষিক খরচ আপডেট হয়েছে",
-                "বার্ষিক খরচটি সফলভাবে আপডেট করা হয়েছে।",
-                NotificationSeverity.Success);
+     "Annual Expense Updated",
+     "The annual expense has been updated successfully.",
+     NotificationSeverity.Success);
         }
         else
         {
             m_YearlyExpense.CreateYearlyExpense(YearlyExpense);
             notificationComponent.Show(
-                "বার্ষিক খরচ যোগ করা হয়েছে",
-                "বার্ষিক খরচটি সফলভাবে যোগ করা হয়েছে।",
-                NotificationSeverity.Success);
+    "Annual Expense Added",
+    "The annual expense has been added successfully.",
+    NotificationSeverity.Success);
         }
 
         await LoadData();

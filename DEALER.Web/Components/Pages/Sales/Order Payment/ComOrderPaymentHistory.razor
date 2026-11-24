@@ -144,18 +144,18 @@ else
         if (OrderPaymentHistory.AmountPaid <= 0)
         {
             notificationComponent.Show(
-    "পরিমাণ সঠিক নয়",
-    "পরিমাণ ০ হতে পারবে না।",
-    NotificationSeverity.Warning);
+       "Invalid Amount",
+       "Amount cannot be zero.",
+       NotificationSeverity.Warning);
             return;
         }
 
         if (OrderPaymentHistory.EmployeeId <= 0)
         {
             notificationComponent.Show(
-                "DSR কাস্টমার সঠিক নয়",
-                "নির্বাচিত DSR কাস্টমারটি সঠিক নয়।",
-                NotificationSeverity.Warning);
+      "Invalid DSR Customer",
+      "The selected DSR customer is invalid.",
+      NotificationSeverity.Warning);
             return;
         }
 
@@ -171,16 +171,16 @@ else
         {
             m_OrderPaymentHistory.UpdateOrderPaymentHistory(OrderPaymentHistory);
             notificationComponent.Show(
-                "অর্ডার পেমেন্ট আপডেট হয়েছে",
-                "অর্ডার পেমেন্টটি সফলভাবে আপডেট করা হয়েছে।",
+                "Order Payment Updated",
+                "The order payment has been updated successfully.",
                 NotificationSeverity.Success);
         }
         else
         {
             m_OrderPaymentHistory.CreateOrderPaymentHistory(OrderPaymentHistory);
             notificationComponent.Show(
-    "অর্ডার পেমেন্ট যোগ করা হয়েছে",
-    "অর্ডার পেমেন্টটি সফলভাবে যোগ করা হয়েছে।",
+    "Order Payment Added",
+    "The order payment has been added successfully.",
     NotificationSeverity.Success);
         }
 
@@ -230,9 +230,9 @@ else
     {
         m_OrderPaymentHistory.DeleteOrderPaymentHistory(id);
         notificationComponent.Show(
-    "অর্ডার পেমেন্ট মুছে ফেলা হয়েছে",
-    "অর্ডার পেমেন্টের তথ্যটি সফলভাবে মুছে ফেলা হয়েছে।",
-    NotificationSeverity.Success);
+       "Order Payment Deleted",
+       "The order payment has been deleted successfully.",
+       NotificationSeverity.Success);
 
         await LoadData();
         StateHasChanged(); // If you are managing the data source manually

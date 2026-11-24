@@ -205,18 +205,18 @@ else
             if (Customer.CustomerTypeId <= 0 || Customer.CustomerTypeId is null)
             {
                 notificationComponent.Show(
-                    "কাস্টমারের ধরন নির্বাচন করুন",
-                    "অনুগ্রহ করে একটি কাস্টমারের ধরন নির্বাচন করুন।",
-                    NotificationSeverity.Warning);
+     "Select Customer Type",
+     "Please select a customer type.",
+     NotificationSeverity.Warning);
                 return;
             }
 
             if (string.IsNullOrWhiteSpace((string)Customer.Name))
             {
-                    notificationComponent.Show(
-    "কাস্টমারের নাম লিখুন",
-    "অনুগ্রহ করে কাস্টমারের নাম লিখুন।",
-    NotificationSeverity.Warning);
+                notificationComponent.Show(
+ "Enter Customer Name",
+ "Please enter the customer name.",
+ NotificationSeverity.Warning);
 
                 return;
             }
@@ -227,17 +227,17 @@ else
             {
                 var result = m_Customer.UpdateCustomer(Customer);
                 notificationComponent.Show(
-    "কাস্টমার আপডেট হয়েছে",
-    "কাস্টমারের তথ্য সফলভাবে আপডেট করা হয়েছে।",
-    NotificationSeverity.Success);
+     "Customer Updated",
+     "Customer information has been updated successfully.",
+     NotificationSeverity.Success);
             }
             else
             {
                 m_Customer.CreateCustomer(Customer);
                 notificationComponent.Show(
-    "কাস্টমার যোগ করা হয়েছে",
-    "কাস্টমারের তথ্য সফলভাবে যোগ করা হয়েছে।",
-    NotificationSeverity.Success);
+     "Customer Added",
+     "Customer information has been added successfully.",
+     NotificationSeverity.Success);
             }
 
             await LoadData();
@@ -313,8 +313,8 @@ else
         {
             m_Customer.DeleteCustomer(id);
             notificationComponent.Show(
-    "কাস্টমার মুছে ফেলা হয়েছে",
-    "কাস্টমারের তথ্য সফলভাবে মুছে ফেলা হয়েছে।",
+    "Customer Deleted",
+    "Customer information has been deleted successfully.",
     NotificationSeverity.Success);
 
             await LoadData();

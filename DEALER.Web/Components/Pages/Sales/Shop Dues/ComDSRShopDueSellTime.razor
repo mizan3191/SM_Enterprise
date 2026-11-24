@@ -320,8 +320,8 @@ else
         if (DSRShopDue.EmployeeId <= 0 || DSRShopDue.EmployeeId is null)
         {
             notificationComponent.Show(
-                "নাম নির্বাচন করুন",
-                "চালিয়ে যাওয়ার আগে একটি নাম নির্বাচন করুন।",
+                "Invalid Name",
+                "Please select a name before proceeding.",
                 NotificationSeverity.Warning);
             return;
         }
@@ -329,9 +329,8 @@ else
         if (DSRShopDue.ShopId <= 0)
         {
             notificationComponent.Show(
-                "দোকান নির্বাচন করুন",
-                "চালিয়ে যাওয়ার আগে একটি দোকান নির্বাচন করুন।",
-
+                "Invalid Shop",
+                "Please select a shop before proceeding.",
                 NotificationSeverity.Warning);
             return;
         }
@@ -339,8 +338,8 @@ else
         // if (DSRShopDue.DueAmount <= 0)
         // {
         //     notificationComponent.Show(
-        //         "বকেয়া পরিমাণ সঠিক নয়",
-        //         "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।",
+        //         "Invalid Due Amount",
+        //         "Due amount must be greater than zero.",
         //         NotificationSeverity.Warning);
         //     return;
         // }
@@ -362,9 +361,8 @@ else
             };
 
             notificationComponent.Show(
-                "দোকানের বকেয়া সংরক্ষিত হয়েছে",
-                "এখন আপনি সিলিন্ডারের তথ্য যোগ করতে পারেন।",
-
+                "Shop Due Saved",
+                "The shop due information has been saved successfully.",
                 NotificationSeverity.Success);
 
             StateHasChanged();
@@ -385,12 +383,12 @@ else
         {
             if (DSRShopDue.EmployeeId <= 0 || DSRShopDue.EmployeeId is null)
             {
-                notificationComponent.Show("নাম নির্বাচন করুন", "চালিয়ে যাওয়ার আগে একটি নাম নির্বাচন করুন।", NotificationSeverity.Warning);
+                notificationComponent.Show("Select Name", "Please select a name before proceeding.", NotificationSeverity.Warning);
                 return;
             }
             if (DSRShopDue.ShopId <= 0)
             {
-                notificationComponent.Show("দোকান নির্বাচন করুন", "চালিয়ে যাওয়ার আগে একটি দোকান নির্বাচন করুন।", NotificationSeverity.Warning);
+                notificationComponent.Show("Select Shop", "Please select a shop before proceeding.", NotificationSeverity.Warning);
                 return;
             }
             // if (DSRShopDue.DueAmount <= 0)
@@ -408,7 +406,7 @@ else
                 DSRShopDue.IsSaved = true;
                 // প্রথম empty row খোলো
                 DSRShopDue.Products.Add(new ShopEmptyCylinderProduct());
-                notificationComponent.Show("তথ্য সংরক্ষিত", "এখন সিলিন্ডারের তথ্য যোগ করুন।", NotificationSeverity.Success);
+                notificationComponent.Show("Information Saved", "Now add the cylinder information.", NotificationSeverity.Success);
                 StateHasChanged();
             }
             catch (Exception ex)
@@ -427,12 +425,12 @@ else
             {
                 if (lastProduct.ProductId <= 0)
                 {
-                    notificationComponent.Show("পণ্য নির্বাচন করুন", "নতুন সারি যোগ করার আগে একটি পণ্য নির্বাচন করুন।", NotificationSeverity.Warning);
+                    notificationComponent.Show("Select Product", "Please select a product before adding a new row.", NotificationSeverity.Warning);
                     return;
                 }
                 if (lastProduct.CylinderQty <= 0)
                 {
-                    notificationComponent.Show("সিলিন্ডার সংখ্যা সঠিক নয়", "সঠিক সিলিন্ডার সংখ্যা দিন।", NotificationSeverity.Warning);
+                    notificationComponent.Show("Invalid Cylinder Quantity", "Please enter a valid cylinder quantity.", NotificationSeverity.Warning);
                     return;
                 }
                 try
@@ -448,7 +446,7 @@ else
 
                     m_DSRShopDue.AddShopEmptyCylinderProduct(lastProduct);
                     // ✅ EF Core এখন lastProduct.Id set করে দেবে
-                    notificationComponent.Show("পণ্য যোগ হয়েছে", "পণ্য সফলভাবে সংরক্ষিত হয়েছে।", NotificationSeverity.Success);
+                    notificationComponent.Show("Product Added", "Product has been added successfully.", NotificationSeverity.Success);
                 }
                 catch (Exception ex)
                 {
@@ -491,17 +489,17 @@ else
     {
         if (DSRShopDue.EmployeeId <= 0 || DSRShopDue.EmployeeId is null)
         {
-            notificationComponent.Show("নাম নির্বাচন করুন", "চালিয়ে যাওয়ার আগে একটি নাম নির্বাচন করুন।", NotificationSeverity.Warning);
+            notificationComponent.Show("Select Name", "Please select a name before proceeding.", NotificationSeverity.Warning);
             return;
         }
         if (DSRShopDue.ShopId <= 0)
         {
-            notificationComponent.Show("দোকান নির্বাচন করুন", "চালিয়ে যাওয়ার আগে একটি দোকান নির্বাচন করুন।", NotificationSeverity.Warning);
+            notificationComponent.Show("Select Shop", "Please select a shop before proceeding.", NotificationSeverity.Warning);
             return;
         }
         // if (DSRShopDue.DueAmount <= 0)
         // {
-        //     notificationComponent.Show("বকেয়া পরিমাণ সঠিক নয়", "বকেয়া পরিমাণ অবশ্যই শূন্যের চেয়ে বেশি হতে হবে।", NotificationSeverity.Warning);
+        //     notificationComponent.Show("Invalid Due Amount", "The due amount must be greater than zero.", NotificationSeverity.Warning);
         //     return;
         // }
         try
@@ -535,13 +533,13 @@ else
                         else
                         {
                             // Partially filled → error
-                            notificationComponent.Show("পণ্যের তথ্য অসম্পূর্ণ", "সব পণ্যের তথ্য সম্পূর্ণ করুন বা খালি row মুছে দিন।", NotificationSeverity.Warning);
+                            notificationComponent.Show("Invalid Product Information", "Please complete all product information or remove the empty row.", NotificationSeverity.Warning);
                             return;
                         }
                     }
                 }
                 m_DSRShopDue.UpdateDSRShopDue(DSRShopDue);
-                notificationComponent.Show("আপডেট সফল", "দোকানের বকেয়ার তথ্য সফলভাবে আপডেট করা হয়েছে।", NotificationSeverity.Success);
+                notificationComponent.Show("Update Successful", "Shop due information has been updated successfully.", NotificationSeverity.Success);
             }
             else
             {
@@ -549,7 +547,7 @@ else
                 DSRShopDue.DSREmployeeId = DSREmployeeId;
                 DSRShopDue.OrderId = OrderId;
                 m_DSRShopDue.CreateDSRShopDue(DSRShopDue);
-                notificationComponent.Show("সংরক্ষিত হয়েছে", "দোকানের বকেয়ার তথ্য সফলভাবে যোগ করা হয়েছে।", NotificationSeverity.Success);
+                notificationComponent.Show("Saved Successfully", "Shop due information has been added successfully.", NotificationSeverity.Success);
             }
             showModal = false;
             LoadData();
@@ -588,8 +586,8 @@ else
         {
             m_DSRShopDue.DeleteShopDue(id);
             notificationComponent.Show(
-                "দোকানের বকেয়া মুছে ফেলা হয়েছে",
-                "দোকানের বকেয়ার তথ্য সফলভাবে মুছে ফেলা হয়েছে।",
+                "Shop Due Deleted",
+                "The shop due information has been deleted successfully.",
                 NotificationSeverity.Success);
 
             LoadData();

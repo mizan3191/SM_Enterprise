@@ -199,8 +199,8 @@ else
         if (ProductConsumption.QuantityConsumed == 0)
         {
             notificationComponent.Show(
-    "পরিমাণ সঠিক নয়",
-    "অনুগ্রহ করে শূন্যের চেয়ে বেশি একটি সঠিক পরিমাণ লিখুন।",
+    "Invalid Quantity",
+    "Please enter a valid quantity greater than zero.",
     NotificationSeverity.Warning);
             return;
         }
@@ -212,16 +212,16 @@ else
             ProductConsumption.DateConsumed = DateTime.Now;
             m_Product.UpdateProductConsumption(ProductConsumption);
             notificationComponent.Show(
-    "পণ্য সমন্বয় আপডেট হয়েছে",
-    "পণ্য সমন্বয়ের তথ্য সফলভাবে আপডেট করা হয়েছে।",
-    NotificationSeverity.Success);
+            "Product Adjustment Updated",
+            "Product adjustment information has been updated successfully.",
+            NotificationSeverity.Success);
         }
         else
         {
             m_Product.CreateProductConsumption(ProductConsumption);
             notificationComponent.Show(
-                "পণ্য সমন্বয় যোগ করা হয়েছে",
-                "পণ্য সমন্বয়ের তথ্য সফলভাবে যোগ করা হয়েছে।",
+                "Product Adjustment Added",
+                "Product adjustment information has been added successfully.",
                 NotificationSeverity.Success);
         }
 

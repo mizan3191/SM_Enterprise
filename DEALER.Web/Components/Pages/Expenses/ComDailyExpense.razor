@@ -192,8 +192,8 @@ else
         if (DailyExpense.DailyExpenseTypeId <= 0)
         {
             notificationComponent.Show(
-                "খরচের ধরন নির্বাচন করুন",
-                "অনুগ্রহ করে একটি খরচের ধরন নির্বাচন করুন।",
+                "Daily Expense Type Not Selected",
+                "Please select a daily expense type.",
                 NotificationSeverity.Warning);
             return;
         }
@@ -201,8 +201,8 @@ else
         if (DailyExpense.EmployeeId <= 0)
         {
             notificationComponent.Show(
-                "ইস্যুকারীর নাম নির্বাচন করুন",
-                "অনুগ্রহ করে ইস্যুকারীর নাম নির্বাচন করুন।",
+                "Issuer Name Not Selected",
+                "Please select an issuer name.",
                 NotificationSeverity.Warning);
             return;
         }
@@ -210,8 +210,8 @@ else
         if (DailyExpense.Amount <= 0)
         {
             notificationComponent.Show(
-                "পরিমাণ সঠিক নয়",
-                "অনুগ্রহ করে শূন্যের চেয়ে বেশি একটি সঠিক পরিমাণ লিখুন।",
+                "Invalid Amount",
+                "Please enter a valid amount greater than zero.",
                 NotificationSeverity.Warning);
             return;
         }
@@ -231,16 +231,16 @@ else
             }
 
             notificationComponent.Show(
-                "দৈনিক খরচ আপডেট হয়েছে",
-                "দৈনিক খরচটি সফলভাবে আপডেট করা হয়েছে।",
+                "Daily Expense Updated",
+                "Daily expense has been updated successfully.",
                 NotificationSeverity.Success);
         }
         else
         {
             m_DailyExpense.CreateDailyExpense(DailyExpense);
             notificationComponent.Show(
-                "দৈনিক খরচ যোগ করা হয়েছে",
-                "দৈনিক খরচটি সফলভাবে যোগ করা হয়েছে।",
+                "Daily Expense Added",
+                "Daily expense has been added successfully.",
                 NotificationSeverity.Success);
         }
 

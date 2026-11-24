@@ -432,12 +432,12 @@
             {
                 if (lastProduct.ProductId <= 0)
                 {
-                    notificationComponent.Show("পণ্য নির্বাচন করুন", "নতুন সারি যোগ করার আগে একটি পণ্য নির্বাচন করুন।", NotificationSeverity.Warning);
+                    notificationComponent.Show("Select Product", "Please select a product before adding a new row.", NotificationSeverity.Warning);
                     return;
                 }
                 if (lastProduct.CylinderQty <= 0)
                 {
-                    notificationComponent.Show("সিলিন্ডার সংখ্যা সঠিক নয়", "সঠিক সিলিন্ডার সংখ্যা দিন।", NotificationSeverity.Warning);
+                    notificationComponent.Show("Invalid Cylinder Quantity", "Please enter a valid cylinder quantity.", NotificationSeverity.Warning);
                     return;
                 }
                 try
@@ -445,7 +445,7 @@
                     RecalculateProductPaidAmount(lastProduct);
                     lastProduct.DSRShopPaymentHistoryId = DSRShopPaymentHistory.Id;
                     m_DSRShopPaymentHistory.AddEmptyCylinderPaymentHistory(lastProduct);
-                    notificationComponent.Show("পণ্য যোগ হয়েছে", "পণ্য সফলভাবে সংরক্ষিত হয়েছে।", NotificationSeverity.Success);
+                    notificationComponent.Show("Product Added", "Product has been added successfully.", NotificationSeverity.Success);
                 }
                 catch (Exception ex)
                 {
@@ -528,7 +528,7 @@
                     }
                     else
                     {
-                        notificationComponent.Show("পণ্যের তথ্য অসম্পূর্ণ", "সব পণ্যের তথ্য সম্পূর্ণ করুন বা খালি row মুছে দিন।", NotificationSeverity.Warning);
+                        notificationComponent.Show("Incomplete Product Information", "Please complete all product information or remove empty rows.", NotificationSeverity.Warning);
                         return;
                     }
                 }

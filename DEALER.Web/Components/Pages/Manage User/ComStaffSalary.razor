@@ -243,43 +243,37 @@ else
         {
             if (StaffSalary.Amount <= 0)
             {
-                notificationComponent.Show("পরিমাণ সঠিক নয়",
-                    "পরিমাণ ০ হতে পারবে না।", NotificationSeverity.Warning);
+                notificationComponent.Show("Invalid Amount", "Amount cannot be zero.", NotificationSeverity.Warning);
                 return;
             }
 
             if (StaffSalary.EmployeeId == 0)
             {
-                notificationComponent.Show("কর্মী নির্বাচন করুন",
-                    "অনুগ্রহ করে একজন কর্মী নির্বাচন করুন।", NotificationSeverity.Warning);
+                notificationComponent.Show("Select Employee", "Please select an employee.", NotificationSeverity.Warning);
                 return;
             }
 
             if (StaffSalary.PaymentMethodId == 0)
             {
-                notificationComponent.Show("পেমেন্ট পদ্ধতি নির্বাচন করুন",
-                    "অনুগ্রহ করে একটি পেমেন্ট পদ্ধতি নির্বাচন করুন।", NotificationSeverity.Warning);
+                notificationComponent.Show("Select Payment Method", "Please select a payment method.", NotificationSeverity.Warning);
                 return;
             }
 
             if (StaffSalary.PaymentTypeId == 0)
             {
-                notificationComponent.Show("পেমেন্টের ধরন নির্বাচন করুন",
-                    "অনুগ্রহ করে একটি পেমেন্টের ধরন নির্বাচন করুন।", NotificationSeverity.Warning);
+                notificationComponent.Show("Select Payment Type", "Please select a payment type.", NotificationSeverity.Warning);
                 return;
             }
 
             if (StaffSalary.Id > 0)
             {
                 StaffSalaryService.UpdateStaffSalary(StaffSalary);
-                notificationComponent.Show("বেতন আপডেট হয়েছে",
-                    "কর্মীর বেতনের তথ্য সফলভাবে আপডেট করা হয়েছে।", NotificationSeverity.Success);
+                notificationComponent.Show("Salary Updated", "The employee's salary information has been updated successfully.", NotificationSeverity.Success);
             }
             else
             {
                 StaffSalaryService.CreateStaffSalary(StaffSalary);
-                notificationComponent.Show("বেতন যোগ করা হয়েছে",
-                    "কর্মীর বেতনের তথ্য সফলভাবে যোগ করা হয়েছে।", NotificationSeverity.Success);
+                notificationComponent.Show("Salary Added", "The employee's salary information has been added successfully.", NotificationSeverity.Success);
             }
 
             await LoadData();
@@ -341,8 +335,7 @@ else
         if (confirmed == true)
         {
             StaffSalaryService.DeleteStaffSalary(id);
-            notificationComponent.Show("বেতন মুছে ফেলা হয়েছে",
-                "কর্মীর বেতনের তথ্য সফলভাবে মুছে ফেলা হয়েছে।", NotificationSeverity.Success);
+            notificationComponent.Show("Salary Deleted", "The employee's salary information has been deleted successfully.", NotificationSeverity.Success);
 
             await LoadData();
             StateHasChanged();

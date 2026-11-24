@@ -200,8 +200,8 @@ else
             if (Employee.EmployeeTypeId <= 0 || Employee.EmployeeTypeId is null)
             {
                 notificationComponent.Show(
-                    "কাস্টমারের ধরন নির্বাচন করুন",
-                    "অনুগ্রহ করে একটি কাস্টমারের ধরন নির্বাচন করুন।",
+                    "Select Employee Type",
+                    "Please select an employee type.",
                     NotificationSeverity.Warning);
                 return;
             }
@@ -209,8 +209,8 @@ else
             if (string.IsNullOrWhiteSpace(Employee.Name))
             {
                 notificationComponent.Show(
-    "কাস্টমারের নাম লিখুন",
-    "অনুগ্রহ করে কাস্টমারের নাম লিখুন।",
+    "Employee Name is Required",
+    "Please enter the employee name.",
     NotificationSeverity.Warning);
 
                 return;
@@ -222,16 +222,16 @@ else
             {
                 var result = m_Employee.UpdateEmployee(Employee);
                 notificationComponent.Show(
-    "কাস্টমার আপডেট হয়েছে",
-    "কাস্টমারের তথ্য সফলভাবে আপডেট করা হয়েছে।",
+    "Employee Updated",
+    "Employee information has been updated successfully.",
     NotificationSeverity.Success);
             }
             else
             {
                 m_Employee.CreateEmployee(Employee);
                 notificationComponent.Show(
-    "কাস্টমার যোগ করা হয়েছে",
-    "কাস্টমারের তথ্য সফলভাবে যোগ করা হয়েছে।",
+    "Employee Added",
+    "Employee information has been added successfully.",
     NotificationSeverity.Success);
             }
 
@@ -308,8 +308,8 @@ else
         {
             m_Employee.DeleteEmployee(id);
             notificationComponent.Show(
-    "কাস্টমার মুছে ফেলা হয়েছে",
-    "কাস্টমারের তথ্য সফলভাবে মুছে ফেলা হয়েছে।",
+    "Employee Deleted",
+    "Employee information has been deleted successfully.",
     NotificationSeverity.Success);
 
             await LoadData();

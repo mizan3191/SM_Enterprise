@@ -111,8 +111,8 @@ else
         if (string.IsNullOrWhiteSpace(PaymentType.Name))
         {
             notificationComponent.Show(
-                "কাস্টমারের ধরন প্রয়োজন",
-                "অনুগ্রহ করে কাস্টমারের ধরন লিখুন।",
+                "Payment Type Required",
+                "Please enter the payment type.",
                 NotificationSeverity.Warning);
             return;
         }
@@ -123,16 +123,16 @@ else
         {
             m_Lookup.UpdatePaymentType(PaymentType);
             notificationComponent.Show(
-    "কাস্টমারের ধরন আপডেট হয়েছে",
-    "কাস্টমারের ধরনের তথ্য সফলভাবে আপডেট করা হয়েছে।",
+    "Payment Type Updated",
+    "The payment type information has been updated successfully.",
     NotificationSeverity.Success);
         }
         else
         {
             m_Lookup.CreatePaymentType(PaymentType);
             notificationComponent.Show(
-                "কাস্টমারের ধরন যোগ করা হয়েছে",
-                "কাস্টমারের ধরনের তথ্য সফলভাবে যোগ করা হয়েছে।",
+                "Payment Type Created",
+                "The payment type information has been created successfully.",
                 NotificationSeverity.Success);
         }
         await LoadData();
@@ -176,8 +176,8 @@ else
     {
         m_Lookup.DeletePaymentType(id);
         notificationComponent.Show(
-            "কাস্টমারের ধরন মুছে ফেলা হয়েছে",
-            "কাস্টমারের ধরনের তথ্য সফলভাবে মুছে ফেলা হয়েছে।",
+            "Payment Type Deleted",
+            "The payment type information has been deleted successfully.",
             NotificationSeverity.Success);
 
         await LoadData();
