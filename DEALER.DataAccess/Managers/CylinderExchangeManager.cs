@@ -69,12 +69,13 @@
                 _dbContext.CylinderExchanges.Add(exchange);
                 _dbContext.SaveChanges();
 
-                // Step 6: Payment history
+                // Step 6: Payment history + Transaction history
                 if (exchange.TotalPay > 0)
                 {
                     var payment = new ExchangePaymentHistory
                     {
                         CylinderExchangeId = exchange.Id,
+                        DealerPointId = exchange.DealerPointId,   // <-- missing chilo
                         Amount = exchange.TotalPay,
                         Direction = exchange.ExchangeType,
                         PaymentMethodId = exchange.PaymentMethodId,
@@ -83,6 +84,29 @@
                         IsDeleted = false
                     };
                     _dbContext.ExchangePaymentHistories.Add(payment);
+                    _dbContext.SaveChanges(); // payment.Id lagbe
+
+                    var existCurrentBalance = _dbContext.TransactionHistories
+                        .AsNoTracking()
+                        .Where(x => !x.IsDeleted)
+                        .OrderByDescending(x => x.Id)
+                        .FirstOrDefault()?.CurrentBalance ?? 0;
+
+                    // Give    = dealer amake taka dibe  -> cash in  (BalanceIn)
+                    // Receive = ami dealer ke taka dibo  -> cash out (BalanceOut)
+                    bool isGive = payment.Direction == "Give";
+                    double balanceIn = isGive ? payment.Amount : 0;
+                    double balanceOut = isGive ? 0 : payment.Amount;
+
+                    _dbContext.TransactionHistories.Add(new TransactionHistory
+                    {
+                        BalanceIn = balanceIn,
+                        BalanceOut = balanceOut,
+                        CurrentBalance = existCurrentBalance + balanceIn - balanceOut,
+                        Date = payment.Date,
+                        ExchangePaymentHistoryId = payment.Id,
+                        Resone = $"Empty Cylinder ({payment.Direction})"
+                    });
                 }
 
                 _dbContext.SaveChanges();
@@ -133,17 +157,9 @@
                     if (stock != null)
                     {
                         if (existingExchange.ExchangeType == "Give")
-                        {
-                            // Age Give korechi → EmptyQty komiyeche
-                            // Ekhon reverse → EmptyQty BARABO
-                            stock.EmptyQty += oldDetail.Quantity;
-                        }
-                        else // Receive
-                        {
-                            // Age Receive korechi → EmptyQty bariyeche
-                            // Ekhon reverse → EmptyQty KOMABO
-                            stock.EmptyQty -= oldDetail.Quantity;
-                        }
+                            stock.EmptyQty += oldDetail.Quantity;   // reverse
+                        else
+                            stock.EmptyQty -= oldDetail.Quantity;   // reverse
                     }
                 }
 
@@ -152,7 +168,7 @@
                 _dbContext.SaveChanges();
 
                 // ============================================
-                // Step 2: Apply new stock changes
+                // Step 2: Apply new stock changes (+ discount recalc)
                 // ============================================
                 foreach (var detail in exchange.ExchangeDetails)
                 {
@@ -164,32 +180,25 @@
                         throw new Exception($"Product {detail.ProductId} not found");
 
                     if (detail.CylinderUnitPrice <= 0)
-                    {
                         detail.CylinderUnitPrice = product.CurrentPrice?.CylinderBuyingPrice ?? 0;
-                    }
+
+                    // Create er moto discount recalculate (age missing chilo)
+                    var subTotal = detail.Quantity * detail.CylinderUnitPrice;
+                    detail.DiscountAmount = subTotal * (detail.DiscountPercent / 100);
 
                     var stock = _dbContext.ProductStocks
                         .FirstOrDefault(s => s.ProductId == detail.ProductId);
 
                     if (stock == null)
                     {
-                        stock = new ProductStock
-                        {
-                            ProductId = detail.ProductId,
-                            LoadedQty = 0,
-                            EmptyQty = 0
-                        };
+                        stock = new ProductStock { ProductId = detail.ProductId, LoadedQty = 0, EmptyQty = 0 };
                         _dbContext.ProductStocks.Add(stock);
                     }
 
                     if (exchange.ExchangeType == "Give")
-                    {
                         stock.EmptyQty -= detail.Quantity;
-                    }
-                    else // Receive
-                    {
+                    else
                         stock.EmptyQty += detail.Quantity;
-                    }
                 }
 
                 // Step 3: Update header
@@ -198,9 +207,14 @@
                 existingExchange.PaymentMethodId = exchange.PaymentMethodId;
                 existingExchange.Date = exchange.Date;
                 existingExchange.Comments = exchange.Comments;
+                existingExchange.ExchangeDiscount = exchange.ExchangeDiscount;   // <-- missing chilo
                 existingExchange.TotalPay = exchange.TotalPay;
-                existingExchange.TotalAmount = exchange.ExchangeDetails
+
+                existingExchange.SubTotal = exchange.ExchangeDetails
                     .Sum(d => d.Quantity * d.CylinderUnitPrice);
+
+                var productDiscount = exchange.ExchangeDetails.Sum(d => d.DiscountAmount);
+                existingExchange.TotalAmount = existingExchange.SubTotal - productDiscount - exchange.ExchangeDiscount;
                 existingExchange.TotalDue = existingExchange.TotalAmount - exchange.TotalPay;
 
                 // Step 4: Add new details
@@ -214,15 +228,24 @@
                 _dbContext.SaveChanges();
 
                 // ============================================
-                // Step 5: Payment history update
+                // Step 5: Payment history + Transaction history sync
                 // ============================================
                 var existingPayment = existingExchange.ExchangePaymentHistories
                     .FirstOrDefault(p => !p.IsDeleted);
+
+                // Ei exchange er sob payment id (soft-deleted o include) diye linked transaction row khuji
+                var exchangePaymentIds = existingExchange.ExchangePaymentHistories.Select(p => p.Id).ToList();
+                var linkedTransaction = _dbContext.TransactionHistories
+                    .FirstOrDefault(x => x.ExchangePaymentHistoryId != null
+                                      && exchangePaymentIds.Contains(x.ExchangePaymentHistoryId.Value));
+
+                ExchangePaymentHistory payment = existingPayment;
 
                 if (exchange.TotalPay > 0)
                 {
                     if (existingPayment != null)
                     {
+                        existingPayment.DealerPointId = exchange.DealerPointId;
                         existingPayment.Amount = exchange.TotalPay;
                         existingPayment.Direction = exchange.ExchangeType;
                         existingPayment.PaymentMethodId = exchange.PaymentMethodId;
@@ -231,9 +254,10 @@
                     }
                     else
                     {
-                        var newPayment = new ExchangePaymentHistory
+                        payment = new ExchangePaymentHistory
                         {
                             CylinderExchangeId = exchange.Id,
+                            DealerPointId = exchange.DealerPointId,
                             Amount = exchange.TotalPay,
                             Direction = exchange.ExchangeType,
                             PaymentMethodId = exchange.PaymentMethodId,
@@ -241,13 +265,62 @@
                             Comments = exchange.Comments,
                             IsDeleted = false
                         };
-                        _dbContext.ExchangePaymentHistories.Add(newPayment);
+                        _dbContext.ExchangePaymentHistories.Add(payment);
+                    }
+
+                    _dbContext.SaveChanges(); // payment.Id confirm
+
+                    // Nijer row bad diye ager balance
+                    var balanceQuery = _dbContext.TransactionHistories
+                        .AsNoTracking()
+                        .Where(x => !x.IsDeleted);
+
+                    if (linkedTransaction != null)
+                    {
+                        int linkedId = linkedTransaction.Id;
+                        balanceQuery = balanceQuery.Where(x => x.Id != linkedId);
+                    }
+
+                    var existCurrentBalance = balanceQuery
+                        .OrderByDescending(x => x.Id)
+                        .FirstOrDefault()?.CurrentBalance ?? 0;
+
+                    bool isGive = payment.Direction == "Give";
+                    double balanceIn = isGive ? payment.Amount : 0;
+                    double balanceOut = isGive ? 0 : payment.Amount;
+
+                    if (linkedTransaction != null)
+                    {
+                        // Age er row reuse (duplicate hobe na)
+                        linkedTransaction.IsDeleted = false;
+                        linkedTransaction.ExchangePaymentHistoryId = payment.Id;
+                        linkedTransaction.BalanceIn = balanceIn;
+                        linkedTransaction.BalanceOut = balanceOut;
+                        linkedTransaction.CurrentBalance = existCurrentBalance + balanceIn - balanceOut;
+                        linkedTransaction.Date = payment.Date;
+                        linkedTransaction.Resone = $"Empty Cylinder Exchange ({payment.Direction}) - Dealer #{exchange.DealerPointId}";
+                    }
+                    else
+                    {
+                        _dbContext.TransactionHistories.Add(new TransactionHistory
+                        {
+                            BalanceIn = balanceIn,
+                            BalanceOut = balanceOut,
+                            CurrentBalance = existCurrentBalance + balanceIn - balanceOut,
+                            Date = payment.Date,
+                            ExchangePaymentHistoryId = payment.Id,
+                            Resone = $"Empty Cylinder Exchange ({payment.Direction})"
+                        });
                     }
                 }
-                else if (existingPayment != null)
+                else
                 {
-                    // TotalPay 0 hole payment history soft delete
-                    existingPayment.IsDeleted = true;
+                    // TotalPay 0 hole payment + transaction dutoi soft delete
+                    if (existingPayment != null)
+                        existingPayment.IsDeleted = true;
+
+                    if (linkedTransaction != null)
+                        linkedTransaction.IsDeleted = true;
                 }
 
                 _dbContext.SaveChanges();
@@ -291,27 +364,32 @@
                     if (stock != null)
                     {
                         if (exchange.ExchangeType == "Give")
-                        {
-                            // Age Give → EmptyQty komiyeche
-                            // Reverse → EmptyQty BARABO
-                            stock.EmptyQty += detail.Quantity;
-                        }
-                        else // Receive
-                        {
-                            // Age Receive → EmptyQty bariyeche
-                            // Reverse → EmptyQty KOMABO
-                            stock.EmptyQty -= detail.Quantity;
-                        }
+                            stock.EmptyQty += detail.Quantity;   // reverse
+                        else
+                            stock.EmptyQty -= detail.Quantity;   // reverse
                     }
                 }
 
                 // Soft delete exchange
                 exchange.IsDeleted = true;
 
+                var paymentIds = exchange.ExchangePaymentHistories.Select(p => p.Id).ToList();
+
                 // Soft delete payments
                 foreach (var payment in exchange.ExchangePaymentHistories)
-                {
                     payment.IsDeleted = true;
+
+                // Linked transaction history soft delete (transaction page e bhut entry theke jabe na)
+                if (paymentIds.Any())
+                {
+                    var linkedTransactions = _dbContext.TransactionHistories
+                        .Where(x => !x.IsDeleted
+                                 && x.ExchangePaymentHistoryId != null
+                                 && paymentIds.Contains(x.ExchangePaymentHistoryId.Value))
+                        .ToList();
+
+                    foreach (var t in linkedTransactions)
+                        t.IsDeleted = true;
                 }
 
                 _dbContext.SaveChanges();
@@ -492,11 +570,53 @@
 
         public int AddDealerPointPayment(ExchangePaymentHistory payment)
         {
+            if (payment == null)
+                throw new Exception("Payment required.");
+
+            if (payment.Amount <= 0)
+                throw new Exception("Payment amount must be greater than 0.");
+
+            if (payment.Direction != "Give" && payment.Direction != "Receive")
+                throw new Exception("Payment direction must be Give or Receive.");
+
+            if (payment.DealerPointId == null)
+                throw new Exception("Dealer point is required.");
+
             using var transaction = _dbContext.Database.BeginTransaction();
             try
             {
-                payment.CylinderExchangeId = null;
+                payment.CylinderExchangeId = null;   // standalone dealer payment
+
+                if (payment.Date == default)
+                    payment.Date = DateTime.Now;
+
                 _dbContext.ExchangePaymentHistories.Add(payment);
+                _dbContext.SaveChanges();            // payment.Id lagbe
+
+                // Standalone dealer payment -> TransactionHistory row
+                var existCurrentBalance = _dbContext.TransactionHistories
+                    .AsNoTracking()
+                    .Where(x => !x.IsDeleted)
+                    .OrderByDescending(x => x.Id)
+                    .FirstOrDefault()?.CurrentBalance ?? 0;
+
+                // Dealer due formula onujayi (Give => +due, Receive => -due):
+                // Give    = ami dealer ke taka dicchi   -> cash out (BalanceOut)
+                // Receive = dealer amake taka dicche     -> cash in  (BalanceIn)
+                bool isGive = payment.Direction == "Give";
+                double balanceIn = isGive ? 0 : payment.Amount;
+                double balanceOut = isGive ? payment.Amount : 0;
+
+                _dbContext.TransactionHistories.Add(new TransactionHistory
+                {
+                    BalanceIn = balanceIn,
+                    BalanceOut = balanceOut,
+                    CurrentBalance = existCurrentBalance + balanceIn - balanceOut,
+                    Date = payment.Date,
+                    ExchangePaymentHistoryId = payment.Id,
+                    Resone = $"Dealer Due Payment ({(isGive ? "Give" : "Receive")})"
+                });
+
                 _dbContext.SaveChanges();
                 transaction.Commit();
                 return payment.Id;

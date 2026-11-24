@@ -59,6 +59,11 @@ namespace DEALER.Domain
 
         public int? PreOrderPaymentId { get; set; }
         public PreOrderPayment PreOrderPayment { get; set; }
+        
+        // kon dealer er sathe transaction
+        public int? ExchangePaymentHistoryId { get; set; }
+        public virtual ExchangePaymentHistory ExchangePaymentHistory { get; set; }
+
     }
 
     public enum BalanceTypeEnum
